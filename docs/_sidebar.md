@@ -1,6 +1,7 @@
 - 1 计算机视觉
   - [1-1 传统CV算法](/source/传统CV算法/README)
   - [1-2 视频结构化](/source/视频结构化/README)
+  - [1-3 机器学习](/source/传统CV算法/机器学习/README)
 - [2 GPU 算子优化](/source/GPU算子优化/README)
 - [3 Agent](/source/agent/README)
   - [3-1 Agent 深入理解](/source/agent/深入理解/README)
