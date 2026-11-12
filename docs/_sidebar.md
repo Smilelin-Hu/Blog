@@ -29,3 +29,4 @@
 - [7 产品经理](/source/产品经理/README)
 - [8 AI 工具全景](/source/AI工具全景/README)
 - [9 推荐系统](/source/推荐系统/README)
+- [10 国产 GPGPU 推理优化](/source/国产GPGPU推理优化/README)
