@@ -30,3 +30,5 @@
 - [8 AI 工具全景](/source/AI工具全景/README)
 - [9 推荐系统](/source/推荐系统/README)
 - [10 国产 GPGPU 推理优化](/source/国产GPGPU推理优化/README)
+- [11 AI Infra](/source/AI-Infra/README)
+  - [11-1 大模型训练优化](/source/AI-Infra/1-大模型训练优化/README)
