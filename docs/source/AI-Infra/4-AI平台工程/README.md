@@ -9,3 +9,8 @@
 ### 平台判断与产品化
 
 - [1-平台工程全景与产品化](/source/AI-Infra/4-AI平台工程/1-平台工程全景与产品化)
+
+### Kubernetes 与资源抽象
+
+- [2-Kubernetes与GPU抽象](/source/AI-Infra/4-AI平台工程/2-Kubernetes与GPU抽象)
+- [3-共享网络与存储](/source/AI-Infra/4-AI平台工程/3-共享网络与存储)
