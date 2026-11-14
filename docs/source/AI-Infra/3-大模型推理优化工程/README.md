@@ -1,6 +1,6 @@
 # 第三期 大模型推理优化工程
 
-从一次推理请求走到一套生产级推理平台：先统一三个平面与证据口径，再深入下一代生成加速（EAGLE-3、P-EAGLE、MTP、DFlash 系）、新型推理负载（reasoning / agentic / structured / multimodal / compound）、Gateway 与路由、多模型与多 LoRA、权重分发与冷启动、GPU Fleet 控制面与推理经济学。原始讲义共 30 课 + 6 个综合项目，按阶段合并为专题笔记。
+从一次推理请求走到一套生产级推理平台：先统一三个平面与证据口径，再深入下一代生成加速（EAGLE-3、P-EAGLE、MTP、DFlash 系）、新型推理负载（reasoning / agentic / structured / multimodal / compound）、Gateway 与路由、多模型与多 LoRA、权重分发与冷启动、GPU Fleet 控制面与推理经济学。原始讲义共 30 课 + 6 个综合项目，按阶段合并为 9 篇专题笔记。
 
 > 内容整理自本地课程讲义（`new/第三期_大模型推理优化工程`），作为参考笔记。
 
@@ -23,3 +23,12 @@
 ### 阶段四 Gateway、Routing 与模型多路复用
 
 - [6-Gateway与路由](/source/AI-Infra/3-大模型推理优化工程/6-Gateway与路由)
+- [7-复用与上线](/source/AI-Infra/3-大模型推理优化工程/7-复用与上线)
+
+### 阶段五 GPU Fleet 与生产化闭环
+
+- [8-控制面放置与经济性](/source/AI-Infra/3-大模型推理优化工程/8-控制面放置与经济性)
+
+### 实战
+
+- [9-六个综合项目](/source/AI-Infra/3-大模型推理优化工程/9-六个综合项目)

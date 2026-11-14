@@ -145,6 +145,11 @@ $$
 
 **目标是最大化这个比值，而不是最大化 depth。** 另外，capacity 与数据规模必须一起扩：参数涨、训练 token 与域覆盖不涨，只会过拟合，深层学不到稳定增益。
 
+<div align="center">
+  <img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/aiinfra_y3_l07_01.png" width="78%" alt="DFlare 层融合" />
+  <p>图 4：不同 Draft 层取不同的 Target 层组合，而不是共享同一个窄瓶颈</p>
+</div>
+
 ## 4. DDTree：用树覆盖分支
 
 <div align="center">
