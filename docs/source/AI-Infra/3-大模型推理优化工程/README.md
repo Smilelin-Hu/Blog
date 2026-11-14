@@ -9,3 +9,9 @@
 ### 阶段一 课程边界与证据方法
 
 - [1-从引擎到推理平台](/source/AI-Infra/3-大模型推理优化工程/1-从引擎到推理平台)
+
+### 阶段二 下一代生成加速与 Speculator 工程
+
+- [2-投机解码边界与EAGLE家族](/source/AI-Infra/3-大模型推理优化工程/2-投机解码边界与EAGLE家族)
+- [3-MTP与块扩散系投机解码](/source/AI-Infra/3-大模型推理优化工程/3-MTP与块扩散系投机解码)
+- [4-Speculator工程化](/source/AI-Infra/3-大模型推理优化工程/4-Speculator工程化)
