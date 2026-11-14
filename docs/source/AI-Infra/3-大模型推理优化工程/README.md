@@ -19,3 +19,7 @@
 ### 阶段三 新型推理工作负载
 
 - [5-五类新型推理负载](/source/AI-Infra/3-大模型推理优化工程/5-五类新型推理负载)
+
+### 阶段四 Gateway、Routing 与模型多路复用
+
+- [6-Gateway与路由](/source/AI-Infra/3-大模型推理优化工程/6-Gateway与路由)
