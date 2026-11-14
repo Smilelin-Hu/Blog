@@ -35,3 +35,4 @@
   - [11-2 AI系统性能工程](/source/AI-Infra/2-AI系统性能工程/README)
   - [11-3 大模型推理优化工程](/source/AI-Infra/3-大模型推理优化工程/README)
   - [11-4 AI平台工程](/source/AI-Infra/4-AI平台工程/README)
+  - [11-5 数据工程与后训练](/source/AI-Infra/5-数据工程与后训练/README)
