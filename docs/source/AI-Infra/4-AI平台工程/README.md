@@ -14,3 +14,8 @@
 
 - [2-Kubernetes与GPU抽象](/source/AI-Infra/4-AI平台工程/2-Kubernetes与GPU抽象)
 - [3-共享网络与存储](/source/AI-Infra/4-AI平台工程/3-共享网络与存储)
+
+### 调度与工作负载
+
+- [4-调度与队列](/source/AI-Infra/4-AI平台工程/4-调度与队列)
+- [5-工作负载API与框架](/source/AI-Infra/4-AI平台工程/5-工作负载API与框架)
