@@ -61,3 +61,9 @@
 - [34 Multi-Tenant、Multi-Model 与 Multi-LoRA Serving](/source/AI-Infra/3-大模型推理优化工程/34-Multi-Tenant-Multi-Model与Multi-LoRAServing)
 - [35 GPU Fleet Planner 与 Autoscaler](/source/AI-Infra/3-大模型推理优化工程/35-GPUFleetPlanner与Autoscaler)
 - [36 生产级 LLM Inference Platform](/source/AI-Infra/3-大模型推理优化工程/36-生产级LLMInferencePlatform)
+
+### 待填充专题（37–39）
+
+- [37 推理安全与在线护栏：Prompt Injection、Jailbreak 与内容过滤](/source/AI-Infra/3-大模型推理优化工程/37-推理安全与在线护栏-PromptInjection-Jailbreak-内容过滤)
+- [38 推理引擎横向对比与选型：vLLM、SGLang、TensorRT-LLM 与 Dynamo](/source/AI-Infra/3-大模型推理优化工程/38-推理引擎横向对比与选型-vLLM-SGLang-TensorRT-LLM-Dynamo)
+- [39 语义缓存与请求级复用：Semantic Cache 与 Prompt Cache](/source/AI-Infra/3-大模型推理优化工程/39-语义缓存与请求级复用-SemanticCache-PromptCache)
