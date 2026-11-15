@@ -253,6 +253,10 @@ python lessons/lesson-18/run_gpu.py
 
 下面程序用合成学习曲线模拟不同重播比例、Token 预算和种子下的目标收益与通用遗忘，筛选满足护栏的 Pareto 候选，并生成确定性检查点摘要。它只演示实验决策，不预测真实模型比例。
 
+## 11. 模型合并、知识编辑与机器遗忘
+
+<!-- TODO: 待填充 -->
+
 ## 写在最后
 
 无标签继续训练之后，进入有监督的指令数据阶段。下一篇：[SFT 数据 Schema、Chat Template 与 Loss Mask](/source/AI-Infra/5-数据工程与后训练/19-SFT数据Schema-ChatTemplate与LossMask)。
