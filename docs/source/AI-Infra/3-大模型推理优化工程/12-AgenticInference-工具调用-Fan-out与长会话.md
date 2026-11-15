@@ -31,7 +31,7 @@ $$\lambda_m=\lambda_u\cdot E[F]$$
 
 ## 3. 前置知识与实验环境
 
-需要理解自回归生成、Tokenizer、Prefill、Decode、KV Cache、批处理和分位延迟的基本含义，并已掌握上一篇的成本口径（$c_{tok}=0.625$ GPU-ms/token、$TPOT=20$ ms、$F=500$ GPU-ms、GPU 单价 $2.40/h）。所有缩写都会在正文首次出现处定义；没有某个特定框架经验不妨碍理解机制。实验需要 Python 3.11 或兼容版本。机制模拟只依赖 CPU；真实路径需要任意可用的 CUDA GPU、与驱动兼容的 PyTorch，以及自行准备的本地小模型或兼容制品。
+需要理解自回归生成、Tokenizer、Prefill、Decode、KV Cache、批处理和分位延迟的基本含义，并已掌握上一篇的成本口径（$c_{tok}=0.625$ GPU-ms/token、$TPOT=20$ ms、$F=500$ GPU-ms、GPU 单价 \$2.40/h）。所有缩写都会在正文首次出现处定义；没有某个特定框架经验不妨碍理解机制。实验需要 Python 3.11 或兼容版本。机制模拟只依赖 CPU；真实路径需要任意可用的 CUDA GPU、与驱动兼容的 PyTorch，以及自行准备的本地小模型或兼容制品。
 
 验证前必须记录 GPU 名称、数量、可用显存、驱动、CUDA、PyTorch、推理框架、模型摘要、精度、批量、序列长度和完整命令。脚本根据可用显存缩放模型、批量、上下文和样本数，并把 Agentic Task 状态写入报告；可选 CUDA 入口不下载未经确认的大模型。
 
@@ -529,7 +529,7 @@ trace 必须携带的字段：`trace_id`（root）、`task_id`、`step_id`、父
 
 ## 17. 实验设计与双路径验证
 
-实验不单独建 Lab，而是复用新型推理工作负载基准平台的 workload generator，增加 Agent 模式：planner 1 次；0～8 tool branches；每 branch 0～2 次 LLM；final 1 次。输出内部 QPS 放大倍数和 burstiness。本节给出设计规格与指标口径，不含可执行代码。
+实验不单独建 Lab，而是复用新型推理工作负载基准平台的 workload generator，增加 Agent 模式：planner 1 次；0～8 tool branches；每 branch 0～2 次 LLM；final 1 次。输出内部 QPS 放大倍数和 burstiness。本文给出设计规格与指标口径，不含可执行代码。
 
 **路径 A：机制模拟（`source=fixture`）。** 只依赖 CPU。输入：$\lambda_u$、$F_b$ 与 $L_b$ 分布、每步失败率与负载相关系数、重试策略与次数、退避参数、分支延迟集合、并发槽数、$T_{merge}$、$D_{global}$、总预算与已花比例、降级动作代价表、会话上下文长度、KV 每 Token 占用、PCIe 带宽、主机内存预算、审批等待分布、凭证与上下文 TTL、模型权重。输出：$E[F]$ 与分位、$\lambda_m$、$Amp$、重复副作用次数、makespan 与 $T_{fanout}$、$D_{remain}$ 与可行性、降级组合、三种会话策略代价与平衡点、offload 会话上限、过期率、$Work_u$ 与计量偏差、retry storm 迭代轨迹。扫描维度为 $F_b\in\{0..8\}$、并发槽 $\in\{1,2,3,4,8\}$、重试策略 $\in\{$无, per-step, 整体$\}$、$p_f\in\{0.02,0.05,0.10\}$、等待时长 $\in\{0.1,0.34,1,10,60,600\}$ s、审批占比 $\in\{0\%,5\%,20\%\}$。
 

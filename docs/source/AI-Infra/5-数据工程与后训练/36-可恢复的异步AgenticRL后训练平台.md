@@ -14,7 +14,7 @@ Task Service 发布版本化任务和环境合同。Scheduler 根据任务配方
 
 ![平台角色与产物责任顺序](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/aiinfra_y5_l36_02.png)
 
-沿箭头依次看各个对象，箭头表示本节讨论的依赖或处理顺序。环境交互位于 Rollout 内部，图只概括产物责任顺序。
+沿箭头依次看各个对象，箭头表示本文讨论的依赖或处理顺序。环境交互位于 Rollout 内部，图只概括产物责任顺序。
 
 Registry 保存 Policy、Runtime、Reward、Environment、Schema 和 Recipe 版本。Queue 只承载工作引用，不作为唯一事实源。Event Store 记录状态转换，Manifest Store 保存不可变数据与 Checkpoint，Lineage 连接 Task、Trajectory、Experience、Batch、Checkpoint 和 Deployment。Observability 同时覆盖业务、数据、模型、系统和成本平面。
 

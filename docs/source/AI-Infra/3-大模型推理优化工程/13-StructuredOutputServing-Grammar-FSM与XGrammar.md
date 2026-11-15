@@ -51,7 +51,7 @@ $$p'(x)=\mathrm{softmax}(logits')$$
 | 输出长度 $O$ | 300 Token | 工具参数典型长度 |
 | Prefill wall-clock $T_{pre}$ | 100 ms | 输入 1000 Token |
 | KV 每 Token | 128 KiB | 沿用前几篇口径 |
-| GPU 单价 | $2.40 / GPU-hour | $1$ GPU-ms $=6.667\times10^{-7}$ 美元 |
+| GPU 单价 | \$2.40 / GPU-hour | $1$ GPU-ms $=6.667\times10^{-7}$ 美元 |
 | CPU wall → GPU-ms 折算 | 1 ms = 1 GPU-ms | 沿用上一篇设定 |
 
 总时间模型：

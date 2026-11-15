@@ -53,7 +53,7 @@ $$W=\alpha B_{media}+\beta N_{frames}+\gamma N_{visionTokens}+\delta N_{llmToken
 | HBM 带宽 | 2 TB/s | 用于第 9 节带宽受限判定 |
 | PCIe 带宽 | 32 GB/s | 同机跨卡传 feature |
 | 对象存储下载带宽 | 50 MB/s | 沿用 Speculator 工程化一篇的远端口径 |
-| GPU 单价 | $2.40 / GPU-hour | $1$ GPU-ms $=6.667\times10^{-7}$ 美元 |
+| GPU 单价 | \$2.40 / GPU-hour | $1$ GPU-ms $=6.667\times10^{-7}$ 美元 |
 
 前几篇把固定开销记为 $F=500$ GPU-ms，其中已含 1000 Token 的 Prefill（50 GPU-ms）。本文把它拆成 $F_{other}=450$ 加按实际 Token 数计的 Prefill，**口径等价**，因为多模态的输入长度不再固定为 1000。
 
@@ -444,9 +444,9 @@ $$TPOT_{shared}=\frac{20}{1-u_e}=\frac{20}{0.232}=86.2\ \text{ms}$$
 
 ### 13.4 每 Token 成本与盈亏平衡
 
-按 GPU 单价 $2.40/h（每 GPU-second $6.667\times10^{-4}$）：
+按 GPU 单价 \$2.40/h（每 GPU-second $6.667\times10^{-4}$）：
 
-| 方案 | GPU 数 | LLM 吞吐 | $/1000 Token |
+| 方案 | GPU 数 | LLM 吞吐 | \$/1000 Token |
 | --- | --- | --- | --- |
 | 无媒体基线 | 1 | 1600 Token/s | $4.167\times10^{-4}$ |
 | 共卡（$u_e$=76.8%） | 1 | 371 Token/s | $1.797\times10^{-3}$ |

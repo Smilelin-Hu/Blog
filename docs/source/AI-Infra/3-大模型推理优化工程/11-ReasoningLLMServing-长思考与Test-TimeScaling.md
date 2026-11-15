@@ -50,7 +50,7 @@ subject to latency / user tier / business value。
 | 摊销后每 Token GPU 时间 $c_{tok}$ | 0.625 GPU-ms | $=TPOT/B_{slot}=20/32$ |
 | 每任务固定开销 $F$ | 500 GPU-ms | Prefill + planner + 聚合 |
 | Prefill wall-clock | 100 ms | 输入 1000 Token |
-| GPU 单价 | $2.40 / GPU-hour | 用于把 GPU-ms 折算成金额 |
+| GPU 单价 | \$2.40 / GPU-hour | 用于把 GPU-ms 折算成金额 |
 
 用 GPU-ms 而不是美元作为主单位，是为了让结论与硬件单价解耦；换算关系为 $1\ \text{GPU-ms}=2.4/3.6\times10^6=6.667\times10^{-7}$ 美元。
 
@@ -568,7 +568,7 @@ $$WorkRemaining=\sum_i\left(O_i-o_i^{done}\right),\qquad SlotsNeeded=\frac{WorkR
 
 ## 17. 实验设计与双路径验证
 
-实验复用新型推理工作负载基准平台的 workload generator，在其上增加 Reasoning 模式：可控思考预算分布、难度分桶、fan-out 分支数、deadline 与取消注入。本节给出设计规格与指标口径，不含可执行代码。
+实验复用新型推理工作负载基准平台的 workload generator，在其上增加 Reasoning 模式：可控思考预算分布、难度分桶、fan-out 分支数、deadline 与取消注入。本文给出设计规格与指标口径，不含可执行代码。
 
 **路径 A：机制模拟（`source=fixture`）。** 只依赖 CPU。输入：$Q_\infty$、$K$、$F$、$c_{tok}$、$T_{pre}$、$TPOT$、$B_{slot}$、KV 每 Token 占用、流量长短比例与到达率、deadline 分布、$M$ 与 $p_v$、取消传播延迟、Tier 映射。输出：$Q(B)$、$Q'(B)$、$C(B)$、$T(B)$、$B^*$、$C/Q$、$B_{max}(D)$、$Q_M$、$C_M$、并发上限、槽位占用比、短请求等待、无效 Token、剩余工作量与所需槽位。扫描维度为 $B\in\{250..32000\}$、$M\in\{1,2,4,8,16\}$、$D\in\{5,10,20,30,60,120,300\}$ s、$K\in\{1000,2000,4000\}$、$F\in\{250,500,1000,2000\}$、并发 $\in\{8,16,32,64\}$、长请求占比 $\in\{5\%,10\%,20\%\}$。
 
@@ -600,7 +600,7 @@ $$WorkRemaining=\sum_i\left(O_i-o_i^{done}\right),\qquad SlotsNeeded=\frac{WorkR
 | 短请求 P99 突然恶化 | 长请求占满槽位（78.7% 槽位时间） | 隔离长短队列，按 SLO 设隔离比例 |
 | 并发上限远低于预期 | 按请求数而非 KV 估容量 | 改用 Token·秒与 KV 占用，重算 11.8% 折减 |
 | 超时后 GPU 仍在跑 | 取消传播断链 | 逐环注入取消，确认引擎侧停止 |
-| 每月算力账单异常 | 无效计算未计入（$1813/月量级） | 统计无效 Token，纳入成本口径 |
+| 每月算力账单异常 | 无效计算未计入（\$1813/月量级） | 统计无效 Token，纳入成本口径 |
 | 平均延迟达标但客户投诉 | 均值掩盖 P99（25.4 s vs 200 s） | 直接报分位数与超时率 |
 | 配额限制了短请求租户 | 按请求数计量（偏差 33.3 倍） | 改按 Token × 模型权重计量 |
 | Deep 档亏损 | 按预算倍数定价（成本低 2.27 倍） | 按每成功任务成本定价，核对 12.8× 上限 |

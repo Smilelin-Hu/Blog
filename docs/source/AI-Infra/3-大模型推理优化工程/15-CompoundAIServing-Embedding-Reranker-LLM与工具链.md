@@ -62,7 +62,7 @@ Safety 50ms
 | $c_{tok}$ | 0.625 GPU-ms/token（$B_{slot}=32$） |
 | 固定开销 $F_{other}$ | 450 GPU-ms |
 | 非 GPU 阶段折算 | 1 ms wall = 1 GPU-ms 等效 |
-| GPU 单价 | $2.40 / GPU-hour |
+| GPU 单价 | \$2.40 / GPU-hour |
 
 LLM 输出取 $O=60$ Token（RAG 答案典型长度），故 Decode wall $=60\times20=1200$ ms、GPU 成本 $=60\times0.625=37.5$ GPU-ms。
 

@@ -8,7 +8,7 @@
 
 事实基线核验于 2026 年 8 月 22 日：Tekton Pipelines 采用 v1.15.0 LTS，Tekton Chains 采用 v0.29.2，Cosign 采用修复旧 Bundle 验证绕过问题的 v3.1.3；SLSA 规范与 in-toto Attestation Framework 均采用 v1.2，CycloneDX 采用 v1.7。知识讲解先于实验。模拟中的教学用 MAC 只验证确定性绑定与策略逻辑，不是 Cosign 公钥签名；没有真实 Kubernetes、Registry 与 Sigstore 环境时，真实路径必须显示 SKIPPED。
 
-## 知识串讲与原理工程分析
+**知识串讲与原理工程分析**
 
 ## 1. CI/CD 与 ML Pipeline 为何必须分工
 
