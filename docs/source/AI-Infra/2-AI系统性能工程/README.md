@@ -61,3 +61,9 @@
 - [34 KV Cache 优化实验](/source/AI-Infra/2-AI系统性能工程/34-KVCache优化实验)
 - [35 Disaggregated Inference 系统设计](/source/AI-Infra/2-AI系统性能工程/35-DisaggregatedInference系统设计)
 - [36 AI Systems Performance Engineering 综合项目](/source/AI-Infra/2-AI系统性能工程/36-AISystemsPerformanceEngineering综合项目)
+
+### 待填充专题（37–39）
+
+- [37 模型量化与低精度部署：PTQ、QAT、GPTQ、AWQ 与 SmoothQuant](/source/AI-Infra/2-AI系统性能工程/37-模型量化与低精度部署-PTQ-QAT-GPTQ-AWQ-SmoothQuant)
+- [38 编译器栈与算子库：MLIR、TVM、XLA、CUTLASS 与 CuTe](/source/AI-Infra/2-AI系统性能工程/38-编译器栈与算子库-MLIR-TVM-XLA-CUTLASS-CuTe)
+- [39 GPU 能耗、功耗墙与数据中心效率](/source/AI-Infra/2-AI系统性能工程/39-GPU能耗-功耗墙与数据中心效率)
