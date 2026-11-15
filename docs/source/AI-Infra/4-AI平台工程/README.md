@@ -64,3 +64,8 @@
 - [34 模型持续交付与安全发布平台](/source/AI-Infra/4-AI平台工程/34-模型持续交付与安全发布平台)
 - [35 AI Platform SRE、安全与 FinOps 控制台](/source/AI-Infra/4-AI平台工程/35-AIPlatformSRE-安全与FinOps控制台)
 - [36 企业级自助 AI 平台](/source/AI-Infra/4-AI平台工程/36-企业级自助AI平台)
+
+### 待填充专题（37–38）
+
+- [37 密钥、凭据与秘密管理：Vault、External Secrets 与轮换](/source/AI-Infra/4-AI平台工程/37-密钥-凭据与秘密管理-Vault-ExternalSecrets-轮换)
+- [38 平台基础设施即代码：Terraform、Crossplane 与环境一致性](/source/AI-Infra/4-AI平台工程/38-平台基础设施即代码-Terraform-Crossplane-环境一致性)
