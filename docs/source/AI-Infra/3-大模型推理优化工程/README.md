@@ -2,6 +2,8 @@
 
 从一次推理请求走到一套生产级推理平台：先统一三个平面与证据口径，再深入下一代生成加速（EAGLE-3、P-EAGLE、MTP、DFlash 系）、新型推理负载（reasoning / agentic / structured / multimodal / compound）、Gateway 与路由、多模型与多 LoRA、权重分发与冷启动、GPU Fleet 控制面与推理经济学，最后以六个综合项目收口。
 
+> 内容整理自开源书稿 [深入理解 AI Infra：量化分析与系统设计](https://github.com/bojieli/ai-infra-book)，作为参考笔记。
+
 ## 目录
 
 ### 导览与工程模型
@@ -38,6 +40,12 @@
 - [19 Multi-LoRA Serving：Adapter 缓存与热切换](/source/AI-Infra/3-大模型推理优化工程/19-Multi-LoRAServing-Adapter缓存与热切换)
 - [20 Multi-Model Serving：热冷模型与稀疏流量](/source/AI-Infra/3-大模型推理优化工程/20-Multi-ModelServing-热冷模型与稀疏流量)
 - [39 语义缓存与请求级复用：Semantic Cache 与 Prompt Cache](/source/AI-Infra/3-大模型推理优化工程/39-语义缓存与请求级复用-SemanticCache-PromptCache)
+
+### 分布式推理与端边云部署
+
+- [40 Attention-FFN 分离与专家放置](/source/AI-Infra/3-大模型推理优化工程/40-Attention-FFN分离与专家放置)
+- [41 KV 分布、多级存储与状态恢复](/source/AI-Infra/3-大模型推理优化工程/41-KV分布-多级存储与状态恢复)
+- [42 端边云协同与全链路交互时延](/source/AI-Infra/3-大模型推理优化工程/42-端边云协同与全链路交互时延)
 
 ### 生命周期、启动与 GPU Fleet
 
