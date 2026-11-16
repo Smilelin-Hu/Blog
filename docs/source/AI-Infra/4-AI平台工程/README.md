@@ -19,6 +19,7 @@
 - [07 GPU 分区、共享与多租户隔离](/source/AI-Infra/4-AI平台工程/07-GPU分区-共享与多租户隔离)
 - [08 AI 集群高性能网络与拓扑](/source/AI-Infra/4-AI平台工程/08-AI集群高性能网络与拓扑)
 - [09 AI 数据与模型制品的存储和分发](/source/AI-Infra/4-AI平台工程/09-AI数据与模型制品的存储和分发)
+- [38 平台基础设施即代码：Terraform、Crossplane 与环境一致性](/source/AI-Infra/4-AI平台工程/38-平台基础设施即代码-Terraform-Crossplane-环境一致性)
 
 ### 调度、队列与弹性容量
 
@@ -51,8 +52,9 @@
 - [27 AI Platform SRE：SLO、故障演练与自动修复](/source/AI-Infra/4-AI平台工程/27-AIPlatformSRE-SLO-故障演练与自动修复)
 - [28 多租户安全、策略与审计](/source/AI-Infra/4-AI平台工程/28-多租户安全-策略与审计)
 - [29 GPU FinOps、容量规划与成本归属](/source/AI-Infra/4-AI平台工程/29-GPUFinOps-容量规划与成本归属)
+- [37 密钥、凭据与秘密管理：Vault、External Secrets 与轮换](/source/AI-Infra/4-AI平台工程/37-密钥-凭据与秘密管理-Vault-ExternalSecrets-轮换)
 
-### 多集群与自助平台（30）
+### 多集群与自助平台
 
 - [30 多集群控制面、自助门户与平台最终架构](/source/AI-Infra/4-AI平台工程/30-多集群控制面-自助门户与平台最终架构)
 
@@ -64,8 +66,3 @@
 - [34 模型持续交付与安全发布平台](/source/AI-Infra/4-AI平台工程/34-模型持续交付与安全发布平台)
 - [35 AI Platform SRE、安全与 FinOps 控制台](/source/AI-Infra/4-AI平台工程/35-AIPlatformSRE-安全与FinOps控制台)
 - [36 企业级自助 AI 平台](/source/AI-Infra/4-AI平台工程/36-企业级自助AI平台)
-
-### 待填充专题
-
-- [37 密钥、凭据与秘密管理：Vault、External Secrets 与轮换](/source/AI-Infra/4-AI平台工程/37-密钥-凭据与秘密管理-Vault-ExternalSecrets-轮换)
-- [38 平台基础设施即代码：Terraform、Crossplane 与环境一致性](/source/AI-Infra/4-AI平台工程/38-平台基础设施即代码-Terraform-Crossplane-环境一致性)

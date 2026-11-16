@@ -19,6 +19,7 @@
 - [07 Tensor Core 与低精度计算优化](/source/AI-Infra/2-AI系统性能工程/07-TensorCore与低精度计算优化)
 - [08 NVLink、NVSwitch 与 AI 集群互联](/source/AI-Infra/2-AI系统性能工程/08-NVLink与AI集群互联)
 - [09 Linux、Docker、Kubernetes GPU 性能优化](/source/AI-Infra/2-AI系统性能工程/09-LinuxDocker与KubernetesGPU性能优化)
+- [39 GPU 能耗、功耗墙与数据中心效率](/source/AI-Infra/2-AI系统性能工程/39-GPU能耗-功耗墙与数据中心效率)
 
 ### CUDA 与高性能算子
 
@@ -41,6 +42,7 @@
 - [20 torch.compile 深度解析](/source/AI-Infra/2-AI系统性能工程/20-torchcompile深度解析)
 - [21 CUDA Graph 与 Runtime 优化](/source/AI-Infra/2-AI系统性能工程/21-CUDAGraph与Runtime优化)
 - [22 AI Runtime 优化思想](/source/AI-Infra/2-AI系统性能工程/22-AIRuntime优化思想)
+- [38 编译器栈与算子库：MLIR、TVM、XLA、CUTLASS 与 CuTe](/source/AI-Infra/2-AI系统性能工程/38-编译器栈与算子库-MLIR-TVM-XLA-CUTLASS-CuTe)
 
 ### LLM 推理系统
 
@@ -50,6 +52,7 @@
 - [26 Speculative Decoding 与推理加速](/source/AI-Infra/2-AI系统性能工程/26-SpeculativeDecoding与推理加速)
 - [27 Disaggregated Inference 架构](/source/AI-Infra/2-AI系统性能工程/27-DisaggregatedInference架构)
 - [28 MoE 推理与未来 AI Runtime](/source/AI-Infra/2-AI系统性能工程/28-MoE推理与未来AIRuntime)
+- [37 模型量化与低精度部署：PTQ、QAT、GPTQ、AWQ 与 SmoothQuant](/source/AI-Infra/2-AI系统性能工程/37-模型量化与低精度部署-PTQ-QAT-GPTQ-AWQ-SmoothQuant)
 
 ### 综合项目
 
@@ -61,9 +64,3 @@
 - [34 KV Cache 优化实验](/source/AI-Infra/2-AI系统性能工程/34-KVCache优化实验)
 - [35 Disaggregated Inference 系统设计](/source/AI-Infra/2-AI系统性能工程/35-DisaggregatedInference系统设计)
 - [36 AI Systems Performance Engineering 综合项目](/source/AI-Infra/2-AI系统性能工程/36-AISystemsPerformanceEngineering综合项目)
-
-### 待填充专题
-
-- [37 模型量化与低精度部署：PTQ、QAT、GPTQ、AWQ 与 SmoothQuant](/source/AI-Infra/2-AI系统性能工程/37-模型量化与低精度部署-PTQ-QAT-GPTQ-AWQ-SmoothQuant)
-- [38 编译器栈与算子库：MLIR、TVM、XLA、CUTLASS 与 CuTe](/source/AI-Infra/2-AI系统性能工程/38-编译器栈与算子库-MLIR-TVM-XLA-CUTLASS-CuTe)
-- [39 GPU 能耗、功耗墙与数据中心效率](/source/AI-Infra/2-AI系统性能工程/39-GPU能耗-功耗墙与数据中心效率)

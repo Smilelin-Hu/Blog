@@ -17,6 +17,7 @@
 - [05-WARC、HTML、PDF、代码与对话数据解析](/source/AI-Infra/5-数据工程与后训练/05-WARC-HTML-PDF-代码与对话数据解析)
 - [06-DataTrove、NeMo Curator、Ray 与 Spark 数据流](/source/AI-Infra/5-数据工程与后训练/06-DataTrove-NeMoCurator-Ray与Spark数据流)
 - [07-训练数据格式、分片、索引、流式读取与缓存](/source/AI-Infra/5-数据工程与后训练/07-训练数据格式-分片-索引-流式读取与缓存)
+- [38 多模态数据工程：图文、视频、音频对齐与跨模态去重](/source/AI-Infra/5-数据工程与后训练/38-多模态数据工程-图文-视频-音频对齐与跨模态去重)
 
 ### 清洗、质量与去重
 
@@ -33,6 +34,7 @@
 - [15-DoReMi、RegMix 与代理模型驱动的混合优化](/source/AI-Infra/5-数据工程与后训练/15-DoReMi-RegMix与代理模型驱动的混合优化)
 - [16-Tokenization、样本构造、Packing 与长上下文数据](/source/AI-Infra/5-数据工程与后训练/16-Tokenization-样本构造-Packing与长上下文数据)
 - [17-确定性 Sharding、Shuffle、断点续读与数据发布门禁](/source/AI-Infra/5-数据工程与后训练/17-确定性Sharding-Shuffle-断点续读与数据发布门禁)
+- [39 数据标注平台与人工标注运营](/source/AI-Infra/5-数据工程与后训练/39-数据标注平台与人工标注运营)
 
 ### 继续预训练与 SFT 数据
 
@@ -55,6 +57,8 @@
 - [28-Rollout 引擎、权重同步、重分片与资源放置](/source/AI-Infra/5-数据工程与后训练/28-Rollout引擎-权重同步-重分片与资源放置)
 - [29-同步、异步、Partial Rollout、陈旧度与训练—推理不一致](/source/AI-Infra/5-数据工程与后训练/29-同步-异步-PartialRollout-陈旧度与训练—推理不一致)
 - [30-可观测性、检查点、容错、成本与持续后训练](/source/AI-Infra/5-数据工程与后训练/30-可观测性-检查点-容错-成本与持续后训练)
+- [37 LLM 评测体系与基准工程：能力、安全、幻觉与评测 Harness](/source/AI-Infra/5-数据工程与后训练/37-LLM评测体系与基准工程-能力-安全-幻觉-harness)
+- [40 后训练框架选型与工程对比：veRL、OpenRLHF、TRL 与 NeMo-Aligner](/source/AI-Infra/5-数据工程与后训练/40-后训练框架选型与工程对比-veRL-OpenRLHF-TRL-NeMo)
 
 ### 综合项目
 
@@ -64,10 +68,3 @@
 - [34-合成数据、偏好数据与 Reward Model 工厂](/source/AI-Infra/5-数据工程与后训练/34-合成数据-偏好数据与RewardModel工厂)
 - [35-可按显存缩放的 SFT 到 DPO 到 GRPO/RLVR 流水线](/source/AI-Infra/5-数据工程与后训练/35-可按显存缩放的SFT到DPO到GRPORLVR流水线)
 - [36-可恢复的异步 Agentic RL 后训练平台](/source/AI-Infra/5-数据工程与后训练/36-可恢复的异步AgenticRL后训练平台)
-
-### 待填充专题
-
-- [37 LLM 评测体系与基准工程：能力、安全、幻觉与评测 Harness](/source/AI-Infra/5-数据工程与后训练/37-LLM评测体系与基准工程-能力-安全-幻觉-harness)
-- [38 多模态数据工程：图文、视频、音频对齐与跨模态去重](/source/AI-Infra/5-数据工程与后训练/38-多模态数据工程-图文-视频-音频对齐与跨模态去重)
-- [39 数据标注平台与人工标注运营](/source/AI-Infra/5-数据工程与后训练/39-数据标注平台与人工标注运营)
-- [40 后训练框架选型与工程对比：veRL、OpenRLHF、TRL 与 NeMo-Aligner](/source/AI-Infra/5-数据工程与后训练/40-后训练框架选型与工程对比-veRL-OpenRLHF-TRL-NeMo)
