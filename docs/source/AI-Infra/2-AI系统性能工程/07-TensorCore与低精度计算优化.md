@@ -325,7 +325,32 @@ Level 0 部分只用来建立「范围与精度是两条轴」的直觉；Level 
 
 ## 11. FP8 缩放策略与 Transformer Engine
 
-<!-- TODO: 待填充 -->
+### 11.1 为什么 FP8 需要「缩放配方」
+
+E4M3/E5M2 动态范围窄，裸张量直接 cast 会溢出/下溢。缩放本质是把张量 amax 映射到格式可表示范围：$x_{fp8} = \text{cast}(x / s)$，$s = amax / max\_fp8$。路线分两族：
+
+- **current scaling**：每个张量现算 amax，稳定但多一遍读或融合开销；
+- **delayed scaling**：用 amax 历史窗口预测下一步 scale，零额外开销但有滞后。Transformer Engine（TE）默认即 DelayedScaling。
+
+### 11.2 delayed scaling 与 amax 历史
+
+TE 的 recipe 参数：amax history 长度（如 1024）、窗口内取 max 或分位、scale 更新频率。分布突变（loss spike、模态切换、数据换域）时滞后 scale 会溢出，需要溢出计数与回退机制。粒度上 per-tensor 最轻，per-channel/per-block 更稳但 scale 存储与 kernel 复杂度上升；DP 各 rank 的 amax 要归约一致，scale 状态要进检查点。
+
+### 11.3 blockwise 与 MXFP8：从 DeepSeek-V3 到 Blackwell
+
+- **DeepSeek-V3**：细粒度 blockwise（权重 128×128 块、激活 1×128 块）+ 高精度累加，首个开源大规模 FP8 训练；TE 2.x 的 blockwise recipe 文档明确受其启发。
+- **MXFP8**：Blackwell 硬件原生 microscaling（block 32、共享指数），scale 开销进硬件；2026 年的演进口径即 per-tensor → blockwise → MXFP8。FP4/NVFP4 同路数，部署侧边界见 37。
+
+### 11.4 工程取舍与验收
+
+| 配方 | 稳定性 | 开销 | 适用 |
+|---|---|---|---|
+| delayed per-tensor | 中 | 最低 | Hopper 默认、分布平稳 |
+| current per-tensor | 高 | 额外 amax pass | 分布突变频繁 |
+| blockwise | 高 | kernel 复杂 | 大规模预训练、V3 路线 |
+| MXFP8 | 高 | 硬件承担 | Blackwell |
+
+验收与 BF16 基线单变量对齐 loss 曲线，盯溢出计数与 MFU；判断标准仍是篇末那句——质量约束下的端到端 Goodput，而不是 step time alone。
 
 ## 写在最后
 
