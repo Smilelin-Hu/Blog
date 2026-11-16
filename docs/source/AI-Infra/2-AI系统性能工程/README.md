@@ -2,6 +2,8 @@
 
 从一次 Kernel 到一套可测量、可诊断、可优化、可回归的 AI 系统：性能方法论与指标体系、GPU 微架构与显存、CUDA 与算子、分布式训练与通信、Compiler 与 Runtime、LLM 推理系统，最后以八个综合项目收口。
 
+> 内容整理自开源书稿 [深入理解 AI Infra：量化分析与系统设计](https://github.com/bojieli/ai-infra-book)，作为参考笔记。
+
 ## 目录
 
 ### 导览与性能方法论
@@ -11,6 +13,8 @@
 - [02 AI 系统性能指标体系](/source/AI-Infra/2-AI系统性能工程/02-AI系统性能指标体系)
 - [03 现代 AI 系统全栈架构](/source/AI-Infra/2-AI系统性能工程/03-现代AI系统全栈架构)
 - [04 DeepSeek 案例——软件优化如何突破硬件限制](/source/AI-Infra/2-AI系统性能工程/04-DeepSeek案例——软件优化如何突破硬件限制)
+- [40 数量级估算与系统设计方法论](/source/AI-Infra/2-AI系统性能工程/40-数量级估算与系统设计方法论)
+- [41 模型架构资源消耗量化](/source/AI-Infra/2-AI系统性能工程/41-模型架构资源消耗量化)
 
 ### GPU 硬件与运行环境
 
@@ -20,6 +24,8 @@
 - [08 NVLink、NVSwitch 与 AI 集群互联](/source/AI-Infra/2-AI系统性能工程/08-NVLink与AI集群互联)
 - [09 Linux、Docker、Kubernetes GPU 性能优化](/source/AI-Infra/2-AI系统性能工程/09-LinuxDocker与KubernetesGPU性能优化)
 - [39 GPU 能耗、功耗墙与数据中心效率](/source/AI-Infra/2-AI系统性能工程/39-GPU能耗-功耗墙与数据中心效率)
+- [42 专用加速器架构与选型](/source/AI-Infra/2-AI系统性能工程/42-专用加速器架构与选型)
+- [43 超节点物理组织与内存池](/source/AI-Infra/2-AI系统性能工程/43-超节点物理组织与内存池)
 
 ### CUDA 与高性能算子
 
