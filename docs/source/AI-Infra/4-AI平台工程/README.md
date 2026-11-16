@@ -1,4 +1,4 @@
-# 第四期 AI Platform Engineering
+# 主题四 AI Platform Engineering
 
 以「平台即产品」为主线的 AI 基础设施工程笔记：从平台判断框架与用户旅程，到 Kubernetes 与 GPU 资源抽象、调度与队列、训练与推理工作负载 API、模型交付与供应链、可观测与 SRE、安全与 FinOps、多集群自助门户，最后以六个综合项目收口。
 

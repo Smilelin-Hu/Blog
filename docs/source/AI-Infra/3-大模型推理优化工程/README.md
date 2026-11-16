@@ -1,4 +1,4 @@
-# 第三期 大模型推理优化工程
+# 主题三 大模型推理优化工程
 
 从一次推理请求走到一套生产级推理平台：先统一三个平面与证据口径，再深入下一代生成加速（EAGLE-3、P-EAGLE、MTP、DFlash 系）、新型推理负载（reasoning / agentic / structured / multimodal / compound）、Gateway 与路由、多模型与多 LoRA、权重分发与冷启动、GPU Fleet 控制面与推理经济学，最后以六个综合项目收口。
 
