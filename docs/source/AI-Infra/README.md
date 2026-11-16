@@ -10,17 +10,17 @@
 
 ### 训练与系统
 
-- [主题一 大模型训练优化](/source/AI-Infra/1-大模型训练优化/README)（32 篇）
-- [主题二 AI系统性能工程](/source/AI-Infra/2-AI系统性能工程/README)（40 篇）
+- [主题一 大模型训练优化](/source/AI-Infra/1-大模型训练优化/README)
+- [主题二 AI系统性能工程](/source/AI-Infra/2-AI系统性能工程/README)
 
 ### 推理与平台
 
-- [主题三 大模型推理优化工程](/source/AI-Infra/3-大模型推理优化工程/README)（40 篇）
-- [主题四 AI平台工程](/source/AI-Infra/4-AI平台工程/README)（39 篇）
+- [主题三 大模型推理优化工程](/source/AI-Infra/3-大模型推理优化工程/README)
+- [主题四 AI平台工程](/source/AI-Infra/4-AI平台工程/README)
 
 ### 数据与后训练
 
-- [主题五 数据工程与后训练](/source/AI-Infra/5-数据工程与后训练/README)（41 篇）
+- [主题五 数据工程与后训练](/source/AI-Infra/5-数据工程与后训练/README)
 
 ## 怎么读
 
