@@ -31,7 +31,6 @@
 - [9 推荐系统](/source/推荐系统/README)
 - [10 国产 GPGPU 推理优化](/source/国产GPGPU推理优化/README)
 - [11 AI Infra](/source/AI-Infra/README)
-  - [11-0 覆盖度调研与补全清单](/source/AI-Infra/覆盖度调研与补全清单)
   - [11-1 大模型训练优化](/source/AI-Infra/1-大模型训练优化/README)
   - [11-2 AI系统性能工程](/source/AI-Infra/2-AI系统性能工程/README)
   - [11-3 大模型推理优化工程](/source/AI-Infra/3-大模型推理优化工程/README)
