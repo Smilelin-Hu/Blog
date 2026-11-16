@@ -4,12 +4,12 @@
 
 ## 目录
 
-### 导览与工程模型（00–01）
+### 导览与工程模型
 
 - [00 课程导览](/source/AI-Infra/3-大模型推理优化工程/00-课程导览)
 - [01 从推理引擎性能到生产级推理平台](/source/AI-Infra/3-大模型推理优化工程/01-从推理引擎性能到生产级推理平台)
 
-### 下一代生成加速与 Speculator 工程（02–10）
+### 下一代生成加速与 Speculator 工程
 
 - [02 经典 Speculative Decoding 之后的性能边界](/source/AI-Infra/3-大模型推理优化工程/02-经典SpeculativeDecoding之后的性能边界)
 - [03 EAGLE-3：Training-Time Test 与直接 Token 预测](/source/AI-Infra/3-大模型推理优化工程/03-EAGLE-3-Training-TimeTest与直接Token预测)
@@ -21,7 +21,7 @@
 - [09 DSpark：置信度调度与负载感知验证](/source/AI-Infra/3-大模型推理优化工程/09-DSpark-置信度调度与负载感知验证)
 - [10 Speculator 工程化：训练、评测、发布与漂移](/source/AI-Infra/3-大模型推理优化工程/10-Speculator工程化-训练-评测-发布与漂移)
 
-### 新型推理工作负载（11–15）
+### 新型推理工作负载
 
 - [11 Reasoning LLM Serving：长思考与 Test-Time Scaling](/source/AI-Infra/3-大模型推理优化工程/11-ReasoningLLMServing-长思考与Test-TimeScaling)
 - [12 Agentic Inference：工具调用、Fan-out 与长会话](/source/AI-Infra/3-大模型推理优化工程/12-AgenticInference-工具调用-Fan-out与长会话)
@@ -29,7 +29,7 @@
 - [14 Multimodal Serving：Encoder、Media Cache 与异构流水](/source/AI-Infra/3-大模型推理优化工程/14-MultimodalServing-Encoder-MediaCache与异构流水)
 - [15 Compound AI Serving：Embedding、Reranker、LLM 与工具链](/source/AI-Infra/3-大模型推理优化工程/15-CompoundAIServing-Embedding-Reranker-LLM与工具链)
 
-### Gateway、路由与模型多路复用（16–20）
+### Gateway、路由与模型多路复用
 
 - [16 OpenAI-Compatible AI Gateway：计量、配额与租户治理](/source/AI-Infra/3-大模型推理优化工程/16-OpenAI-CompatibleAIGateway-计量-配额与租户治理)
 - [17 Distributed Replica Routing：负载、队列与预计完成时间](/source/AI-Infra/3-大模型推理优化工程/17-DistributedReplicaRouting-负载-队列与预计完成时间)
@@ -37,7 +37,7 @@
 - [19 Multi-LoRA Serving：Adapter 缓存与热切换](/source/AI-Infra/3-大模型推理优化工程/19-Multi-LoRAServing-Adapter缓存与热切换)
 - [20 Multi-Model Serving：热冷模型与稀疏流量](/source/AI-Infra/3-大模型推理优化工程/20-Multi-ModelServing-热冷模型与稀疏流量)
 
-### 生命周期、启动与 GPU Fleet（21–28）
+### 生命周期、启动与 GPU Fleet
 
 - [21 Model Registry 与 Inference Deployment 生命周期](/source/AI-Infra/3-大模型推理优化工程/21-ModelRegistry与InferenceDeployment生命周期)
 - [22 Weight Distribution：大模型权重分发与启动关键路径](/source/AI-Infra/3-大模型推理优化工程/22-WeightDistribution-大模型权重分发与启动关键路径)
@@ -48,12 +48,12 @@
 - [27 LLM Autoscaling：Queue、Token 与 SLA-aware Planner](/source/AI-Infra/3-大模型推理优化工程/27-LLMAutoscaling-Queue-Token与SLA-awarePlanner)
 - [28 Capacity Planning：流量预测、Headroom 与 GPU Fleet](/source/AI-Infra/3-大模型推理优化工程/28-CapacityPlanning-流量预测-Headroom与GPUFleet)
 
-### 可靠性与推理经济学（29–30）
+### 可靠性与推理经济学
 
 - [29 Observability 与 Reliability：Trace、Canary、Drain 与隔离](/source/AI-Infra/3-大模型推理优化工程/29-Observability与Reliability-Trace-Canary-Drain与隔离)
 - [30 Inference Economics：Cost per Token、SLO 与全局优化](/source/AI-Infra/3-大模型推理优化工程/30-InferenceEconomics-CostperToken-SLO与全局优化)
 
-### 综合项目（31–36）
+### 综合项目
 
 - [31 新一代 Speculator Benchmark](/source/AI-Infra/3-大模型推理优化工程/31-新一代SpeculatorBenchmark)
 - [32 新型推理工作负载基准平台](/source/AI-Infra/3-大模型推理优化工程/32-新型推理工作负载基准平台)
@@ -62,7 +62,7 @@
 - [35 GPU Fleet Planner 与 Autoscaler](/source/AI-Infra/3-大模型推理优化工程/35-GPUFleetPlanner与Autoscaler)
 - [36 生产级 LLM Inference Platform](/source/AI-Infra/3-大模型推理优化工程/36-生产级LLMInferencePlatform)
 
-### 待填充专题（37–39）
+### 待填充专题
 
 - [37 推理安全与在线护栏：Prompt Injection、Jailbreak 与内容过滤](/source/AI-Infra/3-大模型推理优化工程/37-推理安全与在线护栏-PromptInjection-Jailbreak-内容过滤)
 - [38 推理引擎横向对比与选型：vLLM、SGLang、TensorRT-LLM 与 Dynamo](/source/AI-Infra/3-大模型推理优化工程/38-推理引擎横向对比与选型-vLLM-SGLang-TensorRT-LLM-Dynamo)

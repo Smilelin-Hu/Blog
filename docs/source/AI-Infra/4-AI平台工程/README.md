@@ -4,13 +4,13 @@
 
 ## 目录
 
-### 导览与平台产品（00–02）
+### 导览与平台产品
 
 - [00 课程导读](/source/AI-Infra/4-AI平台工程/00-课程导读)
 - [01 AI Platform Engineering 全景与参考架构](/source/AI-Infra/4-AI平台工程/01-AIPlatformEngineering全景与参考架构)
 - [02 平台需求、用户旅程与平台即产品](/source/AI-Infra/4-AI平台工程/02-平台需求-用户旅程与平台即产品)
 
-### Kubernetes 与 GPU 资源底座（03–09）
+### Kubernetes 与 GPU 资源底座
 
 - [03 Kubernetes API、控制器与 Operator 平台模式](/source/AI-Infra/4-AI平台工程/03-KubernetesAPI-控制器与Operator平台模式)
 - [04 面向 AI 工作负载的 Kubernetes 基础](/source/AI-Infra/4-AI平台工程/04-面向AI工作负载的Kubernetes基础)
@@ -20,7 +20,7 @@
 - [08 AI 集群高性能网络与拓扑](/source/AI-Infra/4-AI平台工程/08-AI集群高性能网络与拓扑)
 - [09 AI 数据与模型制品的存储和分发](/source/AI-Infra/4-AI平台工程/09-AI数据与模型制品的存储和分发)
 
-### 调度、队列与弹性容量（10–16）
+### 调度、队列与弹性容量
 
 - [10 Kubernetes 调度器与 AI 资源碎片](/source/AI-Infra/4-AI平台工程/10-Kubernetes调度器与AI资源碎片)
 - [11 Gang Scheduling 与分布式作业原子准入](/source/AI-Infra/4-AI平台工程/11-GangScheduling与分布式作业原子准入)
@@ -30,7 +30,7 @@
 - [15 弹性容量、Spot、节点自动扩缩与中断治理](/source/AI-Infra/4-AI平台工程/15-弹性容量-Spot-节点自动扩缩与中断治理)
 - [16 Slurm GPU 集群与 Kubernetes 的边界和协同](/source/AI-Infra/4-AI平台工程/16-SlurmGPU集群与Kubernetes的边界和协同)
 
-### AI 工作负载与 ML 生命周期（17–22）
+### AI 工作负载与 ML 生命周期
 
 - [17 分布式 AI 工作负载 API：JobSet、LeaderWorkerSet 与失败语义](/source/AI-Infra/4-AI平台工程/17-分布式AI工作负载API-JobSet-LeaderWorkerSet与失败语义)
 - [18 Kubeflow 平台组件、Profiles 与多用户隔离](/source/AI-Infra/4-AI平台工程/18-Kubeflow平台组件-Profiles与多用户隔离)
@@ -39,13 +39,13 @@
 - [21 Kubeflow Pipelines V2、Katib 与实验工作流](/source/AI-Infra/4-AI平台工程/21-KubeflowPipelinesV2-Katib与实验工作流)
 - [22 模型注册、制品版本与端到端血缘](/source/AI-Infra/4-AI平台工程/22-模型注册-制品版本与端到端血缘)
 
-### 模型交付与发布治理（23–25）
+### 模型交付与发布治理
 
 - [23 KServe 模型服务控制面与声明式生命周期](/source/AI-Infra/4-AI平台工程/23-KServe模型服务控制面与声明式生命周期)
 - [24 GitOps、环境晋级与渐进式发布](/source/AI-Infra/4-AI平台工程/24-GitOps-环境晋级与渐进式发布)
 - [25 云原生 CI/CD、制品供应链与发布证明](/source/AI-Infra/4-AI平台工程/25-云原生CICD-制品供应链与发布证明)
 
-### 可观测性、SRE、安全与 FinOps（26–29）
+### 可观测性、SRE、安全与 FinOps
 
 - [26 AI 平台统一可观测性与资源归因](/source/AI-Infra/4-AI平台工程/26-AI平台统一可观测性与资源归因)
 - [27 AI Platform SRE：SLO、故障演练与自动修复](/source/AI-Infra/4-AI平台工程/27-AIPlatformSRE-SLO-故障演练与自动修复)
@@ -56,7 +56,7 @@
 
 - [30 多集群控制面、自助门户与平台最终架构](/source/AI-Infra/4-AI平台工程/30-多集群控制面-自助门户与平台最终架构)
 
-### 综合项目（31–36）
+### 综合项目
 
 - [31 GPU Ready Kubernetes 集群基线](/source/AI-Infra/4-AI平台工程/31-GPUReadyKubernetes集群基线)
 - [32 多租户 GPU 批处理与配额平台](/source/AI-Infra/4-AI平台工程/32-多租户GPU批处理与配额平台)
@@ -65,7 +65,7 @@
 - [35 AI Platform SRE、安全与 FinOps 控制台](/source/AI-Infra/4-AI平台工程/35-AIPlatformSRE-安全与FinOps控制台)
 - [36 企业级自助 AI 平台](/source/AI-Infra/4-AI平台工程/36-企业级自助AI平台)
 
-### 待填充专题（37–38）
+### 待填充专题
 
 - [37 密钥、凭据与秘密管理：Vault、External Secrets 与轮换](/source/AI-Infra/4-AI平台工程/37-密钥-凭据与秘密管理-Vault-ExternalSecrets-轮换)
 - [38 平台基础设施即代码：Terraform、Crossplane 与环境一致性](/source/AI-Infra/4-AI平台工程/38-平台基础设施即代码-Terraform-Crossplane-环境一致性)
