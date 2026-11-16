@@ -178,7 +178,7 @@ WorkNCCL(SeqNum=12345, OpType=ALLREDUCE, NumelIn=1, NumelOut=1, Timeout(ms)=6000
 ran for 600029 milliseconds before timing out.
 ```
 
-**本质**：NCCL Watchdog 超时是一个**「全能型（catch-all）」错误**——任何可能导致某个 rank 在集合通信上无限等待的情况都可能触发，根本原因不一定是网络慢或 NCCL 库本身的问题。
+**本质**：NCCL Watchdog 超时是一个 **「全能型（catch-all）」错误**——任何可能导致某个 rank 在集合通信上无限等待的情况都可能触发，根本原因不一定是网络慢或 NCCL 库本身的问题。
 
 **常见原因**：
 

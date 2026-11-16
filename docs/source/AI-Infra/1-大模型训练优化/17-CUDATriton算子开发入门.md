@@ -20,8 +20,8 @@ CUDA 的线程组织方式是一个**三层金字塔**。
 
 **第二层：Block（线程块）**。多个线程组成一个 Block，块内线程可以：
 
-- 通过**共享内存（Shared Memory）**交换数据。
-- 通过**屏障同步（`__syncthreads()`）**协调执行。
+- 通过**共享内存（Shared Memory）** 交换数据。
+- 通过**屏障同步（`__syncthreads()`）** 协调执行。
 - 通过 `blockIdx` 和 `blockDim` 获取自己在网格中的位置。
 
 Block 可以是 1D、2D 或 3D 的，大小在启动内核时指定，通常为 128、256 或 512 个线程。
@@ -125,7 +125,7 @@ Triton 的定位是**降低高性能算子开发的门槛**，在「Python 的�
 
 ### 2.2 核心抽象：程序（Program）与块（Block）
 
-在 Triton 中，一个内核由**多个程序实例（Program Instance）**并行执行，每个程序实例处理一个**数据块（Block）**。这与 CUDA 的「Grid of Blocks」概念相似，但 Triton 封装了复杂性：
+在 Triton 中，一个内核由**多个程序实例（Program Instance）** 并行执行，每个程序实例处理一个**数据块（Block）**。这与 CUDA 的「Grid of Blocks」概念相似，但 Triton 封装了复杂性：
 
 - 不需要手动管理 `blockIdx`、`threadIdx`。
 - 只需用 `tl.program_id(axis)` 获取当前程序的 ID。
@@ -160,7 +160,7 @@ def my_kernel(
 
 ### 2.3 实战一：Fused Softmax
 
-Softmax 是一个典型的**访存密集型（Memory-Bound）**操作。在 PyTorch 中，naive 实现需要**读取 $5MN + 2M$ 个元素、写入 $3MN + 2M$ 个元素**——大量中间结果读写导致性能低下。Triton 的 Fused Softmax 把整个过程**融合为单个内核**，每个程序实例处理输入矩阵的一行或多行：
+Softmax 是一个典型的**访存密集型（Memory-Bound）** 操作。在 PyTorch 中，naive 实现需要**读取 $5MN + 2M$ 个元素、写入 $3MN + 2M$ 个元素**——大量中间结果读写导致性能低下。Triton 的 Fused Softmax 把整个过程**融合为单个内核**，每个程序实例处理输入矩阵的一行或多行：
 
 ```python
 @triton.jit

@@ -102,7 +102,7 @@ GPU 侧是计算密集的 FWD-BWD Super Node，CPU 侧是显存密集的 Update 
 **单卡下的一次 step**：
 
 1. **GPU 前反向**：保留 FP16/BF16 参数副本算前向与 loss、反向得梯度，再按配置把梯度（或分片）经 PCIe/NVLink 拷到 CPU，释放显存并备好更新；
-2. **CPU 更新**：利用刚拷来的梯度更新 CPU 上的 FP32 master 与 Adam 状态，得到新参数。为防 CPU 优化器成瓶颈，采用高度优化的 CPU Adam（SIMD + 多线程）；并用**单步延迟更新（DPU）**让 CPU 的参数更新与 GPU 下一步计算重叠执行；
+2. **CPU 更新**：利用刚拷来的梯度更新 CPU 上的 FP32 master 与 Adam 状态，得到新参数。为防 CPU 优化器成瓶颈，采用高度优化的 CPU Adam（SIMD + 多线程）；并用**单步延迟更新（DPU）** 让 CPU 的参数更新与 GPU 下一步计算重叠执行；
 3. **参数回传**：把更新后的 FP16/BF16 计算副本同步回 GPU 进入下一步（实际系统分层/分 bucket 同步并尽量与计算重叠）。
 
 <div align="center">
