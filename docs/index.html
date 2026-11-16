@@ -130,6 +130,10 @@
       alias: {
           '/.*/_sidebar.md': '/_sidebar.md'
       },
+      // 内容请求（侧边栏/README/正文）强制 revalidate：GitHub Pages 按 URL 约 10 分钟强缓存，
+      // 推送后侧边栏与正文的缓存过期时刻可能错开，出现「正文新、侧边栏旧」；no-cache 让浏览器与 CDN
+      // 凭 ETag 回源校验，内容未变仍走 304，不增加传输成本
+      requestHeaders: { 'cache-control': 'no-cache' },
       search: {
           paths: 'auto',
           placeholder: '搜索',
