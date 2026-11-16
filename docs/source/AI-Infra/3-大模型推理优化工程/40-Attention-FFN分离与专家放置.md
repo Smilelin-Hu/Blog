@@ -12,6 +12,8 @@ $$
 
 代入 KTransformers 实验机（Xeon 8452Y 单插槽主存 220 GB/s，A100 40GB PCIe 按峰值 50% 计 156 TFLOP/s、778 GB/s，交接 25 GB/s、启动 5 μs）：八个热点专家各 1 token 时，CPU 路径约 1.46 ms，搬权重路径约 12.5 ms——**低复用时避免搬 288 MiB 权重比提高矩阵算力更有价值**。各 128 token 时计算量翻 128 倍：AVX-512 kernel（1.8 TFLOP/s）CPU 路径升到 22.2 ms 反慢于 GPU，交点在每专家 71→72 个 token；换 AMX kernel（21.3 TFLOP/s）128 token 只要 2.57 ms，交点推迟到 689 个——**同一台机器同一批请求，CPU 用哪套指令决定专家放哪一侧**。NUMA 再改一笔：跨插槽带宽只有 125 GB/s，AVX-512 计算受限放哪个插槽几乎无关，AMX 计算缩短后跨插槽读取反而成了较长项。量化同时改权重字节与 kernel 有效吞吐，两项都要重算。
 
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/aiinfra_y3_l40_01.svg" width="90%" alt="专家复用改变执行位置的选择：每专家输入行数增加时 CPU 与 GPU 路径耗时相交，AVX-512 与 AMX 交点不同" />
+
 ## 2. 容量、并发与专家覆盖
 
 装得下与来得及是两个问题：235B 每层 128 个 BF16 专家 4.5 GiB，每层驻留 32 个则 94 层约 106 GiB，单张 A100 80GB 全给专家也放不下；减到 16 个驻留降为约 53 GiB，但更多专家执行被推给主存侧——**容量选择直接改变执行路径**。批内访问多少专家另算：64 token 各选 8 共 512 次分派，均匀覆盖 128 专家与集中 8 专家的有效计算同为约 19.3 GFLOPs，权重读取却是 4.5 GiB 对 288 MiB（16 倍，220 GB/s 主存上 22.0 对 1.37 ms）。随机路由的活跃专家期望
