@@ -1,0 +1,27 @@
+name: Sync upstream
+
+on:
+  schedule:
+    # Every 6 hours (UTC): 00:17, 06:17, 12:17, 18:17
+    # Beijing time: 08:17, 14:17, 20:17, 02:17
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository == 'Smilelin-Hu/Blog'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge upstream changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST "repos/${{ github.repository }}/merge-upstream" \
+            -f branch=master
