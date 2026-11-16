@@ -404,6 +404,26 @@ CUDA_VISIBLE_DEVICES=1 python fusion_cuda_extension.py --n 16777216
 
 预期现象：自动输出 GPU 型号、Compute Capability、显存与 PyTorch/CUDA 版本；Baseline 与 Fused 都通过正确性检查；Baseline 在时间线中有 Multiply、Bias、ReLU 三个 Kernel，Fused 只有一个；Fused 的增量峰值显存更低（两个中间 Tensor 各占 `n × 4` 字节）；大数组下通常看到 Fused 的有效带宽与耗时更好；实测 Speedup 不会严格等于理论流量缩减比 2.33。
 
+## 11. 量化补充：融合边界、双缓冲与在线 Softmax
+
+融合的收益可以逐字节算。FFN 激活链 $Z=\operatorname{SiLU}(G)\odot U$，G/U/Z 各 [1024,12288] BF16 24 MiB：分开执行读 G 写 T 48 MiB＋读 T/U 写 Z 72 MiB 共 120 MiB，融合后只 72 MiB，省的 48 MiB 正是 T 的一次写回一次读回，时间比 0.6（实测 14.2→7.7 μs 约 1.8 倍）；再接量化三步全融合从 156 降到 60 MiB。**容量与访问量是两回事**：独立执行 G/U/T 同驻峰值 72 MiB，三步融合峰值 60 MiB——读写减 96 MiB 峰值只减 12 MiB，因为同一块空间可反复读写。
+
+双缓冲的收益也有上限：每块搬移 $t_m$、计算 $t_c$，n 块流水
+
+$$
+T_{\mathrm{pipe}}=t_m+(n-1)\max(t_m,t_c)+t_c.
+$$
+
+H100 单 SM 每块搬移 1.29 μs、计算 0.28 μs，四块串行 6.28 μs、双缓冲 5.44 μs 只省约 13%：重叠只藏住了计算，完成由首尾相接的搬移决定。**搬移器已连续工作时加第三个槽无济于事**，CUTLASS 的 n 个 stage 只在搬移时间不稳定或单次搬移延迟长于一块计算时才补空档，容量随 stage 数成正比增长；继续缩短只能减每块字节（扩大输出块提高复用、L2 共用输入）或换更高带宽的卡。缓冲还要区分「搬完」与「用完」两个时刻：最后一次读取结束才能覆盖槽位；下游来不及处理使上游暂停就是背压（99 KB 共享内存两线程块驻留时每块只分到 49 KiB，扣 32 KiB 重排空间只剩一个 16 KiB 排队槽）。
+
+FlashAttention 把同一思路用到归约上：标准注意力 L=8192、d=128 时完整 S/P 各 FP32 256 MiB，写读合计 1 GiB，而 Q/K/V/O 只 8 MiB。在线 Softmax 只留三个统计量：最大分数 m、指数和 $\ell$、加权和 u，新块到来换基准再累加：
+
+$$
+m'=\max(m,\max(s)),\ r=\exp(m-m'),\quad \ell'=r\ell+\textstyle\sum_j p_j,\quad u'=ru+\textstyle\sum_j p_j V_j,
+$$
+
+旧块分数用完即丢。块大小是访问量与更新次数的权衡：99 KB 共享内存约束 $2ad+2bd+4ab+4ad+12a\le101376$，b=64 容 a=82 行 Q、100 次 K/V 扫描共 404 MiB、更新 12800 次；b=1 容 a=128、64 次扫描 260 MiB 但更新 524288 次（约 41 倍）且矩阵维度过小——**小块省读取、大块省更新利矩阵，要同时比两类开销**。实测同接口两后端（RTX PRO 6000、因果、CUDA Graph）：数学后端约 2.6 ms、新增显存 848 MiB，FlashAttention 约 80 μs、22 MiB，加速约 33 倍；FA-2 改线程分工减非矩阵运算，FA-3 用异步让搬移/矩阵/Softmax 重叠（分块与在线归约的跨卡合并见主题一 05 篇第 5 节）。
+
 ## 写在最后
 
 Fusion 的收益要用流量与 Launch 数算出来，再用 Profiler 验证，而不是凭「合在一起应该更快」的直觉；同时必须盯住 Register Pressure 与并行策略冲突这两个反作用力。下一篇换一种写法：用 Triton 在更高层次表达同样的融合与分块。
