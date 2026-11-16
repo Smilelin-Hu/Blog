@@ -18,6 +18,8 @@ Harness：**模型之外、围绕 Agent Loop 组织上下文、能力、状态�
 
 开发者视角的八个构建对象：Agent Contract（为谁工作、允许禁止什么、成功标准）、Execution（Loop/状态机/预算/Verifier）、Context & State、Capability（Tool/MCP/Skill/Subagent）、Environment、Control（身份/审批/短时凭证）、Interaction（事件/Streaming/恢复游标）、Quality（Trace/Outcome/评估基线）。最小 Agent 可只实现一部分，进生产后每项都必须有明确责任人。**构建不从选框架开始，而从固定任务契约开始**：同一个「修复高危漏洞」目标，可以只出分析报告、可以在隔离环境改代码跑测试、也可以创建合并请求——除非契约明确授予发布权限并规定审批条件，都不应把「修复完成」解释为「已发布生产」。
 
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-04-01.svg" width="90%" alt="第 03 章1.svg" />
+
 ## 2. 入口一：高代码框架自主构建（AgentScope / LangChain 类）
 
 框架提供模型、消息、工具、状态、编排的代码级抽象，核心价值是**任务语义控制**：每轮 Context 怎么组成、哪些错误可重试、计划何时生成、何时审批、什么证据算完成，全部由企业决定。代价是框架只给构建材料，不自动补齐多租户隔离、状态恢复、Sandbox、安全策略、评估基线与业务验收。
@@ -33,6 +35,8 @@ Coding Agent 已形成可复用工作模式：检查工作区 → 制定计划 �
 SDK 嵌入的关键工程点（以漏洞修复服务为例）：`tools` 限定可用工具集合、`allowedTools` 只预授权读取检索类，写操作经 `canUseTool` 回调交宿主应用审批（拒绝/取消/超时必须终止操作，审批界面展示真实操作与输入）；「不要发布」不能只写在 Prompt 里——cwd 指向受控 Workspace、不注入生产发布凭据、用身份与网络策略阻断发布通路；`result` 只是运行结果，业务 Outcome 要依据变更文件、测试、安全扫描与业务状态另行验收。扩展优先用现成扩展点（MCP/Skill/Plugin/Subagent/Hooks/Memory/外部 Session Store），不在外围 Prompt 里模拟相同机制；现成行为与成功标准不匹配时才考虑转框架路径。
 
 两个易踩的坑：**外部 Session Store 只镜像 Transcript，不等于企业任务存储**（不含认证状态、文件 Checkpoint、保留策略，Task State/Artifact/Sandbox Snapshot/凭证/Outcome 仍要分别管理），且须保证租户键隔离、追加顺序、幂等写入与并发控制；Worker 失效后先确认原行动与工作区状态再决定 Resume/Retry/转人工，**不能因为 Session 可读就重放最后一次工具调用**。工作区助手同理：功能可用 ≠ 生产责任已满足（如 QwenPaw 官方明确后台 Subagent 不可恢复、Sandbox 未启用约束时不自动隔离、Hub 共享部署不构成强多租户边界），企业接入仍要外围补身份、租户、Task、审批与 Outcome 控制。
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-04-02.svg" width="90%" alt="第 03 章2.svg" />
 
 ## 4. 入口三：基于模型的托管 Agent（Managed Agents）
 
@@ -51,6 +55,8 @@ SDK 嵌入的关键工程点（以漏洞修复服务为例）：`tools` 限定�
 多团队多 Agent 之后，每个项目分别建模型接入/工具目录/凭证/Session/Sandbox/观测评估，会重复投入并形成孤岛。Agent Platform 面向多团队、多 Agent、多执行形态，以统一对象支持创建、接入、交付、运行、治理、协作、观测、优化：Agent 目录与版本、异构接入（框架 Workload / SDK Worker / 托管端点）、共享能力资源、Team 协作与任务组织、资源调度、身份策略治理、观测评估优化。**Harness 决定单个 Agent 如何工作，Platform 决定一组 Agent 如何被交付治理；平台汇聚执行证据，业务应用或授权 Verifier 做最终业务判断**。
 
 统一的是公共对象（Definition/Task/Session/Event/Identity/State/Checkpoint/Artifact/Trace/Outcome）与身份、租户、版本、质量语义，不要求外部 Agent 改用同一种 Harness。多源纳管三个底线：版本与归属可追溯（不能只记名字不知模型/配置/环境版本）；Event/Artifact/Trace 关联 Task+Identity+Tenant（支撑跨系统审计与成本归因）；**远程 Agent 不能只返回自然语言结论，必须提供可验收的 Artifact、事件或环境事实**。调度上，长任务在推理/工具/审批/事件间反复等待，不应让等待任务长期占用完整计算资源——可恢复状态与执行实例解耦，按优先级、配额、数据位置、模型容量与预算排队。统一不等于单体：Registry/Runtime/Sandbox/Gateway 可由不同服务实现，关键是共享一致语义、提供可重复的交付路径。
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-04-03.svg" width="90%" alt="第 03 章3.svg" />
 
 ## 写在最后
 

@@ -18,11 +18,21 @@ AI 可观测性在传统指标/日志/Trace/事件之上引入 Agent、模型、
 
 **eBPF 无侵入观测**（AgentSight 路线）：模型调用落到系统层是一次网络请求+响应（承载提示词/输出/工具意图/用量，结合流式增量到达时刻得 TTFT/TPOT），工具调用对应进程/文件/网络三类事件；统一携带进程标识与内核时间戳，按进程关系与时序把**模型输出的调用意图与随后真实发生的系统行为对应起来**。链路：内核事件 → 解析（字节流还原 HTTP 报文）→ 关联（连接配对往返、父子串进程树）→ 输出进程事件树与会话级 Agent 轨迹。
 
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-14-01.png" width="90%" alt="ai-observability-collection-architecture.png" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-14-02.png" width="90%" alt="Hook 与独立 Daemon 协同 图2" />
+
 ## 3. 观测模型与执行语义
 
 **Session/Trace/Span 三层边界**：Session 是连续会话的关联范围，可跨多次请求多条 Trace 与较长时间间隔，**不宜把整个 Session 记为一条长时间不结束的 Trace**；Trace 记录一次外部输入触发的活跃执行（用户消息/审批结果/回调/恢复事件），返回结果、转入跨请求等待或错误中断时结束——**跨请求等待恢复时创建新 Trace，经相同 Session 标识与前序关系/Trace Link 保留因果**；内部重试/模型回退/流式输出未结束活跃执行则留在同一 Trace。Span 是有明确起止与结果的操作单元，划分优先覆盖对结果/延迟/成本有实际影响的操作，过粗无法定位、过细引入噪声。三者是逻辑层级，Session 不必创建为 Span。
 
 统一执行语义解决跨框架「同类行为不同名称」问题，十二类：ENTRY（一次外部请求的完整处理）、AGENT（一次实际 Agent 调用，子 Agent 独立记录并关联发起方）、WORKFLOW（编排结构）、STEP（**只在框架能可靠识别 ReAct 轮次时记录**，不把任意内部操作统称 STEP）、LLM（一次真实发往模型的请求，回退与实际重试分别记录）、RETRIEVAL（外部召回，LLM 自主发起的检索位于对应 TOOL 下）、MEMORY（明确的记忆读写管理，**模型读取已组装上下文不算 MEMORY**）、TOOL（一次实际执行而非调用意图，**审批等待不计入工具耗时**）、GUARDRAIL（校验对象/阶段/判定/处置，关联被保护操作）、COMPACTION（压缩触发原因与前后规模，摘要 LLM 调用位于其下，不重复保存被替换历史）、HITL（区分等待/恢复/拒绝/终止）、INTERRUPT（保留发起方/原因/位置/已有有效结果，**预期用户打断不算系统错误但也不标记正常完成**）。父子结构反映真实调用关系而非人为拼成固定树：派发工具启动的子 Agent 位于对应 TOOL 下，并行工具是同父并列 Span，Guardrail 紧邻被保护操作。ReAct 典型结构只是示例不是强制模板，Workflow 型按实际编排记录，操作仍映射到统一语义支持跨框架查询。
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-14-03.png" width="90%" alt="从遥测事件恢复执行链路 图3" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-14-04.png" width="90%" alt="13.3.2 Agent执行语义 图4" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-14-05.png" width="90%" alt="从模型、实例到请求的分层观测 图5" />
 
 ## 4. 错误、延迟、成本与质量观测
 
@@ -51,6 +61,22 @@ Token 分别记输入/输出/缓存并关联调用与执行过程；服务端返
 **Continuous Batching 使请求相互影响**：单条 Trace 展示该请求的经历但不一定包含变慢的全部原因——同批其他请求共享计算与缓存。并发分析以时间为轴绘制每请求 Wait/Prefill/Decode 时间块，竖线切面即引擎执行快照：大 Prefill 阻塞同批 Decode（TPOT 同步升高，只看单条 Trace 易误判模型生成变慢）、并发突增占满槽位排队（Waiting/Queue Time/TTFT 同升而 TPOT 未必恶化，**盲目提高单实例并发可能进一步恶化尾延迟**）。排障闭环五步：指标发现异常 → Trace 找慢请求归入 Wait/Prefill/Decode/框架网络 → 并发分析还原现场 → Pod/GPU 指标验证根因 → 优化后**在相同流量与 Token 长度分布下对比验证，确认瓶颈没有转移**。
 
 **工具与沙箱**同时记录「计划做什么」与「实际发生什么」：工具调用事实（意图与实际执行分别保留，**不能仅凭模型输出创建「执行成功」的 TOOL Span**）、沙箱生命周期（调度/创建/镜像准备/预热或冷启动/休眠恢复销毁各阶段耗时，区分工具本身慢与沙箱排队冷启动等待）、命令与进程（进程树/退出码/终止信号/OOM，stdout 记大小截断摘要或受控引用）、资源使用（关联到实例与时间窗口，解释异常退出与单次调用成本）、文件网络副作用（**只记命令与退出码无法反映脚本内部真正操作**，重点是识别相关外部影响而非无差别保存全部系统调用）、策略与隔离结果（命中策略/规则版本/处置/拒绝原因；策略拒绝发生在执行前时记判定 Span，**不伪造命令执行 Span**）。三类诊断：变慢区分审批/调度/冷启动/执行/远程依赖，失败区分参数/策略拒绝/创建失败/非零退出/信号/OOM/超时/网络，成本安全问题识别重复调用/异常循环/规格不合理/意外文件修改/越界访问。
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-14-06.png" width="90%" alt="用调用链还原一次推理请求 图6" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-14-07.png" width="90%" alt="用调用链还原一次推理请求 图7" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-14-08.png" width="90%" alt="用并发分析解释 Continuous Batching 的相互影响 图8" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-14-09.png" width="90%" alt="用并发分析解释 Continuous Batching 的相互影响 图9" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-14-10.png" width="90%" alt="用并发分析解释 Continuous Batching 的相互影响 图10" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-14-11.png" width="90%" alt="用并发分析解释 Continuous Batching 的相互影响 图11" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-14-12.png" width="90%" alt="13.5.3 工具与执行沙箱可观测性 图12" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-14-13.png" width="90%" alt="13.5.3 工具与执行沙箱可观测性 图13" />
 
 ## 写在最后
 

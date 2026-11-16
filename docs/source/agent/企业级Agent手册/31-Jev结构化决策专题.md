@@ -6,13 +6,29 @@
 
 Harness 里的分类决策任务通常两种做法，各有明显短板。**直接用大模型**：写 Prompt 要求分类或路由并强制结构化输出（JSON/YAML），工程代码解析后映射到目标 Agent——落地快，但速度慢（要分得准往往得开 Thinking，不开思考时长 Prompt 的 JSON 输出依然漫长）、指令遵循不稳定（偶发输出错误结构或不按预期字段，加 Format 约束也难免出岔子）。**训练小参数模型**：蒸馏大模型结果或人工标注训练小 LLM，极致场景用 BERT 类传统模型毫秒级输出分类与置信度（Logits），可按业务动态调阈值——快且对特定任务有效，但训练成本高（GPU、数据集、训练 Pipeline、调参评测），迁移能力有限只能用于单任务，还要专门部署占用推理资源。Jev 由 TypeSafe 推出（创始人 Diogo Almeida 是前 OpenAI 研究员，参与过 ChatGPT 相关研发），定位 **System One Model**：输入可以是各类任务要求 Instruction，但**输出是针对特定场景的结构化决策结果，Choice 和 Score 附带置信度**。背后的判断是纯 Chat 模式很难做到完全自动化——重要模块需要结构化输出概率、置信度与分类结果，才有「结果可信程度有多高」的判断依据。官方称智能水平与现有 LLM 差不多，但**速度快约两个数量级（100 倍左右）**；没有生成文字的能力，换来输出不超出预定义类型和选项、方便阈值调整——模型仍可能在选项内做出错误判断。可以理解为一个**前沿智能级别的决策函数**：Input 是杂乱的任务描述，Output 是有概率、有类型约束的决策结果。「System One」借用 Kahneman《思考，快与慢》：系统1快速直觉（分类、打分、路由这类「一眼定乾坤」的任务），系统2缓慢审慎（数学证明、多步规划）；未开思考的 LLM 也算系统1，开启 Reasoning 的是系统2。名字来自经济学家 William Stanley Jevons 与**杰文斯悖论**：蒸汽机效率提升没有让煤炭需求饱和反而大增——**智能成本每下降一个数量级，就会解锁多个数量级的新应用场景**；AI 不会让做的事变少，原来因实现成本太高被舍弃的需求现在都可以尝试，引发需求层面的爆炸。
 
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-01.png" width="90%" alt="jev 01" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-02.png" width="90%" alt="jev 02" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-03.png" width="90%" alt="jev 03" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-04.png" width="90%" alt="jev 04" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-05.png" width="90%" alt="jev 05" />
+
 ## 2. BERT、LLM、Jev 三方对比与决策函数接口
 
 Jev 取了两者之长：像 BERT 一样把输出收敛到结构化类别和概率不发散，又像 LLM 一样理解任意自然语言做到 Zero-shot——**不需要训练，写 Instruction 就能用**。三方对比的关键差异：BERT 输出固定分类标签 + Logit，每个任务要专门训练 CLS 头，换任务就重训，概率未校准容易过度自信，速度快但训练成本高；LLM 输出任意生成文本，Prompt 即可 Zero-shot，通用性极高但准确性与指令遵循有弊端，无原生置信度且往往过度自信，速度慢推理成本高；Jev 输出结构化决策 + 概率，临时定义 Criteria 即可 Zero-shot 且选项可动态修改，概率专门校准过，输出限制在预定义类型与选项内但仍可能误判，速度快成本低无需训练。比喻是：BERT 像特种兵（每任务单独练，练好极快极准），LLM 像全能博士（什么都能聊但慢、贵、偶尔胡言乱语），Jev 像智能调度员（博士的理解力 + 特种兵的执行力）。决策函数的输入结构四个关键字段：**ID** 是自取的键名（如 intention_classify），用于返回时准确取到对应结果；**Type** 三种决策类型——**Choice** 从一组选项选一个（返回选中项、每个选项概率、置信度，典型场景意图路由/文档分类），**Score** 判断落在哪个等级分数段（返回分数、等级标签 Legend、概率和置信度，典型场景严重程度分级/敏感评估），**Noul** 是非判断（返回 0 到 1 概率，越接近 1 越「是」，典型场景是否合规）；**Instruction/Criteria** 分别说明「做什么」和「怎么选」——Choice 写选项列表、Score 写等级定义表、Noul 有歧义时写清「是」「否」各代表什么；**State** 是上下文数据，待评估内容放这里，Instruction 可用字段路径精准引用。最有意思的是**三类问题可以放进同一个 API 请求并行独立评估**，避免串行调用延迟。医疗分诊示例（仅演示 API 用法）：患者「右下腹剧痛、发热恶心」一次请求三个问题，返回 department 选「外科」（概率 0.97、置信度 0.96）、is_emergency 为 0.95、severity 得 1.95 分（等级 0 轻微/1 中等/2 严重），输入 1051 token 输出仅 85 token。
 
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-06.png" width="90%" alt="jev 06" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-07.png" width="90%" alt="jev 07" />
+
 ## 3. RLCD、概率与置信度：最佳实践与不适用边界
 
 训练方法 **RLCD（Reinforcement Learning for Calibrated Decisions）**的优化目标是校准过的决策和概率，区别于两条主流后训练路径：RLHF 拟合人类偏好（标注与 Reward Model 成本极高，容易让模型迎合偏好而非追求客观真理导致幻觉），RLVR 依赖程序可验证的对错（精准但只适用有标准答案的场景，缺乏对不确定性的量化）。必须区分两个概念：**概率**是模型对每个选项的内部倾向性，不代表一定对；**置信度**是由概率分布计算的 0~1 数值，概括分布有多集中——分布越尖越自信、越平越不确定，**不是「这次判断有多少概率正确」的直接读数**（置信度 0.8 不能解释成 80% 正确率）。概率校准讨论的是大量同类预测中模型赋予的概率能否与实际发生频率相符；这给了模型「承认我不确定」的机制：高置信度可作自动化决策信号，低置信度提示人工介入、补充信息或备用方案，具体阈值需结合业务风险和评测确定。官方最佳实践六条：**能用代码就别用模型**（日期阈值等规则明确的任务代码永远比模型准且快）；**精简 State 避免 Context Rot**（无关信息浪费 Token 还引入噪声拉低准确率）；**精准引用字段**（反引号或路径指向具体数据点）；**问原子问题别问大问题**（不问「是不是垃圾邮件」，而问「是否索要密码」「是否承诺额外奖励」「发件人身份与内容是否矛盾」，模型判断 + 代码加权聚合远好于让模型直接给大结论）；**结构化 Instruction 和 Criteria**（命名字段对象组织，写清每个选项属于什么不属于什么，可加 Few-shot）；**一次多问并行处理**（同一 state 的意图分类、情绪识别、风险检测打包一个请求，独立评估互不干扰）。五类场景谨慎或避开：数学与日期计算（算不准，交给代码）、多跳推理与双重否定（准确性下降）、庞大嘈杂的 State（注意力被稀释）、对抗性内容（注入攻击可致决策失效）、**结构不变性不保证**（同一问题用 noul 问和用 choice 问结果可能不一致，独立校验决策路径不同，不要假设等价）。展望是基于原子化决策能力组合成调用链，**用多个高置信度的小决策拼接成稳定准确的复杂任务决策链条**。
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-08.png" width="90%" alt="jev 08" />
 
 ## 4. AgentScope Java 接入：三方职责与 Judge 四状态
 
@@ -26,25 +42,65 @@ AgentScope Java 通过 `agentscope-extensions-jev` 正式支持 JEV，没有把�
 
 工单队列里同时有「生产登录接口全部 502、所有用户无法登录」和「申请补开上月发票、无服务中断」，处理人员要先判类别、影响范围和紧急程度再交相应团队。判断「技术类」还不够——全部用户无法登录和个别用户登录缓慢都是技术问题但优先级不同，**要把影响范围对应的分级条件告诉模型**（全部用户或核心业务中断列 P1，普通咨询或无服务中断列 P3）。国内网络无法使用 Jev，实践选用百炼决策模型 decision-model-preview，工程中封装 DecisionClient 调用 System One 接口；收到结果后校验类别和优先级是否属于预设选项再进入后续处理。分工：AgentScope Java 组织模型与工具调用，百炼提供决策与生成能力，AgentCore 负责部署运行。两个业务工具 lookup_ticket（影响范围、日志线索、近期发布记录）与 lookup_runbook（处理方法）封装为 AgentScope 工具，qwen-plus 结合资料与决策结果生成建议并列出需人工确认事项——输入中明确标注「**分类不是根因结论**」。AgentCore SDK 提供 Python/JS/Java 三语言并适配常用框架（Java 适配 AgentScope Java、Spring AI、LangChain4j），已有工程可沿用原技术栈按需接入平台模型、MCP、Skill、记忆和凭证。部署选**代码包方式**：Maven 把业务代码与运行期依赖打入 app.jar 放进 ZIP 根目录，平台提供 Java 17 基础环境，启动命令 java -jar app.jar、端口 8080，平台解压启动并健康检查——省去为每个 Agent 单独制作维护镜像；已有成熟镜像流水线或需定制系统组件可选容器镜像部署。验证覆盖普通调用（一次返回完整报告）与流式调用（工单页面边生成边查看）：登录故障判「技术类、P1」引用故障手册，建议检查上游健康、连接池、超时与近期发布；发票申请判「计费类、P3」引用发票手册围绕账期、订单主体、发票状态展开。运行侧：按需弹性伸缩应对故障时工单集中涌入；实例与 Session、基础监控、运行日志同一 Agent 下，启用 SLS 日志采集后可核对请求 ID、耗时、决策结果和工具调用——查了哪张工单、用了哪份手册、最终类别优先级，建议不符预期就带记录回业务代码排查。规则迭代回原工程修改测试，重新构建代码包更新 Agent；**OSS 来源时上传新包和更新 Agent 是两个独立动作，平台保存代码包快照，覆盖源文件不改变正在运行的代码，发布时机由团队决定**。进阶接入 AgentCore Team（白名单开放）：托管 Agent 任 Leader 分派任务审核报告，工单助手任 Worker 查工单手册完成分诊提交报告，用户补充要求参与复核验收最终报告；协作 SDK 把领取任务、文件交付作为工具接入现有 Agent 并补充 Worker 协作规则，任务上下文随调用传入让分析报告归属正确任务，子任务、执行记录和报告文件关联同一任务下——**审核人员对照 report.md 复核，不必从多轮对话里拼凑结论**。
 
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-09.png" width="90%" alt="图 1" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-10.png" width="90%" alt="图 2" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-11.png" width="90%" alt="图 3" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-12.png" width="90%" alt="图 4" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-13.png" width="90%" alt="图 5" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-14.png" width="90%" alt="图 6" />
+
 ## 7. HiRoute 智能路由：三个问题与两组实验
 
 长任务里工作难度一直在变：资料整理快、方案推导绕圈，全程强模型则成本花在大量读文件整理材料上。HiRoute（开源本机路由引擎）用 Jev 判断**当前任务需要多强能力、上一阶段完成得怎么样**，再为接下来选模型。用户追问「你还没考虑数据库提交成功、消息发送失败的情况」包含两件事：接下来要做的工作（补充跨系统故障分析）和对上一阶段的反馈（遗漏关键情况）——分别判断，需要更强推理或触发胜任度保护就让主力模型接手，转入资料整理再选经济模型；**自然对话可以参与下一次模型选择，不需要额外给模型打分**。无人值守时（如 /goal 目标执行），阶段执行记录成为判断依据：Jev 按配置好的评分标准评价已发生的工作——是否有效进展、产出是否回应任务要求、是否存在明显遗漏。决策接口三个问题：**categorical（任务类别，对应 choice）、ordinal（工作程度，对应 score）、assessment（阶段完成质量，独立 score）**。ordinal 档位条件写成具体工作要求（simple：资料充分可直接提取归类核对格式化；complex：需推导新结论、处理冲突材料或分析复杂故障交互），返回 probabilities 中简单档概率与阈值比较，默认 **0.8**。categorical 用于写稿/审稿等分工，类别配双组时再带类内 ordinal（refinement）；双类别都配双组则一次问三个独立问题（属于哪类、假设交给写稿有多复杂、假设交给审稿有多复杂），只读取选中类别的复杂度——一次 System One 调用完成分类和程度判断。两组实验：**无人介入编码任务**——原生 Codex 为 HTTPX 增加同步异步 JSON 流式迭代，用户只开始时给任务，HiRoute 完成 Qwen → Astra → Qwen → Astra 接力，前半段源码阅读接口探查用经济模型，后续触发胜任度保护由 Astra 接手实现测试修复，最终通过 **343 项独立验收断言，全程约 31 分 36 秒**。**消息系统调研任务**——六种消息系统资料核验加 Kafka/SQL 一致性决策备忘录，资料整理交 Qwen-3.8 Flash、关键方案判断交 GPT-6 Astra，三种模式相同资料各三次交付：混合模式卡片正确率 98.61%（全 Astra 99.72%、全 Qwen 98.80%），**关键备忘录三次均无重大错误（全 Qwen 仅 1/3）**，相较全 Astra **API 等价成本降低 92.01% 和 91.39%**（已计入 Jev 决策调用和重试成本）——大量常规工作交给经济模型，关键推导或执行困难再补足能力。
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-15.png" width="90%" alt="用户追问与自主执行记录汇入历史上下文，由 Jev 判断当前能力需求和上一阶段表现，再由 HiRoute 选择模型" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-16.png" width="90%" alt="HiRoute Desktop 的真实会话界面，按 Qwen 和 Astra 展示 HTTPX 任务的执行阶段与评分" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-17.png" width="90%" alt="HiRoute Desktop 的真实计划界面，按省钱组与主力组汇总阶段表现" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-18.png" width="90%" alt="HiRoute 准备任务与历史，百炼 System One 返回判断，HiRoute 选择模型，Agent 执行并留下后续反馈" />
 
 ## 8. HiRoute 历史上下文、胜任度保护与自定义扩展
 
 历史影响对当前任务的理解和复杂度判断：「按第二个方案继续」要结合前文，同一句「补齐来源」可能只是填链接也可能要重新核查冲突材料。给 Jev 的信息分五部分：当前用户输入、可见历史执行轮次、执行分支与阶段编号、阶段目标验收要求与评分范围、任务条件与评分标准。历史变长时优先保留当前输入、被评分阶段和必要背景再裁剪较早轮次；整体历史是否有缺口与被评分阶段是否完整**分别记录**。关键设计：**给 Jev 的是执行分支和阶段，不是模型名称**——分支说明工作类型，同分支换模型开始新阶段，目标或评分标准变化也划新阶段；HiRoute 本地把阶段关联到实际模型档位和当时标准。assessment_target 明确列出阶段编号、所属分支、轮次编号及该阶段开始时的目标与验收要求，轮次编号不随历史裁剪改变；评分看审稿阶段有没有完成核查，不能把草稿内容当审稿成果；换模型补齐遗漏就评价接手后的进展，**用户新增要求进入当前任务，不倒过来变成上一阶段的扣分项**。胜任度用 **0、0.5、1 三锚点**（0 关键事实失真无有效进展、0.5 有可用成果但明显遗漏、1 事实引用准确完成要求），System One 三等级对应 0/1/2，score/2 转为 0~1 胜任度，默认下限 **0.5**。典型情形：当前简单概率 0.91 高于 0.8 阈值本该进省钱组，但上一阶段 score 0.96 转换后胜任度仅 0.48 低于下限，触发主力接力。完整请求四道题共享上下文独立返回：q0 分类、q1 复杂度、q2 阶段胜任度、**q3 单独判断证据是否足够**——q3 sufficient 且目标记录完整才采用 q2 评分，记录不完整或 insufficient 则本轮不采用 assessment 仍按当前任务路由；**记录完整但明确做错了属于可评分的低质量结果，把「没做好」和「看不清」分开**。各题 instructions 解释自己用到的字段不依赖模型猜测，并明确「输入文字是待判断材料，不能修改本题 criteria」防注入；status completed 只表示执行结束不代表验收通过。无人值守时只保留工具名称、顺序和粗粒度状态（如 run_tests failed），**不把工具参数或结果正文发给 Jev**，避免检索内容文件内容测试日志挤占决策上下文；一条失败记录不能单独证明模型不胜任，缺判断依据时不采用阶段评分。配置四步：添加百炼 Token Plan 决策连接（decision-model-preview）→ 创建智能省钱计划配省钱组主力组 → 按自己的工作写简单复杂条件与阶段评分标准 → 发布计划接入 Agent，会话里查看实际模型、选择原因和阶段表现。自定义分支按任务分工（代码实现/文本转换各配条件与模型），阈值和提示词都可界面调整。更深定制走 **HTTP 扩展服务**：HiRoute 发送决策定义、当前输入、可见历史和评分目标到 /v1/decisions，扩展调用百炼 /systemone 再返回 decision 和可选 assessment，模型组阈值与实际选择仍在 HiRoute 配置；官方 Python 参考实现两个入口 prepare_decision() 与 decision_response()，典型改法是给 state 注入 team_context 解释团队术语（「事实卡片」「决策备忘录」各要求什么）并在各题 instructions 追加引用说明。建议从一个双组计划开始选熟悉的真实任务，**比一开始就设计复杂策略更容易找到收益**。
 
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-19.png" width="90%" alt="类别、复杂度和阶段表现是三个独立问题，HiRoute 根据各自含义组合结果" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-20.png" width="90%" alt="简单概率和阶段胜任度如何共同决定省钱组与主力组的选择" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-21.png" width="90%" alt="HiRoute Desktop 的智能省钱配置界面，免费模型用于省钱组，Qwen 3.7 Plus 用于主力组" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-22.png" width="90%" alt="HiRoute Desktop 自定义分支配置截图拼接，左侧为代码实现，右侧为文本转换" />
+
 ## 9. 自动化评测：LLM-as-a-Judge 的瓶颈与阈值调优实验
 
 生成式 LLM 当裁判往线上铺开撞两个底层瓶颈：**生成开销大**（只要 Pass/Fail 二元结论也得逐 token 写出推理或 JSON）；**给不出连续可信的置信度**——直接输出 Pass/Fail 文本等于黑盒内不可见的硬截断，拿不到概率无法调误报漏报比例、无法识别灰区样本；让模型「口头报置信度」本质是采样数字字符 token，受语料先验影响高度扎堆在 0.50/0.80/0.90 少数档位，既不连续也不代表真实错误频率；即便读答案 token 的 logprobs，通用大模型经 RLHF 或 0/1 奖励 GRPO 训练后 logits 被强烈推尖，概率坍缩在 0.999 或 0.001，同样失去灰区校准度。决策模型砍掉自回归生成循环，**单次前向直接从决策头读出 logits 映射为 0 到 1 连续概率**——从 TypeSafe Jev 开始，Perplexity Decider、Liquid d1、Cloudflare Clef、OpenAI Decisions API 相继推出。但很多人**直接照搬默认 0.50 阈值、不检验概率是否可靠**，把性能白白留在桌面上。实验设定：公寓租赁 Agent 系统 100 条真实轨迹（完整对话历史与执行日志），任务是找出含错误案例（预订失败、漏转人工），同一评测准则发给 6 个决策模型（Jev 1.13、Perplexity Decider 1.1 27B、Liquid d1 与 d1-ultra、Clef Flash、OpenAI Decisions 底层 GPT-6 Luna），对比性能（与人工标注真值比）与成本（实际 token 消耗按官方定价）。默认 0.50 为什么会坑人：假设模型给所有真失败轨迹打 0.40、正常轨迹打 0.10——正负分得一清二楚，阈值设 0.30 就 100% 完美分类，沿用 0.50 却一条错误都抓不出。真实分布有重叠，调低阈值抓更多真错误也捞进更多误报，本质是权衡 **Precision（控制误报）与 Recall（控制漏报）**——刑事审判强调 Precision 宁漏判不冤枉，癌症筛查强调 Recall 宁复查不漏患者。**先立业务底线再谈优化**：自动化告警系统要求 P 和 R 都至少 80%，PR 曲线右上角双 80% 矩形是合格线——Perplexity、d1-ultra、OpenAI Decisions 三个入围，Jev 1.13、d1、Clef Flash 无论怎么调阈值都迈不过门槛直接排除。调阈值用**分层五折交叉验证**防「看答案调参」过拟合：训练折上选阈值、剩余折上测性能，比较模型用相同切分，只选训练折上同时达标的阈值，无合格阈值就如实报告而不放松要求；现实业务 P/R 几乎不可能等权，更看重 Precision 用 β<1 的 Fβ、更看重 Recall 用 β>1，换指标最佳阈值和排序都变。调优后性能成本对比构成**帕累托前沿**：Perplexity F1 0.79、每 100 次评测 0.82 美分（合格者中最便宜）；OpenAI Decisions F1 0.87、3.72 美分（性能断层领先但成本约 4.5 倍）；d1-ultra 居中且原生校准极佳。更广泛的对比结论：**决策模型在分类和路由任务上能以更低成本追平 LLM，但需要知识储备与多步推理的任务 LLM 依然明显领跑**。
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-23.png" width="90%" alt="六个决策模型的失败与正常轨迹分数分布及决策阈值" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-24.png" width="90%" alt="不同模型的 Precision-Recall 曲线及双 80% 合格区域" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-25.png" width="90%" alt="默认阈值与五折交叉验证调优阈值的 F1 对比" />
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-26.png" width="90%" alt="决策模型的评测性能、调用成本与候选帕累托前沿" />
 
 ## 10. 概率校准检验与四步迭代闭环
 
 想把分数直接当置信度用，必须检验：模型报 0.80 是否真意味着 80% 可能出错——所有被打 0.80 左右的轨迹里须真有约 80% 含错误。按分数分桶画**校准曲线**（横轴平均预测概率、纵轴实际失败比例）：落对角线上严丝合缝，上方低估风险，下方高估风险。各家脾气大相径庭：**Jev 1.13 和 d1-ultra 天生校准很好几乎不需调整**；Clef Flash、Perplexity、d1 明显偏离——最夸张的一组 Clef Flash 平均预测失败概率仅约 8%，实际 60% 含错误。失准可在外层套 **Platt scaling**（留出数据上拟合 S 型曲线修正概率偏差），Perplexity、d1、Clef Flash 校准后显著靠拢对角线；但 **Platt scaling 并不总是合身——OpenAI Decisions 套用后反而略微变差**，做完校准必须用 Brier score（越低越好）实测确认改善，同样五折交叉验证、在 log-odds 上拟合、先把概率裁剪离 0 和 1。工程落地强烈建议**为每种具体失效模式单独建 Judge**（预订失败和漏转人工拆成两个独立 Judge）：任务收窄、指令具体后模型间差距预期大幅缩小；日常先从一个性能达标的大模型跑通，再换更小更便宜的模型看能否追平，高质量标注数据配合 Prompt 调优能帮小模型提一大截。四步迭代闭环：**定门槛筛模型**（打磨 Judge Prompt 后按业务定 P/R 最低合格线，淘汰达不到底线的）→ **先调阈值再比性能**（交叉验证下按业务权衡指标调优每个模型阈值，别因为示例用 F1 就照搬 F1）→ **按需检验并校准概率**（想当置信度用先查校准，Platt scaling 帮忙但必须 Brier 实测）→ **综合权衡持续迭代**（按工作负载对性能成本时延拍板；**一旦优化了 Prompt，调好的阈值和校准映射都要重跑**）。
 
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-27.png" width="90%" alt="原始概率与 Platt scaling 后的概率校准曲线" />
+
 ## 11. 进阶：校准不等于排序，训练损失与最优阈值的数学
 
 反直觉现象：Jev 1.13 概率几乎紧贴对角线却进不了双 80%，原始概率失准的 Perplexity 反而先过门槛再一步 Platt scaling 修准。原因是连续分数同时承担两项任务：**把正负样本排开（排序/区分能力）与如实报出真实错误率（校准度）**。Brier 分数的 Murphy 分解拆出 REL（校准误差，字面概率与该分数组真实失败率的偏差）与 RES（分辨率，不同分数组真实失败率能拉开多大差距）——对每条轨迹都无脑报总体基率的模型 REL=0 但 RES=0，一张告警单都分不出来。事后校准的边界：**对所有样本施加同一严格递增变换（温度缩放、正斜率 Platt scaling）不改变分数高低顺序**，原阈值 τ 选出的告警集合与新阈值 g(τ) 选出的是同一批样本——AUROC、整条 PR 曲线、最优 F1 都不变，Brier 变化全部来自 REL；**单纯把 logits 乘放大系数只拉大数值跨度，不提高 RES 不改善 PR 曲线**。训练决策模型第一要务是学到能区分正负样本的特征表示，再保证概率与真实频率对齐。默认 0.50 失灵可从 logit 空间理解：s≥0.50 恰对应 z≥0，Platt scaling 本质是 logit 上的线性仿射 σ(az+b)。**先验基率偏移**可精确推导：特征生成机制不变、仅正例比例从 π_tr 变 π_te 时，真实后验 logit 整体平移常数 b = logit(π_te) − logit(π_tr)——判别能力没变，死守 0.50 也会系统性漏报误报（Jev 多基率基准混合 ECE 仅 0.047，单基准中位 ECE 升到 0.168）。**即便完美校准，0.50 也不一定最优**：调阈值与加偏置在二元分类上等价（阈值 τ 等价于 logit 加 −logit(τ) 后用 0.50 截断，但调阈值不等于校准概率）；设误报代价 C_FP、漏报代价 C_FN，分数完美校准时贝叶斯最优阈值为 \(\tau^* = C_{FP}/(C_{FP}+C_{FN})\)——只有两者相等才是 0.50，**一套通用权重不可能预先写死所有下游业务的基率与代价结构**，部署时留少量带标样本交叉验证调阈值验校准是标准动作。训练损失的数学保证：Brier 与交叉熵都是**严格正常评分规则**（条件期望损失导数在 s=q 处唯一为零），理想条件下最小化它们驱使模型如实报出真实后验。常见修改的偏离可精确算出：**标签平滑把概率向 0.50 压缩**（最优点变 (1−ε)q+ε/2，高风险样本被系统性压低）；**只看对错的 0/1 奖励把概率推向极端**（期望奖励导数是常数 2q−1，q>0.5 一直推向 1）；RLCD 把奖励设计为 r=sg(C−p_A) 时策略梯度期望恰等价 Brier 负梯度，两个坑——有完整标签时直接求导即可拿到零采样方差精确梯度，绕道采样 RL 平白引入方差；**照搬 GRPO 组内标准差归一化会抵消校准项**（二分类下 r=(1−p_y)(2C−1)，正因子 (1−p_y) 在标准化分子分母中被约掉，优势函数退化为纯 0/1 奖励，不动点重新坍缩到 0 或 1）。业务卡死 P/R 下限时训练侧发力：双 80% 可改写为关于真正例比例 u、假正例比例 v 的两个线性不等式——**「P 和 R 都达 80%」是跨样本总体排序约束，绝不等于把概率阈值设成 0.80**；挑 Checkpoint、困难样本挖掘、数据配比应追踪受约束工作点指标而非整体平均 NLL/Brier。已知部署阈值区间时可用 **Schervish 阈值积分加权**把梯度预算集中到阈值附近：陷阱写法是固定代价直接把指示函数换成 sigmoid（导数符号只取决于 q 在 τ 哪一侧，把概率强行推离阈值）；正确写法选非负权重密度 w(t)（目标阈值附近窄高斯峰叠加正基础权重），期望梯度为 (s−q)w(s)，逐点最优点仍严格停在 s=q。但要清醒认识有限容量下的**「误差搬家」效应**：提高阈值附近权重是把拟合预算优先保给关键区域，其他区域校准误差可能变大（构造例中整体 REL 反而从 0.0025 升到 0.0049）——它是把校准精度集中到刀刃上的工具，不能代替特征区分度提升。
+
+<img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/handbook-31-28.png" width="90%" alt="Brier 分数的 Murphy 分解：校准误差、分辨率与不确定性" />
 
 ## 12. 原子 Judge 拆分与聚合校准：两个开放问题
 
