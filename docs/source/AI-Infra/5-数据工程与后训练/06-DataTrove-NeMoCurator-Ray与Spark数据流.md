@@ -32,67 +32,63 @@ DataTrove 强调由 Reader、Filter、Extractor、Writer 等处理块组成的�
 
 本文从数据流语义出发：先区分窄依赖与宽依赖、批与流、Task 与 Actor、物理分区与逻辑文档；再理解四类工具最擅长的边界；最后设计可混合使用但不丢 Manifest、Recipe 和血缘的一条生产流水线。目标不是背诵参数，而是能够解释为什么某一 Stage 由某一执行引擎承担、失败后从哪里恢复、数据如何对账以及成本如何归属。
 
-### 3.2 学习目标与能力清单
-
-### 2.1 能力目标
+### 3.2 能力目标
 
 完成后应能把语料处理 DAG 拆成可流式 Map/Filter、状态化 Actor、分组/Join/Shuffle、GPU Batch Inference 和 Materialization 边界；能解释 DataTrove Pipeline Block 与 Executor、NeMo Curator Pipeline/Stage/Task/Backend、Ray Data Logical/Physical Operator 与 Block、Spark DataFrame/RDD Partition 与 Stage 之间的关系；能依据状态、资源、数据倾斜、容错与生态选择执行路径。
 
 还应能为每个 Stage 定义输入输出 Manifest、分区函数、资源预算、幂等提交、重试范围和统计总账；能识别 Driver OOM、对象存储爆炸、Shuffle 热点、Python 序列化、Actor 模型重复加载、GPU 批次不均与小文件问题；能用 CPU 机制实验模拟流式窄依赖和宽依赖屏障，并在通用 CUDA GPU 上验证单 GPU Actor/进程对固定数据分片的真实消费。
 
-### 2.2 验收边界
+### 3.3 验收边界
 
 本文不宣称某个框架在所有集群上绝对更快。吞吐取决于数据格式、对象存储、集群网络、Python/C++ 边界、资源规格、版本和配置，必须在固定 Manifest 上实测。示例中的框架比较是工程模型，不是品牌排名。API 会演进，生产实现应以当时锁定的官方版本与文档为准。
 
 真实硬件路径要求至少一张 CUDA GPU 与可用 PyTorch。若不满足，输出结构化 `skipped`，不把 CPU 数据当作 CUDA 实测。CUDA 实验验证资源放置、分片、批处理、聚合和错误边界，不代表大集群网络与调度性能。
 
-### 2.3 与相邻篇目的边界
+### 3.4 与相邻篇目的边界
 
 前一篇定义了 WARC、HTML、PDF、代码与对话的解析契约，本文把这些 Document/Unit 作为数据流输入；下一篇深入数据格式、Shard、索引、流式读取与缓存。本文会讨论物理布局对执行的影响，但不展开每种格式的编码细节。去重、质量、混合与后训练篇目会复用这里的 DAG/Shuffle/GPU Stage 模型。
 
-### 3.3 实验准备与责任边界
-
-### 3.1 记录级无状态 Map
+### 3.5 记录级无状态 Map
 
 无状态 Map 对每个 Document 或 Unit 独立变换，例如 Unicode 规范候选、长度统计、规则特征和 Token 计数。它只有窄依赖：一个输入分区可在本地生成对应输出，不需要与其他分区交换。相邻无状态 Map 通常可以融合，减少序列化与中间写出。
 
 融合并非越多越好。不同 Stage 可能有不同资源、依赖和失败语义；把轻量解析与高风险模型推理融合，会使重试昂贵且镜像巨大。是否融合要看资源兼容、重用中间结果、观测边界与发布需求，而不是只看少一次函数调用。
 
-### 3.2 Filter 与 Side Output
+### 3.6 Filter 与 Side Output
 
 Filter 把记录分为保留与拒绝，但生产系统不能只返回布尔值。拒绝记录至少产生 reason_code、Stage、Recipe 和必要统计；高风险对象还需 Side Output 到隔离区。输入数等于保留、拒绝、隔离与失败之和。框架若只支持 `filter()`，可在前一 Map 生成 decision 字段，再分别写出候选与审计统计。
 
 过滤率高会改变下游分区平衡。若九成记录在早期删除，原有分区可能出现大量空任务；可以在明确 Materialization 后 Coalesce，但重分区会影响稳定顺序和恢复，需保存新 Manifest。
 
-### 3.3 FlatMap
+### 3.7 FlatMap
 
 解析、分块和附件展开是一对多 FlatMap。一个输入可能产生零到许多 Unit，必须设置输出数量/字节预算并保存父子关系。只看输出记录数无法判断输入覆盖，因此 Document 级终态和 Unit 级结果分开对账。FlatMap 是重尾来源：一本 PDF 或一个大仓库可产生数万个 Unit，分片估算要用历史展开率。
 
-### 3.4 Stateful Map 与 Actor
+### 3.8 Stateful Map 与 Actor
 
 模型推理、Tokenizer、语言识别和复杂解析器常需昂贵初始化。用长寿 Actor 在进程内复用模型/Grammar/连接，比每 Task 加载一次高效。Actor 同时引入状态风险：缓存污染、内存增长、随机状态、配置热更新和任务失败后的重建。业务输出必须只依赖明确输入和固定模型，Actor 内部缓存只能优化，不能改变语义。
 
 Actor 池大小由 GPU/CPU 和模型副本决定。一个 Actor 占一 GPU 并用批次推理是常见路径；小模型可多个 Actor 共享 GPU 但会竞争显存与 Kernel；大模型可能跨 GPU 张量并行，这又改变 Stage 调度单位。资源声明必须对应真实占用。
 
-### 3.5 GroupBy 与 Reduce
+### 3.9 GroupBy 与 Reduce
 
 语言/域统计、域名计数、哈希桶去重和质量直方图需要按 Key 聚合。若 Key 分布跨分区，就触发 Shuffle。优先使用可结合的局部聚合：每分区先生成 Count/Sketch/TopK，再跨分区 Merge，减少网络。把所有文档按域名 `groupBy` 成列表容易让热点域 OOM，改用 `reduceByKey` 式累计或有界结构。
 
 聚合函数必须满足并行重排需要的结合性，浮点求和顺序仍可能产生微小差异。需要确定性时使用整数计数、固定精度或稳定归并顺序，并声明成本。
 
-### 3.6 Join
+### 3.10 Join
 
 Source Registry、退出列表、域名评分、去重代表与基准污染清单需要 Join。小维表可广播到 Worker，避免全量 Shuffle；大表按稳定 Key 共分区或使用存储系统索引。广播前验证大小与版本，Driver 收集大表会 OOM。Join 类型决定总账：inner 会丢无匹配记录，left join 能显式保留 Unknown；治理字段通常不应 inner 静默删除。
 
 Join 输入与输出都固定 Manifest/Version。外部在线 KV 查询看似省 Shuffle，却引入服务延迟、限流与运行中值变化；可以使用快照、批量预取或带版本 Decision Token。
 
-### 3.7 Shuffle
+### 3.11 Shuffle
 
 Shuffle 把相同 Key 记录送到相同目标分区，代价包括序列化、网络、磁盘 spill、文件和失败重算。去重、全局排序、随机重排、Join、GroupBy 与 Repartition 都可能触发。设计 DAG 时应把 Shuffle 当显式物理边界，估算输入字节、Key 数、倾斜、目标分区和本地磁盘。
 
 Shuffle 后的元素顺序通常不应假设稳定。需要确定性数据发布时，在目标分区内按稳定 Key 排序，并让 Shard ID 依赖分区函数与输入版本。全局排序成本很高，若训练只需确定性伪随机顺序，可以用哈希 Key 分区并分区内排序。
 
-### 3.8 Barrier 与 Materialization
+### 3.12 Barrier 与 Materialization
 
 物化增加存储成本，但可以缩短故障重算链。
 
