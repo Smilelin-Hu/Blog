@@ -28,13 +28,11 @@
 
 ## 5. 知识串讲
 
-### 核心直觉与基础关系
-
-### 核心直觉：上线的是不可变 Revision + 可回滚 Deployment，而不是一个“模型文件名”
+### 5.1 核心直觉：上线的是不可变 Revision + 可回滚 Deployment，而不是一个“模型文件名”
 
 只有把模型、Speculator、Adapter、量化配置和 Serving 配置都纳入可追踪版本关系，平台才能安全灰度与回滚。
 
-### 3.1 Model Registry
+### 5.2 Model Registry
 
 保存“模型是什么”：
 
@@ -49,7 +47,7 @@ compatibility
 status
 ```
 
-### 3.2 Artifact Store
+### 5.3 Artifact Store
 
 保存“模型文件在哪里”：
 
@@ -60,7 +58,7 @@ local cache
 shared filesystem
 ```
 
-### 3.3 Deployment
+### 5.4 Deployment
 
 保存“模型现在如何运行”：
 
@@ -75,7 +73,7 @@ SLO tier
 
 同一个 model revision 可以有多个 Deployment。
 
-### 为什么 revision 必须不可变
+### 5.5 为什么 revision 必须不可变
 
 最危险的做法：
 
@@ -100,7 +98,7 @@ chat-pro → revision A
 
 升级时切 Alias，不修改旧 Artifact。
 
-### Compatibility Graph
+### 5.6 Compatibility Graph
 
 一个模型并不是孤立文件：
 
@@ -129,7 +127,7 @@ $$RuntimeVersion\ge V_{min}$$
 
 否则 Router/Controller 应拒绝部署，而不是运行到一半才报错。
 
-### Deployment 状态机
+### 5.7 Deployment 状态机
 
 ```text
 REGISTERED
@@ -147,37 +145,35 @@ DRAINING
 STOPPED / RETIRED
 ```
 
-### REGISTERED
+### 5.8 REGISTERED
 
 Registry 元数据存在，但没有资源。
 
-### STAGING
+### 5.9 STAGING
 
 分配节点、准备镜像/权重。
 
-### LOADING
+### 5.10 LOADING
 
 权重正在进入本地/Host/GPU。
 
-### WARMING
+### 5.11 WARMING
 
 Runtime 初始化、必要 Graph/Kernel/Cache 预热。
 
-### READY
+### 5.12 READY
 
 才可以接受生产流量。
 
-### DRAINING
+### 5.13 DRAINING
 
 停止接收新请求，但让已有长请求完成或在 Deadline 后终止。
 
-### Readiness 与 Liveness
-
-### Liveness
+### 5.14 Liveness
 
 进程是否还活着。
 
-### Readiness
+### 5.15 Readiness
 
 是否真的能接请求。
 
@@ -190,7 +186,7 @@ readiness = false
 
 如果 Router 只看进程存活就导流，会让首批用户直接撞到 loading 状态。
 
-### Model Manifest
+### 5.16 Model Manifest
 
 内部 Registry 可以有 Manifest，但对外交付的实验包不需要暴露平台内部 manifest。
 
@@ -215,8 +211,6 @@ compatibility:
 ```
 
 重点是可机读，Control Plane 才能自动验证。
-
-### 发布与回滚
 
 ## 写在最后
 

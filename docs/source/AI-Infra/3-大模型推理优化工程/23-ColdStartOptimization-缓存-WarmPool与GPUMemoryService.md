@@ -28,27 +28,25 @@
 
 ## 5. 知识串讲
 
-### 核心直觉与基础关系
-
-### 核心直觉：Cold Start 是多阶段关键路径，不是一个 load_model() 调用
+### 5.1 核心直觉：Cold Start 是多阶段关键路径，不是一个 load_model() 调用
 
 权重是否在本地、进程是否存在、Runtime 是否初始化、图是否捕获、模型是否真正 Ready，都是不同层级的“热”。
 
-### 3.1 Weight Cache Warm
+### 5.2 Weight Cache Warm
 
 权重已在本地 NVMe，但未加载 GPU。
 
-### 3.2 Process/Runtime Warm
+### 5.3 Process/Runtime Warm
 
 容器、Runtime 进程已启动，可能还没完整模型 Ready。
 
-### 3.3 Serving Warm
+### 5.4 Serving Warm
 
 模型已加载 GPU，已完成必要 warmup，可以立即接请求。
 
 三个层级成本不同。
 
-### Warm Pool
+### 5.5 Warm Pool
 
 准备一组尚未分配给具体流量的 Ready/near-ready 容量：
 
@@ -69,7 +67,7 @@ Production Replica
 
 因此 Warm Pool 大小是经济问题。
 
-### Warm Pool 成本模型
+### 5.6 Warm Pool 成本模型
 
 设每小时 GPU 成本 $C_g$，Warm 实例数 $N_w$：
 
@@ -87,7 +85,7 @@ $$C_{idle}<E[C_{cold}]$$
 
 这不是一个纯性能结论。
 
-### Predictive Prewarm
+### 5.7 Predictive Prewarm
 
 如果流量具有周期性：
 
@@ -107,7 +105,7 @@ $$C_{idle}<E[C_{cold}]$$
 
 预测错误会增加 idle cost，所以需要与突发风险权衡。
 
-### Local Model Cache 与 Warm Pool 配合
+### 5.8 Local Model Cache 与 Warm Pool 配合
 
 最冷：
 
@@ -141,7 +139,7 @@ Local NVMe Cache
 Remote Artifact Store
 ```
 
-### Scale-Down 不应等于“全部清空”
+### 5.9 Scale-Down 不应等于“全部清空”
 
 流量下降时，Replica 可以从 Serving 退到：
 
@@ -159,7 +157,7 @@ READY → DRAIN → STOP GPU process
 - 再回收进程；
 - 最后按磁盘压力淘汰权重。
 
-### Warmup 到底在做什么
+### 5.10 Warmup 到底在做什么
 
 可能包括：
 
@@ -173,7 +171,7 @@ READY → DRAIN → STOP GPU process
 
 Readiness probe 应在这些必要初始化完成后才通过。
 
-### Cold Start SLO
+### 5.11 Cold Start SLO
 
 可以单独定义：
 
@@ -186,7 +184,7 @@ P99 model cache hit startup < 15s
 
 Startup SLO 会直接影响 Autoscaler 需要提前多少时间做决策。
 
-### Cold Start
+### 5.12 Cold Start
 
 Cold Start 在 Cold Start Optimization：缓存、Warm Pool 与 GPU Memory Service 中的生命周期需要落到组件接口：输入从哪里来，状态由谁持有，输出交给谁，失败如何传播。它与 Local Model Cache 之间的身份和版本若未绑定，请求时间线就可能混入旧配置。
 
@@ -198,7 +196,7 @@ Cold Start 的边际价值会随输入长度、输出长度、并发、流量突
 
 为 Cold Start 建立证据链时，统一保存请求 ID、模型及策略修订、关键时间点、资源快照和错误。首请求延迟的定义随报告存档，包括单位、窗口和分母。这样才能按同一条件重放“如何分层缩短下载、CPU 读取、GPU 装载和首请求预热时间？”。
 
-### Local Model Cache
+### 5.13 Local Model Cache
 
 对 Local Model Cache 做边界检查，要覆盖输入、输出、状态归属和销毁时点。Cold Start Optimization：缓存、Warm Pool 与 GPU Memory Service 的等待、计算及复制都能沿这些节点定位。Local Model Cache 传给 Warm Pool 的数据还应附带模型或策略版本，使测量结果可以对应到唯一配置。
 
@@ -210,7 +208,7 @@ Local Model Cache 的资源账要拆成计算、显存、内存带宽、主机�
 
 Local Model Cache 相关事件要能关联到稳定请求身份、模型与策略版本、开始结束时间、阶段耗时、资源采样和失败原因。预热时间必须附带口径。缺少这些信息时，关于“如何分层缩短下载、CPU 读取、GPU 装载和首请求预热时间？”的判断无法在上线后复核。
 
-### Warm Pool
+### 5.14 Warm Pool
 
 在 Cold Start Optimization：缓存、Warm Pool 与 GPU Memory Service 中，Warm Pool 的边界由输入、输出、状态和拥有者共同确定。把生命周期写清楚，才能定位请求在哪个阶段等待、计算或复制。Warm Pool 连接 GPU Memory Service 时还要传播身份和版本，避免把另一套配置的结果归到当前实验。
 
@@ -222,7 +220,7 @@ Warm Pool 进入候选路径后，输出校验继续检查 Token、采样、结�
 
 观察 Warm Pool 需要稳定请求身份、模型与策略修订、起止时间、阶段耗时、资源快照和失败原因。容量到达时间同时注明单位、窗口和分母。这些字段使“如何分层缩短下载、CPU 读取、GPU 装载和首请求预热时间？”可以在发布后按原条件回放。
 
-### GPU Memory Service
+### 5.15 GPU Memory Service
 
 解释 GPU Memory Service 时，先列出它接收什么、产生什么、由谁维护以及状态何时结束。Cold Start Optimization：缓存、Warm Pool 与 GPU Memory Service 的请求可能在这些交界处增加等待、计算或复制。与 Engine Initialization 交互的字段必须携带版本身份，便于回放时找到同一配置。
 
@@ -234,7 +232,7 @@ GPU Memory Service 带来的速度变化仍需满足模型输出合同，包括 
 
 GPU Memory Service 的观测记录包含请求身份、模型版本、策略版本、阶段时间、资源状态与失败原因。暖池单位成本没有单位、统计窗口和分母时不参与决策。完整记录用于复查“如何分层缩短下载、CPU 读取、GPU 装载和首请求预热时间？”在具体负载下是否成立。
 
-### Engine Initialization
+### 5.16 Engine Initialization
 
 Engine Initialization 在 Cold Start Optimization：缓存、Warm Pool 与 GPU Memory Service 中的生命周期需要落到组件接口：输入从哪里来，状态由谁持有，输出交给谁，失败如何传播。它与 CUDA Graph 之间的身份和版本若未绑定，请求时间线就可能混入旧配置。
 
@@ -246,7 +244,7 @@ Engine Initialization 的边际价值会随输入长度、输出长度、并发�
 
 为 Engine Initialization 建立证据链时，统一保存请求 ID、模型及策略修订、关键时间点、资源快照和错误。冷启动总时长的定义随报告存档，包括单位、窗口和分母。这样才能按同一条件重放“如何分层缩短下载、CPU 读取、GPU 装载和首请求预热时间？”。
 
-### CUDA Graph
+### 5.17 CUDA Graph
 
 对 CUDA Graph 做边界检查，要覆盖输入、输出、状态归属和销毁时点。Cold Start Optimization：缓存、Warm Pool 与 GPU Memory Service 的等待、计算及复制都能沿这些节点定位。CUDA Graph 传给首请求预热的数据还应附带模型或策略版本，使测量结果可以对应到唯一配置。
 
@@ -258,7 +256,7 @@ CUDA Graph 的资源账要拆成计算、显存、内存带宽、主机开销和
 
 CUDA Graph 相关事件要能关联到稳定请求身份、模型与策略版本、开始结束时间、阶段耗时、资源采样和失败原因。各阶段时长必须附带口径。缺少这些信息时，关于“如何分层缩短下载、CPU 读取、GPU 装载和首请求预热时间？”的判断无法在上线后复核。
 
-### 首请求预热
+### 5.18 首请求预热
 
 在 Cold Start Optimization：缓存、Warm Pool 与 GPU Memory Service 中，首请求预热的边界由输入、输出、状态和拥有者共同确定。把生命周期写清楚，才能定位请求在哪个阶段等待、计算或复制。首请求预热连接容量到达时还要传播身份和版本，避免把另一套配置的结果归到当前实验。
 

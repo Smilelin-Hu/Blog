@@ -30,7 +30,7 @@
 
 - guardrail 独立服务/sidecar，小模型 CPU/GPU 混部，与 prefill 并行跑，延迟预算几十 ms 级；批量与缓存摊薄成本。
 - 误报处置：白名单、申诉通道、灰度放量；red team 对抗回归集持续更新，攻击集与 benign 集双门禁。
-- 纵深清单：guardrail + 权限分离 + 运行时隔离（主题四 28 篇第 6 节）+ 审计留存（28 篇第 8 节）。「guardrails alone are not enough」是 2025–2026 生产文献的一致结论。
+- 纵深清单：guardrail + 权限分离 + 运行时隔离（主题四 28 篇第 6 节）+ 审计留存（主题四 28 篇第 8 节）。「guardrails alone are not enough」是 2025–2026 生产文献的一致结论。
 
 ## 5. 验收
 

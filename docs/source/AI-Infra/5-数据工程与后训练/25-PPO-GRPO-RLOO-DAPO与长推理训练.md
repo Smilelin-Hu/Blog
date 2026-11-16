@@ -22,9 +22,7 @@
 
 算法仿真验证目标和采样语义，目标模型上的稳定性仍需真实 GPU、多种子和任务评测。
 
-### 3.1 业务背景与失败模式
-
-### 1.1 从一个可验证数学题开始
+### 3.1 从一个可验证数学题开始
 
 给定题目“某个数加七等于十九，这个数是多少”，策略模型生成八条不同推理。有些答案是十二，有些计算错，有些最终答案对但过程含无效文字，还有一条利用 Verifier 解析漏洞把多个数字都输出。系统最终得到每条响应的 Reward。
 
@@ -32,7 +30,7 @@
 
 策略梯度要回答：哪些已生成 Token 应提高概率，哪些应降低；提高多少；相对于生成它们的旧策略改变是否过大；同 Prompt 难度不同怎样归一；长短响应怎样公平；采样和训练不是同一引擎时概率是否可信。
 
-### 1.2 为什么长推理比单步分类困难
+### 3.2 为什么长推理比单步分类困难
 
 奖励通常只在序列结束后获得，而动作是每一个 Token。将同一个结果 Reward 广播到所有 Token 是一种 Credit Assignment 近似：无法区分关键推理与无关铺垫。过程 Verifier 可以提供密集信号，但构建和防黑客更难。
 
@@ -40,15 +38,13 @@
 
 长响应还放大计算与内存。需要保存 Input、Response、Old Logprob、Reference Logprob、Reward、Advantage 和 Mask；若 PPO 使用 Critic 还要 Value 与 Return。一次 Rollout 可能被多个 Mini-batch 重复训练，数据年龄和 Policy Version 必须追踪。
 
-### 1.3 本文的证据边界
+### 3.3 本文的证据边界
 
 数学部分推导目标与估计器；机制实验用小张量验证优势、Clip、KL、Mask 与长度聚合；真实硬件实验在本地 0.5B 到 1.5B 模型上跑短步可验证数学 GRPO 或等价教学路径，验证 CUDA、显存、Rollout 与更新数据流。
 
 至少一张可用 CUDA GPU 不能证明大型集群吞吐，也不能用几十步宣称获得复杂推理能力。没有本地模型、CUDA 或依赖时输出 `skipped`。所有性能与 Reward 数字由运行产生，不预填。
 
-### 3.2 学习目标与能力清单
-
-### 2.1 策略梯度到底在优化什么
+### 3.4 策略梯度到底在优化什么
 
 策略 $\pi_\theta(a_t\mid s_t)$ 在状态 $s_t$ 选择动作 $a_t$。语言模型里状态是 Prompt 与已生成前缀，动作是下一个 Token。目标是最大化期望累计回报：
 
@@ -60,7 +56,7 @@ $$\nabla_\theta J(\theta)=\mathbb{E}\left[\sum_t \nabla_\theta\log\pi_\theta(a_t
 
 当 $G_t\gt 0$ 时，提高已采取动作概率；为负则降低。语言模型不会对所有可能响应求和，而从策略采样轨迹估计期望，因此样本方差和策略匹配成为核心。
 
-### 2.2 为什么要减 Baseline
+### 3.5 为什么要减 Baseline
 
 从 Return 减去只依赖状态、不依赖当前动作的 Baseline，不改变期望梯度，却可降低方差。优势函数：
 
@@ -70,7 +66,7 @@ $$A_t=Q(s_t,a_t)-V(s_t)$$
 
 绝对 Reward 1 分在简单题可能低于平均，在困难题可能是最佳。按 Prompt 相对比较能消除部分题目难度尺度。但如果组内全部 Reward 相同，优势为零，没有更新信号。
 
-### 2.3 为什么 Reward 不能直接跨任务比较
+### 3.6 为什么 Reward 不能直接跨任务比较
 
 数学 Verifier 输出 0 或 1，代码任务可能按测试通过比例，开放回答 Judge 给 1 到 10，安全任务有惩罚。直接混合会让尺度大任务主导。Reward Recipe 需要分量、归一、权重和版本。
 
@@ -78,7 +74,7 @@ $$A_t=Q(s_t,a_t)-V(s_t)$$
 
 训练记录原始分量、组合 Reward 与用于优势的标准化值。只保存最终 Advantage 无法排查 Verifier 或归一变化。
 
-### 2.4 Monte Carlo Return 与 Token Credit
+### 3.7 Monte Carlo Return 与 Token Credit
 
 结果监督把序列最终 Reward 作为每个 Response Token 的 Return。所有 Token 共享一个优势，区别只来自各 Token Logprob 与 Clip。实现简单、适合可验证最终答案，但无法指出哪步导致成功。
 
@@ -86,33 +82,31 @@ $$A_t=Q(s_t,a_t)-V(s_t)$$
 
 Prompt Token 通常 Mask，不参与策略 Loss；Response 有效 Token 参与。工具轨迹还要决定 Observation 与环境 Token 是否是策略动作。只有模型生成的 Action Token 应进入 Policy Gradient。
 
-### 3.3 实验准备与责任边界
-
-### 3.1 Actor Model
+### 3.8 Actor Model
 
 Actor 是正在优化的策略。它生成 Rollout，也在训练端计算 Current Logprob。同步系统中生成后立即更新；异步系统中 Rollout 可能由旧 Policy Version 产生，Experience 必须携带 Old Logprob 和版本。
 
 Actor 既承担生成又承担反向，显存与并行需求不同。生成重 KV Cache 和吞吐，训练重激活、梯度与优化器。实际系统常用两套 Runtime 共享权重，这会引入训推不一致与同步成本。
 
-### 3.2 Reference Model
+### 3.9 Reference Model
 
 Reference 通常是 SFT 初始策略的冻结副本，用于 KL 约束，防止 Actor 为追逐 Reward 过度偏离可读、通用和安全行为。每个 Response Token 计算 Reference Logprob。
 
 Reference 不需要梯度，但仍占权重与前向计算。可以与 Actor 共置、量化、参数共享或离线缓存 Logprob；任何优化都要保证概率语义。Reference Version 固定在 Run Recipe，不能中途静默更换。
 
-### 3.3 Critic Model
+### 3.10 Critic Model
 
 Critic 估计每个状态的 Value，为 PPO 提供优势和 Return。它可以与 Actor 共享骨干加 Value Head，也可以独立模型。共享省权重但梯度相互影响，独立更灵活但资源昂贵。
 
 长文本 Critic 需要为每个 Token 输出 Value，激活和训练成本显著。Value 误差会增加优势噪声；还要处理 Bootstrap、终止、Padding 与 GAE。GRPO 去掉 Critic 正是大模型 RL 系统简化的重要动机。
 
-### 3.4 Reward Model 或 Verifier
+### 3.11 Reward Model 或 Verifier
 
 Reward Model 把 Prompt 与 Response 映射成偏好分数；Verifier 可执行检查答案、代码或环境状态。PPO 算法只需要数值 Reward，但工程可信度依赖信号来源。
 
 模型 Reward 适合开放质量，可能被长度、风格和分布外响应欺骗；规则 Verifier 可重复，可能有解析漏洞。组合时保存每个分量、状态、超时和版本。基础设施错误不应默认记为答案错误。
 
-### 3.5 四类模型怎样形成数据流
+### 3.12 四类模型怎样形成数据流
 
 Actor 生成 Response 与 Old Logprob；Reward 组件计算序列或步骤 Reward；Reference 计算参考 Logprob；Critic 计算 Value；Experience Builder 结合 Mask、KL、Reward 与 GAE 产生 Advantage 和 Return；Trainer 分 Mini-batch 多 Epoch 更新 Actor 与 Critic。
 

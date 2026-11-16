@@ -24,21 +24,19 @@ Rollout、Reward 与 Trainer 分别维护自己的队列和版本。一次重试
 
 本文控制面模拟验证状态语义，实际框架的网络、存储和调度行为需要目标集群复测。
 
-### 3.1 业务背景与失败模式
-
-### 1.1 单进程隐含了哪些保证
+### 3.1 单进程隐含了哪些保证
 
 在一个 Python 进程中，程序先调用 `generate`，再计算 Reward，然后立刻使用同一份模型参数优化。调用栈天然提供顺序：生成完成前不会训练，训练前 Reward 已经存在，当前 Batch 不会被别的 Worker 重复消费，模型变量只有一份。即使代码没有显式写版本，这些保证也暂时由进程内存和串行控制流提供。
 
 扩展到多个角色以后，每个保证都要被设计出来。Rollout Worker 可能复制了旧权重；Reward Worker 的环境调用时延差异很大；Trainer 在消费队列时模型已经前进；Reference Server 可能仍加载上一版 Adapter；控制器在超时后重发任务，原任务却稍后成功返回。若系统只保留响应文本和一个 Reward，后续无法判断它是否仍适合更新。
 
-### 1.2 为什么“消息到了”不等于“数据可训练”
+### 3.2 为什么“消息到了”不等于“数据可训练”
 
 一条响应到达队列，只证明某个 Worker 产生了字节。它还需要通过完整性、版本、组一致性、奖励状态、Token 对齐和新鲜度门禁。对于 GRPO，一组八条响应只到七条时，组均值和标准差就改变；对于 PPO，缺少 Old Logprob 或 Value 会让目标函数无法还原；对于 Agent 轨迹，环境状态缺失会让 Reward 无法审计。
 
 因此队列中的对象应当是状态化的 Trajectory 或 Experience，而不是裸字符串。对象要携带生成策略版本、Tokenizer、Template、Sampling Config、Prompt 与 Group ID、Token、Mask、Old Logprob、终止原因、Reward 证据以及内容哈希。只有满足算法合同后，它才从“生成结果”转变为“可训练数据”。
 
-### 1.3 为什么吞吐最大化可能损害学习
+### 3.3 为什么吞吐最大化可能损害学习
 
 让 Rollout 不停生成、Trainer 不停消费，表面上能提高 GPU 利用率，却会积累 Policy Lag。假设响应由版本 $v$ 生成，训练器当前版本为 $u$，定义版本滞后：
 
@@ -50,41 +48,37 @@ $$L_{\mathrm{kl}}=\frac{1}{N}\sum_t D_{\mathrm{KL}}\left(\pi_v(\cdot\mid s_t)\,\
 
 当积压增大，Experience 越来越离策略，Ratio 方差、Clip Fraction 和样本浪费都会上升。控制面的目标不是让单个组件永远满载，而是在学习质量、吞吐、显存和故障恢复之间找到可解释的工作点。
 
-### 3.2 学习目标与能力清单
-
-### 2.1 五类核心角色
+### 3.4 五类核心角色
 
 典型后训练系统包含 Policy Trainer、Rollout Engine、Reward 或 Verifier、Reference Model，以及可选的 Critic。PPO 需要 Critic 产生 Value；GRPO 与 RLOO 通常用组内统计替代 Critic；RLVR 依赖可执行 Verifier；开放式任务可能使用 Reward Model 或 Judge。角色不同，数据合同随之变化。
 
 控制器不承担大张量计算，却负责创建任务、放置角色、分配 Prompt、聚合 Group、触发权重发布、决定更新和处理故障。Checkpoint Manager、Artifact Store、Metric Collector 和数据目录则形成支撑服务。把这些服务省略在图外，会让恢复与审计看起来无成本。
 
-### 2.2 三条不能混画的流
+### 3.5 三条不能混画的流
 
 数据流承载 Prompt、Response、Token、Logprob、Reward、Advantage 与 Batch；版本流承载 Policy、Reference、Reward、Tokenizer、Template、Runtime 与 Environment 的不可变标识；控制流承载启动、心跳、背压、同步、暂停、提交、取消和恢复。三条流可能经过相同进程，但语义不同。
 
 图中 `Policy Bundle` 不是一串临时参数，而是模型或 Adapter 制品、版本、哈希、Tokenizer、Template 和生成兼容信息的集合。`Checkpoint / 账本` 也不仅保存模型，它还保存消费游标、已提交 Experience、采样器状态和控制器状态。
 
-### 2.3 一条 Experience 的生命线
+### 3.6 一条 Experience 的生命线
 
 Prompt 先由 Sampler 选择并获得 `prompt_id`、`group_id` 和目标 Policy Version。Rollout 为每个 Group Member 生成响应，记录 Token、Old Logprob、Stop Reason 和运行证据。Reward 阶段解析输出、调用环境或模型，形成分量化结果。Group Aggregator 在成员齐全或明确超时策略后计算优势。Trainer 通过版本与完整性门禁，组装 Batch、反向传播并提交更新。
 
 这条生命线必须允许查询。给定 `experience_id`，系统能定位每个阶段的输入、输出、状态、时间、重试次数和制品版本；给定一个 Checkpoint，又能反查哪些 Experience 被提交。没有双向血缘，分布式系统只能给出“某个任务失败”，无法解释影响范围。
 
-### 3.3 实验准备与责任边界
-
-### 3.1 数据面追求大吞吐
+### 3.7 数据面追求大吞吐
 
 数据面包含批量 Prompt、KV Cache、Token 序列、Logprob、Reward Tensor 与梯度。它关注批处理、序列长度、Pinned Memory、序列化、网络带宽和 GPU 利用率。大对象应尽量走共享内存、对象存储或张量通信，避免通过中心控制器复制。
 
 如果每条响应都先回到 Controller 的 Python 堆，再转发给 Reward 和 Trainer，控制器会成为序列化与内存瓶颈。合理设计是 Controller 只传 Object Reference 与元数据，让 Worker 直接读取对象；大规模环境下可用分布式对象存储、流系统或专用 Transfer Engine。
 
-### 3.2 控制面追求确定语义
+### 3.8 控制面追求确定语义
 
 控制面消息很小，却决定系统是否正确。它包含 Job ID、Role、Lease、Policy Version、Group Deadline、Queue Watermark、Checkpoint Barrier 和 Commit ID。控制消息要幂等、可重试、带时钟与状态机，并能区分期望状态与观察状态。
 
 控制器不能因为一次 RPC 超时就认定 Worker 没执行。它应给任务分配唯一 ID 和租约，Worker 完成后按 ID 提交；重复提交由账本去重。取消也不是删除消息，而是写入期望状态，Worker 在安全点响应。否则“超时重试”会演化成重复生成与重复更新。
 
-### 3.3 证据面让结果可以追溯
+### 3.9 证据面让结果可以追溯
 
 证据面保存 Manifest、日志、指标、事件、内容哈希、固定回放与审计记录。它不位于训练热路径的每个字节上，但必须覆盖所有语义转折：哪版 Policy 生成、哪版 Reward 评分、哪次更新消费、哪次故障恢复重放。
 

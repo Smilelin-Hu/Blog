@@ -2,6 +2,8 @@
 
 以「平台即产品」为主线的 AI 基础设施工程笔记：从平台判断框架与用户旅程，到 Kubernetes 与 GPU 资源抽象、调度与队列、训练与推理工作负载 API、模型交付与供应链、可观测与 SRE、安全与 FinOps、多集群自助门户，最后以六个综合项目收口。
 
+> 内容整理自开源书稿 [深入理解 AI Infra：量化分析与系统设计](https://github.com/bojieli/ai-infra-book)，作为参考笔记。
+
 ## 目录
 
 ### 导览与平台产品
@@ -18,6 +20,7 @@
 - [06 GPU 资源抽象：Device Plugin、CDI、DRA 与设备健康](/source/AI-Infra/4-AI平台工程/06-GPU资源抽象-DevicePlugin-CDI-DRA与设备健康)
 - [07 GPU 分区、共享与多租户隔离](/source/AI-Infra/4-AI平台工程/07-GPU分区-共享与多租户隔离)
 - [08 AI 集群高性能网络与拓扑](/source/AI-Infra/4-AI平台工程/08-AI集群高性能网络与拓扑)
+- [39 数据中心网络远程访问与拥塞可靠性](/source/AI-Infra/4-AI平台工程/39-数据中心网络远程访问与拥塞可靠性)
 - [09 AI 数据与模型制品的存储和分发](/source/AI-Infra/4-AI平台工程/09-AI数据与模型制品的存储和分发)
 - [38 平台基础设施即代码：Terraform、Crossplane 与环境一致性](/source/AI-Infra/4-AI平台工程/38-平台基础设施即代码-Terraform-Crossplane-环境一致性)
 
@@ -30,6 +33,7 @@
 - [14 拓扑感知调度、ResourceFlavor 与 DRA](/source/AI-Infra/4-AI平台工程/14-拓扑感知调度-ResourceFlavor与DRA)
 - [15 弹性容量、Spot、节点自动扩缩与中断治理](/source/AI-Infra/4-AI平台工程/15-弹性容量-Spot-节点自动扩缩与中断治理)
 - [16 Slurm GPU 集群与 Kubernetes 的边界和协同](/source/AI-Infra/4-AI平台工程/16-SlurmGPU集群与Kubernetes的边界和协同)
+- [40 Agent 任务运行环境与资源调度](/source/AI-Infra/4-AI平台工程/40-Agent任务运行环境与资源调度)
 
 ### AI 工作负载与 ML 生命周期
 

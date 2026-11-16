@@ -28,37 +28,35 @@ Prefix、Session 与 KV-Locality Routing 没有脱离环境的统一加速数字
 
 ## 5. 知识串讲
 
-### 核心直觉与基础关系
-
-### 核心直觉：少做一次昂贵加载/重算，有时比去最空的 Replica 更值
+### 5.1 核心直觉：少做一次昂贵加载/重算，有时比去最空的 Replica 更值
 
 Locality Routing 的本质不是“粘住请求”，而是在排队成本与状态复用收益之间动态比较。
 
-### 3.1 Prefix Locality
+### 5.2 Prefix Locality
 
 Replica A 已缓存某个长 system prompt 的 prefix state。
 
 同类请求送 A 可以减少重复 Prefill。
 
-### 3.2 Session Locality
+### 5.3 Session Locality
 
 多轮对话历史状态在 Replica B。
 
 下一轮继续送 B，可能复用已有状态。
 
-### 3.3 Adapter Locality
+### 5.4 Adapter Locality
 
 LoRA X 已加载在 Replica C。
 
 送 C 可以避免动态加载。
 
-### 3.4 Model Locality
+### 5.5 Model Locality
 
 冷门 Model Y 只驻留在 Replica D。
 
 请求 Y 最好直接路由 D，而不是随机发到别处后再加载。
 
-### Locality 与 Load 的冲突
+### 5.6 Locality 与 Load 的冲突
 
 假设：
 
@@ -83,7 +81,7 @@ $$i^*=\arg\min_i Score_i$$
 
 Locality 只是一项成本，不应凌驾于所有负载信息之上。
 
-### Cache Affinity 不是 Sticky Forever
+### 5.7 Cache Affinity 不是 Sticky Forever
 
 “同一 Session 永远固定一个 Replica”实现简单，但会出现：
 
@@ -99,7 +97,7 @@ Locality 只是一项成本，不应凌驾于所有负载信息之上。
 但负载差距超过阈值时允许迁移
 ```
 
-### Locality Metadata
+### 5.8 Locality Metadata
 
 Router 可能维护：
 
@@ -125,7 +123,7 @@ capacity/load
 
 目标是：用有限元数据获得足够好的 routing signal。
 
-### 一致性：Router 看到的状态可能已经失效
+### 5.9 一致性：Router 看到的状态可能已经失效
 
 例如：
 
@@ -142,7 +140,7 @@ locality metadata 必须设计成“提示”，而不是正确性前提。
 
 真正的 Cache 命中仍由 Replica 本地确认。
 
-### 多租户安全
+### 5.10 多租户安全
 
 - 不允许通过 route decision 泄漏别的租户是否存在某个 prefix；
 - 不能跨安全域共享 session affinity；
@@ -150,7 +148,7 @@ locality metadata 必须设计成“提示”，而不是正确性前提。
 
 性能信息也可能形成侧信道，所以平台接口不应返回过细的其他租户缓存状态。
 
-### Adapter/Model Locality 与缓存有什么不同
+### 5.11 Adapter/Model Locality 与缓存有什么不同
 
 Prefix locality 是“可重算状态”；Adapter/Model locality 是“Artifact 已驻留”。
 
@@ -164,7 +162,7 @@ $$Cost_{model-miss}\approx ModelLoad/ColdStart$$
 
 Model miss 可能远大于 Prefix miss，因此多模型环境里 Residency 通常拥有更高路由权重。
 
-### Smart Router 模拟器扩展
+### 5.12 Smart Router 模拟器扩展
 
 在 Smart Router 模拟器中加入：
 
@@ -182,7 +180,7 @@ Model miss 可能远大于 Prefix miss，因此多模型环境里 Residency 通�
 
 观察 P99 和 load imbalance。
 
-### Prefix Cache
+### 5.13 Prefix Cache
 
 解释 Prefix Cache 时，先列出它接收什么、产生什么、由谁维护以及状态何时结束。Prefix、Session 与 KV-Locality Routing 的请求可能在这些交界处增加等待、计算或复制。与 Session Affinity 交互的字段必须携带版本身份，便于回放时找到同一配置。
 
@@ -194,7 +192,7 @@ Prefix Cache 带来的速度变化仍需满足模型输出合同，包括 Token 
 
 Prefix Cache 的观测记录包含请求身份、模型版本、策略版本、阶段时间、资源状态与失败原因。副本队列没有单位、统计窗口和分母时不参与决策。完整记录用于复查“如何在缓存命中与副本负载之间求解跨副本路由决策？”在具体负载下是否成立。
 
-### Session Affinity
+### 5.14 Session Affinity
 
 Session Affinity 在 Prefix、Session 与 KV-Locality Routing 中的生命周期需要落到组件接口：输入从哪里来，状态由谁持有，输出交给谁，失败如何传播。它与 KV Locality 之间的身份和版本若未绑定，请求时间线就可能混入旧配置。
 
@@ -206,7 +204,7 @@ Session Affinity 的边际价值会随输入长度、输出长度、并发、流
 
 为 Session Affinity 建立证据链时，统一保存请求 ID、模型及策略修订、关键时间点、资源快照和错误。热点分流率的定义随报告存档，包括单位、窗口和分母。这样才能按同一条件重放“如何在缓存命中与副本负载之间求解跨副本路由决策？”。
 
-### KV Locality
+### 5.15 KV Locality
 
 对 KV Locality 做边界检查，要覆盖输入、输出、状态归属和销毁时点。Prefix、Session 与 KV-Locality Routing 的等待、计算及复制都能沿这些节点定位。KV Locality 传给可复用 Token 的数据还应附带模型或策略版本，使测量结果可以对应到唯一配置。
 
@@ -218,7 +216,7 @@ KV Locality 的资源账要拆成计算、显存、内存带宽、主机开销�
 
 KV Locality 相关事件要能关联到稳定请求身份、模型与策略版本、开始结束时间、阶段耗时、资源采样和失败原因。驱逐率必须附带口径。缺少这些信息时，关于“如何在缓存命中与副本负载之间求解跨副本路由决策？”的判断无法在上线后复核。
 
-### 可复用 Token
+### 5.16 可复用 Token
 
 在 Prefix、Session 与 KV-Locality Routing 中，可复用 Token 的边界由输入、输出、状态和拥有者共同确定。把生命周期写清楚，才能定位请求在哪个阶段等待、计算或复制。可复用 Token 连接缓存目录时还要传播身份和版本，避免把另一套配置的结果归到当前实验。
 
@@ -230,7 +228,7 @@ KV Locality 相关事件要能关联到稳定请求身份、模型与策略版�
 
 观察可复用 Token 需要稳定请求身份、模型与策略修订、起止时间、阶段耗时、资源快照和失败原因。TTFT 同时注明单位、窗口和分母。这些字段使“如何在缓存命中与副本负载之间求解跨副本路由决策？”可以在发布后按原条件回放。
 
-### 缓存目录
+### 5.17 缓存目录
 
 解释缓存目录时，先列出它接收什么、产生什么、由谁维护以及状态何时结束。Prefix、Session 与 KV-Locality Routing 的请求可能在这些交界处增加等待、计算或复制。与负载惩罚交互的字段必须携带版本身份，便于回放时找到同一配置。
 
@@ -242,7 +240,7 @@ KV Locality 相关事件要能关联到稳定请求身份、模型与策略版�
 
 缓存目录的观测记录包含请求身份、模型版本、策略版本、阶段时间、资源状态与失败原因。可复用 Token 没有单位、统计窗口和分母时不参与决策。完整记录用于复查“如何在缓存命中与副本负载之间求解跨副本路由决策？”在具体负载下是否成立。
 
-### 负载惩罚
+### 5.18 负载惩罚
 
 负载惩罚在 Prefix、Session 与 KV-Locality Routing 中的生命周期需要落到组件接口：输入从哪里来，状态由谁持有，输出交给谁，失败如何传播。它与模型修订之间的身份和版本若未绑定，请求时间线就可能混入旧配置。
 
@@ -254,7 +252,7 @@ KV Locality 相关事件要能关联到稳定请求身份、模型与策略版�
 
 为负载惩罚建立证据链时，统一保存请求 ID、模型及策略修订、关键时间点、资源快照和错误。Prefill 节省的定义随报告存档，包括单位、窗口和分母。这样才能按同一条件重放“如何在缓存命中与副本负载之间求解跨副本路由决策？”。
 
-### 模型修订
+### 5.19 模型修订
 
 对模型修订做边界检查，要覆盖输入、输出、状态归属和销毁时点。Prefix、Session 与 KV-Locality Routing 的等待、计算及复制都能沿这些节点定位。模型修订传给缓存驱逐的数据还应附带模型或策略版本，使测量结果可以对应到唯一配置。
 
@@ -266,7 +264,7 @@ KV Locality 相关事件要能关联到稳定请求身份、模型与策略版�
 
 模型修订相关事件要能关联到稳定请求身份、模型与策略版本、开始结束时间、阶段耗时、资源采样和失败原因。缓存命中率必须附带口径。缺少这些信息时，关于“如何在缓存命中与副本负载之间求解跨副本路由决策？”的判断无法在上线后复核。
 
-### 缓存驱逐
+### 5.20 缓存驱逐
 
 在 Prefix、Session 与 KV-Locality Routing 中，缓存驱逐的边界由输入、输出、状态和拥有者共同确定。把生命周期写清楚，才能定位请求在哪个阶段等待、计算或复制。缓存驱逐连接 Prefix Cache 时还要传播身份和版本，避免把另一套配置的结果归到当前实验。
 
