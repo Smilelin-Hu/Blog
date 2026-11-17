@@ -11,6 +11,8 @@ RLHF/RLVR 的核心工程矛盾是 rollout（推理引擎）与 train（训练�
 
 两种形态没有绝对优劣：GPU 紧张、模型中等规模 → colocate 省卡；超大规模、rollout 占比高（Agentic RL 长轨迹）→ disaggregate 弹性好。
 
+![后训练架构分野：colocate 分时 vs disaggregate 分离](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y5_l40_01.png)
+
 ## 2. 四框架对照
 
 | 维度 | TRL | OpenRLHF | veRL | NeMo-Aligner |
