@@ -120,13 +120,7 @@ $$TotalData=10TB$$
 
 节点本地 NVMe 保存常用模型：
 
-```text
-Object Storage
-      ↓ 首次
-Node NVMe Cache
-      ↓ 多次
-GPU Replica
-```
+![ai3-22-L123](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l22_02.png)
 
 之后扩容：
 
@@ -181,11 +175,7 @@ warmup
 
 有些步骤可以流水化：
 
-```text
-下载 shard2
-同时
-加载 shard1 到 Host/GPU
-```
+![权重加载流水线：下载与加载重叠](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l22_03.png)
 
 理想启动时间接近最慢流水阶段，而不是所有阶段简单相加。
 

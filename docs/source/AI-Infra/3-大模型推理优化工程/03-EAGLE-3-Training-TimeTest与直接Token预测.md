@@ -82,10 +82,7 @@ Offline 特征体积可以按 $N_{token}\times m\times d_{model}\times B_{dtype}
 
 如果训练只看 ground-truth prefix，就会出现 exposure mismatch：
 
-```text
-训练：永远从正确前缀继续
-上线：经常从自己猜出的前缀继续
-```
+![Exposure Bias：训练喂正确前缀，上线喂自猜前缀](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l03_02.png)
 
 ### 5.2 训练期递归状态
 

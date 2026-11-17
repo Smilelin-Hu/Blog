@@ -16,13 +16,7 @@
 
 如果目标模型内部已经有未来 Token 预测模块：
 
-```text
-Target hidden state h_t
-   ├─ main LM head → x_{t+1}
-   ├─ MTP head 1  → x_{t+2}
-   ├─ MTP head 2  → x_{t+3}
-   └─ MTP head k  → x_{t+k+1}
-```
+![Target hidden 复用：主 head 与 MTP head 各预测一位](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l05_03.png)
 
 优势是：
 
@@ -65,12 +59,7 @@ $$a_k=P(\text{head }k\text{ survives prefix verification})$$
 
 在线上不应默认全部开启，而应根据真实数据扫描。一组示例读数如下（示意口径，非本机实测）：
 
-```text
-Depth 1 → accepted 1.8 / round
-Depth 2 → accepted 2.5 / round
-Depth 4 → accepted 3.0 / round
-Depth 8 → accepted 3.1 / round，但 verify cost 明显上升
-```
+![ai3-05-L68](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l05_02.png)
 
 最优点由实际性能决定，而不是由 head 数量决定。
 

@@ -18,25 +18,7 @@
 
 新一代 Speculation 的演化主线：
 
-```text
-减少 Target 串行轮数
-      ↓
-AR Drafter 自己成为瓶颈
-      ↓
-更强 EAGLE / MTP
-      ↓
-Parallel Drafting
-      ↓
-Block Diffusion DFlash
-      ↓
-更强 conditioning / DFlare
-      ↓
-Diffusion Draft Tree
-      ↓
-Confidence / Load-aware 动态验证
-      ↓
-Speculator Policy 成为 Serving 系统组件
-```
+![ai3-10-L21](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l10_01.png)
 
 这条主线比背算法名称更重要：每一步都在把「更多决策」从 checkpoint 移到运行时，而最后一步要求这些决策具备制品身份、评测证据与回滚路径。
 
@@ -401,17 +383,7 @@ $$DriftScore=\sum_d w_d^{base}\cdot\frac{E[A]_d^{now}-E[A]_d^{base}}{E[A]_d^{bas
 
 上线新 Speculator 不需要直接 100%：
 
-```text
-5% traffic
-  ↓
-检查正确性 / P99 / acceptance / GPU cost
-  ↓
-25%
-  ↓
-50%
-  ↓
-100%
-```
+![ai3-10-L404](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l10_02.png)
 
 Rollback 条件可以是：accepted length 低于基线；TPOT 恶化；verifier waste 超阈值；error/correctness 异常；显存抬高导致稳定并发下降。
 

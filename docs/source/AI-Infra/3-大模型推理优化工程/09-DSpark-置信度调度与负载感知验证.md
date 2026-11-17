@@ -16,29 +16,15 @@
 
 纯 parallel 草拟：
 
-```text
-Heavy Backbone
-    ↓
-一次得到多个未来位置
-```
+![ai3-09-L19](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l09_02.png)
 
 完整 AR 草拟：
 
-```text
-Heavy Model → t1
-Heavy Model → t2
-Heavy Model → t3
-```
+![ai3-09-L27](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l09_03.png)
 
 Semi-AR 可以理解为两者的折中：
 
-```text
-Heavy Parallel Backbone 只跑一次
-          ↓
-轻量 Sequential Module 在 block 内建依赖
-          ↓
-更稳定的 t1,t2,t3,... 候选
-```
+![ai3-09-L35](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l09_04.png)
 
 如果轻量 sequential 部分的成本远小于重新运行完整 Drafter，就可能在少量新增 latency 下显著改善后缀 quality。关键在于「轻量」二字必须被测量，而不是被假设——第 5 节给出它的成本与收益边界。
 
@@ -99,10 +85,7 @@ $$K_r^*=\arg\max_K \frac{E[A_r(K)]}{T_V(K)+Cost_{capacity}(K)}$$
 
 其中 $Cost_{capacity}$ 表示在线高并发下占用 verifier token budget 的机会成本。因此两个相同 prompt 长度的请求也可能选择不同 $K$：
 
-```text
-Request A：confidence 高 → verify 12
-Request B：confidence 低 → verify 4
-```
+![ai3-09-L102](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l09_05.png)
 
 这比全局固定 `num_speculative_tokens=8` 更接近生产最优。取两类请求的条件接受概率（推导设定，非实测）：
 

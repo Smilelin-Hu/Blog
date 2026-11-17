@@ -20,10 +20,7 @@ $$\lambda_m=\lambda_u\cdot E[F]$$
 
 如果一个请求平均 fan-out 8 次：
 
-```text
-外部 20 req/s
-→ 内部可能 160 model calls/s
-```
+![ai3-12-L23](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l12_01.png)
 
 而且它们往往不是平滑到达，而是在 Planner 决策后同时爆发。这就是 **traffic amplification**。
 
@@ -41,19 +38,7 @@ $$\lambda_m=\lambda_u\cdot E[F]$$
 
 一个完整会话可能经历：
 
-```text
-RUNNING_LLM
-   ↓
-WAITING_TOOL
-   ↓
-RUNNING_LLM
-   ↓
-WAITING_USER/APP
-   ↓
-RUNNING_LLM
-   ↓
-DONE
-```
+![ai3-12-L44](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l12_02.png)
 
 这与普通持续 Decode 完全不同。普通请求的生命周期是「Prefill → Decode → 结束」，槽位与 KV 从头占到尾；Agent 请求在 `WAITING_*` 阶段**不产生任何 Token，却可能仍占着资源**。
 
@@ -112,13 +97,7 @@ $$Amp_{task}=1.5623\times10=15.623\ \text{步/任务}\quad(\text{放大 }1.5623\
 
 并行工具调用：
 
-```text
-        Planner
-       /   |   \
- Tool A Tool B Tool C
-       \   |   /
-        Aggregator
-```
+![Agent 推理：Planner 分派工具，Aggregator 汇总](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l12_04.png)
 
 端到端延迟受最慢分支影响：
 
@@ -298,11 +277,7 @@ Offload 并非无限可用：每个会话占 1000 MiB 主机内存，256 GiB 预
 
 Agent 链路长，任何一步都可能失败。如果上游简单重试整个请求：
 
-```text
-原请求触发 8 个子调用
-超时 → 整体重试
-又触发 8 个
-```
+![ai3-12-L301](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l12_03.png)
 
 很容易形成 retry amplification。需要：`request_id`、`step_id`、idempotency key、per-step retry、exponential backoff、retry budget。
 

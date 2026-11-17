@@ -60,10 +60,7 @@ LoRA X 已加载在 Replica C。
 
 假设：
 
-```text
-Replica A：prefix hit，可省 300ms，但队列预计 500ms
-Replica B：无 prefix，队列 20ms，Prefill 需要 200ms
-```
+![Prefix 命中 vs 队列负载：算总账再路由](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l18_02.png)
 
 A 不是最优。
 
