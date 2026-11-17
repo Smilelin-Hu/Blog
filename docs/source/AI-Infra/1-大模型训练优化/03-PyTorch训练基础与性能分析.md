@@ -19,6 +19,8 @@ for epoch in range(num_epochs):
 
 一个**工业级标准的训练循环**，应该像一架仪表齐全的飞机——每一个关键指标都可观测、每一个环节都可控。
 
+![训练一步：前向建图、反向求梯度、优化器更新](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y1_l03_01.png)
+
 ### 1.2 标准训练循环的关键实现
 
 下面这段是训练循环里最核心的两块：单轮训练与主流程。完整模板前面还需要设备初始化、模型搬到 device、优化器与 `GradScaler`、`DistributedSampler` 等准备步骤。
@@ -211,20 +213,7 @@ print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=15))
 
 拿到一个训练任务时，可以按以下流程快速判断瓶颈类型：
 
-```text
-第1步：看 nvidia-smi / dcgm — GPU-Util 与显存带宽利用率的组合
-├── GPU-Util 贴顶、带宽不高    → 计算密集
-└── GPU-Util 偏低、带宽贴顶    → 访存密集
-
-第2步：运行 profiler，查看 top 操作的类型
-├── 主要是 mm/bmm/conv → 确认是计算密集 → 优化方向：混合精度、Tensor Core、FlashAttention
-└── 主要是 element-wise 操作 → 访存密集 → 优化方向：算子融合
-
-第3步：检查 DataLoader 配置
-├── num_workers 是否合理？pin_memory 是否开启？
-├── 如果数据加载是瓶颈 → 增加 num_workers、开启 pin_memory、使用更快的存储
-└── 如果数据加载正常 → 检查是否有频繁的 CPU↔GPU 拷贝或日志打印
-```
+![单卡瓶颈定位三步：利用率组合→profiler→DataLoader](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y1_l03_02.png)
 
 ### 3.4 一个典型误区
 

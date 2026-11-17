@@ -250,19 +250,7 @@ LayerNorm 是 Transformer 中的关键算子，Triton 教程展示了如何处�
 
 ### 3.2 如何选择优化路径
 
-```text
-第1步：PyTorch实现是否满足性能要求？
-├── 是 → 停留在第一层
-└── 否 → 第2步
-
-第2步：torch.compile是否能达到目标性能？
-├── 是 → 停留在第二层
-└── 否 → 第3步
-
-第3步：算子是否适合用Triton实现？
-├── 是（访存密集、分块计算、融合多个小算子）→ 使用Triton
-└── 否（需要特殊硬件指令、极复杂的控制流）→ 使用CUDA C++
-```
+![算子开发分层决策：PyTorch→compile→Triton→CUDA](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y1_l17_01.png)
 
 ### 3.3 从 Triton 到 CUDA 的进阶路径
 

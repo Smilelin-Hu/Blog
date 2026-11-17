@@ -38,6 +38,8 @@ $$
 
 **Top-K 路由**是最主流的策略：选择概率最高的 K 个专家（K 通常为 1 或 2）来处理该 token。当 K=1 时，每个 token 只路由到 1 个专家——这就是 Switch Transformer 的核心设计。
 
+![MoE 路由：Router 选 Top-2 专家，其余不激活](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y1_l07_01.png)
+
 ### 1.3 稀疏激活：为什么 MoE「参数多但算得省」
 
 理解了专家和路由之后，MoE 的效率奥秘就清晰了。
