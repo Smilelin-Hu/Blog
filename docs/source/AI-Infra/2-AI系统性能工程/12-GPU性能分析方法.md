@@ -15,19 +15,7 @@
 
 工具链的层次关系：
 
-```text
-业务指标 / SLO
-      ↓
-稳定、可复现的基准
-      ↓
-nvidia-smi / DCGM：长期趋势与粗粒度遥测
-      ↓
-Nsight Systems：端到端时间线，回答「时间去哪了」
-      ↓
-Nsight Compute：Kernel 计数器，回答「为什么慢」
-      ↓
-提出假设 → 只改一个变量 → 正确性与端到端复测
-```
+![ai2-12-L18](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l12_01.png)
 
 ## 2. 核心直觉：Profiler 是显微镜，不是判决书
 
@@ -153,18 +141,7 @@ $$
 
 常用诊断树：
 
-```text
-GPU 有明显 Idle Gap？
-├─ 是：Gap 时 CPU 在做什么？
-│  ├─ 数据/I/O：优化数据管线、预取、Pinned Memory
-│  ├─ Python/Launch：融合、编译、CUDA Graph、减少 Dispatch
-│  ├─ 同步：消除不必要的 .item()、synchronize、D2H
-│  └─ 通信等待：检查慢 Rank、拓扑、Bucket 与重叠
-└─ 否：GPU 持续忙
-   ├─ 少数大 Kernel：用 Nsight Compute 下钻
-   ├─ 大量小 Kernel：检查 Launch Bound 与 Fusion
-   └─ Memcpy/通信占主导：检查带宽、拓扑和 Critical Path
-```
+![GPU Idle Gap：先分「有空洞」与「持续忙」](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l12_02.png)
 
 NVTX 用于把业务阶段映射到 CUDA 时间线：
 

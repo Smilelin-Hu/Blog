@@ -36,34 +36,7 @@ GPU Memory 优化至少包含四个彼此不同的问题：
 
 ## 4. GPU Memory 层级
 
-```text
-每个线程
-  Register
-     │  寄存器不足时可能 spill
-     ▼
-  Local Memory（逻辑上线程私有，物理上位于设备内存）
-
-每个 SM / Thread Block 协作
-  Shared Memory ↔ L1 Cache
-             │
-             ▼
-全 GPU 共享
-  L2 Cache
-     │
-     ▼
-设备显存
-  GDDR / HBM
-     │
-     ▼
-系统链路
-  PCIe / NVLink-C2C 等
-     │
-     ▼
-Host DRAM（pageable / pinned）
-     │
-     ▼
-SSD / 网络存储
-```
+![GPU 内存体系：从线程寄存器到网络存储](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l06_01.png)
 
 「越靠上越快」是有用直觉，但不能机械理解：Register 延迟低但容量小，用多了会降低驻留 Warp 数或造成 spill；Shared Memory 可编程、适合 Block 内复用，但消耗有限的 SM 资源且可能 Bank Conflict；L1/L2 由硬件管理，命中率取决于工作集、访问模式与竞争；HBM/GDDR 容量与带宽大但延迟高；Host Memory 容量更大但更远，跨链路搬运通常远慢于设备内访问。
 

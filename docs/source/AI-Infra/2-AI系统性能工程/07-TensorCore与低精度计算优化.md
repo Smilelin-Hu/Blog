@@ -67,9 +67,7 @@ $$
 
 低精度计算常见模式：
 
-```text
-低精度 A × 低精度 B → 较高精度 Accumulator → 指定输出 dtype
-```
+![ai2-07-L70](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l07_01.png)
 
 例如 FP16/BF16 输入可以使用 FP32 累加器，既提高乘法吞吐，又降低长点积累计误差。不要只看 Tensor 的存储 dtype；库实际选择的 MMA 指令和 accumulation mode 才决定计算路径。
 
@@ -232,9 +230,7 @@ $$
 
 优化不能只通过速度测试，建议建立分级门禁：
 
-```text
-单算子误差 → 小模型收敛 → 固定评测集 → 长时间稳定性 → 线上 SLO/质量
-```
+![ai2-07-L235](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l07_02.png)
 
 如果低精度让失败率增加，Goodput 可能下降，即使单次成功请求更快。
 

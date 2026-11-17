@@ -4,13 +4,7 @@
 
 最终产物不是一张概念图，而是一份带容量模型、KV 传输预算、路由规则、故障语义、SLO、观测指标、回退路径和验证计划的系统设计。
 
-```text
-请求入口
-  → Prefill Router → Prefill Worker Pool
-  → KV Transfer / KV Metadata Commit
-  → Decode Router → Decode Worker Pool
-  → Streaming Response
-```
+![ai2-35-L7](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l35_01.png)
 
 Prefill 通常是计算密集的大矩阵阶段，Decode 通常是内存带宽敏感的小步迭代。解耦允许两类资源独立扩缩和调度，但引入 KV 传输、跨池排队、一致性、故障恢复和更多网络跳数。只有收益超过这些成本时，解耦才成立。
 
@@ -344,18 +338,7 @@ KV 数据路径与元数据路径应分开设计。大块 KV 不应绕经普通�
 
 ### 6.2 Request/KV 状态机
 
-```text
-RECEIVED
-  → PREFILL_ASSIGNED
-  → PREFILL_RUNNING
-  → KV_TRANSFERRING
-  → KV_COMMITTED
-  → DECODE_ASSIGNED
-  → STREAMING
-  → COMPLETED
-
-任意阶段 → CANCELLED / TIMED_OUT / FAILED
-```
+![ai2-35-L347](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l35_02.png)
 
 Decode Worker 只有在 KV 完整写入、校验通过并提交元数据后才能读取。先暴露 Handle、后完成传输会产生部分 KV 可见性问题。
 

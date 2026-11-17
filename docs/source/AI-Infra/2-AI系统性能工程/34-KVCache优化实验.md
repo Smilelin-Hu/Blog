@@ -4,12 +4,7 @@
 
 目标是把 KV Cache 从一个公式变成可测量、可调度、可回归的系统资源：完成容量估算、连续分配与分页分配对照、Block Size 扫描、共享前缀命中实验，以及真实服务中的 KV 容量、抢占、TTFT 和吞吐分析。
 
-```text
-模型结构 → 每 Token KV 字节 → 理论 Token 容量
-→ 分页与碎片模拟 → 服务端 KV 配置
-→ 重复前缀负载 → 命中/未命中对照
-→ 并发与上下文扫描 → SLO、抢占、显存回归
-```
+![ai2-34-L7](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l34_01.png)
 
 Level 0 纯 Python 可运行。Level 1 适配常见 NVIDIA GPU 上的 vLLM。Level 2 的 KV 量化、跨 GPU/NVLink、Host Offload 与 Disaggregated KV Transfer 必须在真实支持的硬件和框架版本上验证。
 

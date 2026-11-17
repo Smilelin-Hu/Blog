@@ -16,6 +16,8 @@
 - **推理 decode**：memory-bound、算力单元闲置，power cap 效果有限。2026 年《The Illusion of Power Capping in LLM Decode》指出：功率读数下降不等于 J/token 改善——吞吐下降改变了分母，账面「省电」可能是幻觉。prefill compute-bound 才敏感。
 - **预测性节流**：throttLL'eM（HPCA'25）利用 SLO slack 预测性降频，把「延迟裕量」换成能耗，是在线 serving 的可行杠杆。
 
+![功耗墙反馈环：账面省电可能是幻觉](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l39_01.png)
+
 ## 3. 每 Token 能耗的优化杠杆
 
 | 杠杆 | 机制 | 口径提醒 |

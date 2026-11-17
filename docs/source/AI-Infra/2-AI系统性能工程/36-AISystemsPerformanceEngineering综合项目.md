@@ -4,18 +4,7 @@
 
 这是整个系列的最终工程验收：选择一个真实训练或推理工作负载，从业务目标出发完成一次可复现的性能工程闭环——定义 SLO 与成本目标、建立可信基线、定位主瓶颈、提出可证伪假设、实施最小改动、验证正确性与收益、设计发布回滚，并交付完整证据包。
 
-```text
-业务目标
-  → 可测 SLO / Goodput / 成本
-  → 冻结工作负载与环境
-  → 正确性基线
-  → Profile 找主瓶颈
-  → 假设与实验矩阵
-  → 优化实现
-  → 性能 + 正确性 + 稳定性门禁
-  → 灰度、观测、回滚
-  → 复盘与知识沉淀
-```
+![ai2-36-L7](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l36_01.png)
 
 本项目不要求具备相同 GPU。Level 0 使用纯 Python 完成方法和门禁；Level 1 在任意可用 NVIDIA GPU 上选择训练或推理工作负载；Level 2 仅在真实支持环境验证 NVLink/NVSwitch、RDMA、FP8/FP4、Transformer Engine、Disaggregated Inference 等专项能力。
 
@@ -196,14 +185,7 @@ mkdir -p baseline candidate reports artifacts
 
 ### 7.1 从外到内
 
-```text
-业务 SLO / Goodput / 成本
-  → 服务排队、数据、Checkpoint、故障
-  → 框架 Op、Runtime、Allocator、编译
-  → GPU Kernel、Memory、Occupancy、Tensor Core
-  → 多 GPU Collective、拓扑、慢 Rank
-  → 硬件功耗、温度、ECC、PCIe/RDMA
-```
+![ai2-36-L199](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l36_02.png)
 
 ### 7.2 工具选择
 

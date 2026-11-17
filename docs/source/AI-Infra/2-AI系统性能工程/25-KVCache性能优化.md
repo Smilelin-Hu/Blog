@@ -94,15 +94,7 @@ $$
 
 Paged KV 把物理缓存拆成固定 Token 数的 Block，请求维护逻辑 Block 到物理 Block 的映射：
 
-```text
-请求 A 逻辑 Block:  [0] [1] [2]
-                     │   │   │
-物理 Block 池:      #7  #2  #9   （物理上不连续）
-
-请求 B 逻辑 Block:  [0] [1]
-                     │   │
-物理 Block 池:      #7  #4       （#7 为共享只读 Prefix）
-```
+![Paged KV：Block Table 把逻辑块映射到非连续物理块](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l25_01.png)
 
 逻辑连续不要求物理连续。请求增长时只申请新 Block，完成或取消后归还 Block。
 
@@ -121,6 +113,7 @@ $$
 PagedAttention 让 Attention Kernel 根据 Block Table 访问非连续物理 KV。内存管理与 Kernel 必须协同，否则仅有分页分配器而 Kernel 仍要求连续 Tensor，就无法避免拼接/复制。
 
 收益包括按需增长、完成/取消后快速回收、支持连续组批、共享只读 Prefix Block、更灵活的抢占/Offload/跨设备传输。它并非「零浪费」：仍有尾 Block、元数据、对齐、多个 KV Pool 与保留水位。
+
 
 ## 6. KV Cache 生命周期
 
@@ -142,11 +135,7 @@ $$
 
 多个请求若拥有完全相同的 Token Prefix，可共享已计算 KV：
 
-```text
-请求 A: [系统提示词 512 Token][用户问题 A]
-请求 B: [系统提示词 512 Token][用户问题 B]
-                ↑ 只计算一次，B 直接引用缓存 Block
-```
+![Automatic Prefix Caching：公共前缀只算一次](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l25_02.png)
 
 只需为共享部分计算一次，其余请求直接引用缓存 Block，可降低 TTFT、Prefill FLOPs 与重复显存。
 

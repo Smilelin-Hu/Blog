@@ -16,21 +16,16 @@ Speculative Decoding（推测解码）不改变目标模型，而是让一个更
 
 普通 Decode 生成 4 个 Token，需要目标模型连续运行 4 次：
 
-```text
-Target(x) -> t1 -> Target(x,t1) -> t2 -> Target(...) -> t3 -> Target(...) -> t4
-```
+![串行 Decode 四次前向 vs 推测解码一次验证](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l26_02.png)
 
 推测解码先让便宜的草稿器提出 `d1,d2,d3,d4`，目标模型用因果掩码一次计算这 4 个位置的分布：
 
-```text
-Draft:  d1 -> d2 -> d3 -> d4
-Target: [并行验证 d1,d2,d3,d4]
-Result: 接受最长正确前缀 + 一个目标模型修正 token
-```
+![推测解码：草稿串行提议，目标一次并行验证](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l26_01.png)
 
 目标模型仍然要读权重，但一次读权重服务了多个候选位置。小 Batch Decode 原本常受显存带宽与串行依赖限制，验证阶段把更多算术工作塞进同一次前向，可能提高算术强度与 GPU 利用率。
 
 关键不是「猜得越多越好」，而是**每轮期望提交 Token 数的增长，必须超过草稿与验证成本的增长**。
+
 
 ## 3. 算法原理
 
@@ -131,10 +126,7 @@ N-gram 路线显存与草稿计算开销小，适合作为消费级 GPU 的第�
 
 不要只测总 tokens/s。至少对以下区间加 NVTX 或 profiler 标记：
 
-```text
-schedule -> draft -> prepare_verify -> target_verify -> reject_sample
-         -> kv_commit_or_rewind -> stream_output
-```
+![推测解码服务流水线：草稿与验证的阶段衔接](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l26_03.png)
 
 若 `draft` 占比高，缩小草稿模型或用 N-gram；若 `target_verify` 随 $K$ 近线性增长，减小 $K$ 或检查 attention/kernel；若 `prepare/rewind` 高，检查 Python 调度、动态 shape、block 管理与同步。
 

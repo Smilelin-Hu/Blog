@@ -34,35 +34,7 @@
 
 ### 3.1 一次请求的完整路径
 
-```text
-客户端
-  │ HTTP/gRPC，流式或非流式
-  ▼
-Gateway / API Server
-  │ 鉴权、配额、路由、限流、参数校验
-  ▼
-Tokenizer / Input Processor
-  │ 文本→Token IDs，Chat Template，多模态预处理
-  ▼
-Admission Controller + Request Queue
-  │ 并发、Token、显存、Deadline 预算
-  ▼
-Scheduler / Batcher ───────────────┐
-  │ 选择 Prefill/Decode 请求        │ 取消、优先级、抢占
-  ▼                                │
-KV Cache Manager ◄─────────────────┘
-  │ 分配、映射、共享、驱逐 KV Block
-  ▼
-Model Executor
-  │ 权重、Attention、MLP、Collective、采样 Kernel
-  ▼
-Sampler → Detokenizer → Stream Writer
-  │ Token IDs→文本增量，停止条件，输出过滤
-  ▼
-客户端
-
-旁路：Metrics / Trace / Logs / Billing / Health Check
-```
+![LLM 推理请求路径：从客户端到流式输出](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l23_01.png)
 
 该链路中，API Server 负责协议，Scheduler 负责时间，KV Manager 负责空间，Model Executor 负责计算。把所有职责都塞进一个同步 Python 循环，会让网络、日志、内存分配与 GPU 执行互相阻塞。
 

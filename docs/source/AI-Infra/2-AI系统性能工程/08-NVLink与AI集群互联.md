@@ -88,6 +88,8 @@ GPU ─ HBM/GDDR
 
 Scale-Up 让少量或数十块 GPU 低延迟协同；Scale-Out 让系统扩展到更多节点。跨层级 Collective 通常需要分层算法，不能把所有 Rank 当作同质全互联。
 
+![互联层次：多 GPU 性能由最窄的数据通道决定](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l08_01.png)
+
 ## 5. 产品能力矩阵：必须按 SKU 与整机判断
 
 | 架构 | 示例产品 | 互联定位 | 实验结论 |

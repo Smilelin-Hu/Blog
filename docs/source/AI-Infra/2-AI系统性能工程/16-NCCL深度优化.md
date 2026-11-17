@@ -19,10 +19,7 @@
 
 因此看到 `backend=nccl` 只能证明框架选择了 NCCL 后端，不能证明 GPU 间一定使用 NVLink、跨节点一定使用 GPUDirect RDMA、Ring 一定优于 Tree、通信一定与反向计算重叠、当前带宽已接近硬件上限。正确顺序是：
 
-```text
-语义正确 → 拓扑正确 → Transport 正确 → 基线稳定
-        → 找消息区间 → 验证算法/协议假设 → 端到端验证
-```
+![ai2-16-L22](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l16_01.png)
 
 ## 3. 架构与执行路径
 
@@ -56,11 +53,7 @@ Communicator 描述一组参与通信的 GPU Rank。每个 Rank 在相同 Commun
 | All-to-All | 每个 Rank 给每个其他 Rank 发送不同分片 | MoE Token Dispatch/Combine |
 | Send/Recv | 点对点 | PP 相邻 Stage、邻居交换、自定义稀疏模式 |
 
-```text
-Rank0: A    Rank1: B    Rank2: C    Rank3: D
-                    All-Reduce SUM
-Result: A+B+C+D on every rank
-```
+![All-Reduce SUM：每个 Rank 都拿到全局和](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l16_02.png)
 
 经典恒等关系：
 

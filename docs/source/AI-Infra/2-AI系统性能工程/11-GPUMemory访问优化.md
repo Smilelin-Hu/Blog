@@ -125,13 +125,7 @@ Block 1: scores[32], ids[32], probs[32]
 
 典型流程：
 
-```text
-Global Memory：按连续方向 Coalesced Load
-          ↓
-Shared Memory：按算法需要重排/复用
-          ↓
-Global Memory：按连续方向 Coalesced Store
-```
+![ai2-11-L128](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l11_01.png)
 
 ## 7. Shared Memory Bank Conflict
 

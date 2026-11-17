@@ -46,17 +46,7 @@ $$
 
 一行 `y = model(x)` 大致跨过：
 
-```text
-Python
-  ↓ Module / Autograd
-Dispatcher
-  ↓ ATen Operator
-Backend Library / Generated Kernel
-  ↓ CUDA Runtime launch / memcpy
-GPU Stream
-  ↓ Kernel、Memcpy、Collective
-Hardware
-```
+![ai2-19-L49](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l19_01.png)
 
 分析时要问：Python 是否来不及提交工作；是否产生大量细碎 ATen 算子与 Kernel；算子是否触发隐式同步；GPU Kernel 是计算受限、显存带宽受限还是 launch 受限；H2D、NCCL 与计算是否重叠；某个高层 Module 为什么展开成这些低层算子。
 
