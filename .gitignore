@@ -17,4 +17,7 @@ data/
 new/
 课件·分讲版/
 
+# excalidraw 渲染依赖可经 vendor_deps.py 再生，不入库
+.qoder/excalidraw-diagram/skills/excalidraw-diagram/references/vendor/
+
 
