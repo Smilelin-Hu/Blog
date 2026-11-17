@@ -2,6 +2,8 @@
 
 根据 2026 年最新招聘信息与行业趋势，AI Infra（AI 基础设施）岗位的技术要求可归纳为多个核心维度。本文先按岗位方向拆分门槛，再逐维度列出技能要求，最后给出能力分级与本系列课件的学习路径映射。
 
+<img src="https://raw.gitcode.com/weixin_42917352/image-host/blobs/18f581c6df315096cfacab63df7e41765e047b37/images/aiinfra-job-requirements-1x.png" width="90%" alt="大厂 AI Infra 岗位技术要求八维能力图谱：语言门槛、训练与推理双核心、系统底座、面试与薪资、三条能力线汇聚" />
+
 ## 1. 岗位方向细分
 
 「AI Infra」不是一个岗位，而是五条技能栈差异很大的方向。投递与准备前应先确定主攻线，避免把八张技能表平铺成「什么都要会」。
