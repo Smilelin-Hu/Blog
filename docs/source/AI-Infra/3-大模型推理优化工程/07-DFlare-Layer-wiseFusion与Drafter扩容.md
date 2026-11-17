@@ -24,7 +24,7 @@ $$z=Fusion(H)$$
 
 然后所有 Draft Layer 都使用同一个 $z$：
 
-![ai3-07-L27](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l07_02.png)
+![ai3-07-L27](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l08_02.png)
 
 当 Drafter 很浅时这可能足够。当 Drafter 变深时，不同层可能需要不同层级的信息：浅层偏词法与局部搭配，深层偏语义与长程结构。如果所有层看到同一个「窄瓶颈」，新增 capacity 未必能有效发挥——这就是条件信息瓶颈，也是 DFlare 要突破的对象。
 
@@ -46,7 +46,7 @@ $$z_j=\sum_i \alpha_{j,i}P_i\big(h^{(l_i)}\big)$$
 
 其中 $P_i$ 把不同 Target layer 投影到兼容空间，$\alpha_{j,i}$ 是第 $j$ 个 Draft layer 对不同 Target layer 的可学习权重。于是：
 
-![ai3-07-L53](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l07_03.png)
+![ai3-07-L53](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l08_02.png)
 
 不同 Draft 层不再被迫使用完全相同的 Target 条件。代价是融合从「一次」变成「每层一次」，特征读取与投影成本进入关键路径。
 

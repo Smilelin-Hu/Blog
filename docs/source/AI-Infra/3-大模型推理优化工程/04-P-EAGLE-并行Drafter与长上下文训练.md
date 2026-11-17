@@ -20,7 +20,7 @@
 
 问题是 $t+4$ 预测时不知道 $t+1,t+2,t+3$ 最终是什么。而自回归 Drafter 是：
 
-![ai3-04-L28](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l04_02.png)
+![ai3-04-L28](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l08_02.png)
 
 质量更稳定，但串行。P-EAGLE 类方法真正要解决的不是「并行输出四个 Logits」这么简单，而是：如何在并行计算时，给更深位置足够的条件信息，让它不要完全变成盲猜。
 

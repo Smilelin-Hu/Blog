@@ -59,7 +59,7 @@ $$a_k=P(\text{head }k\text{ survives prefix verification})$$
 
 在线上不应默认全部开启，而应根据真实数据扫描。一组示例读数如下（示意口径，非本机实测）：
 
-![ai3-05-L68](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l05_02.png)
+![ai3-05-L68](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l08_02.png)
 
 最优点由实际性能决定，而不是由 head 数量决定。
 
