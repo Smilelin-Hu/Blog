@@ -1,0 +1,15 @@
+{
+  "name": "excalidraw-diagram",
+  "displayName": "Excalidraw 绘图",
+  "version": "0.1.0",
+  "description": "Create Excalidraw diagram JSON files that make visual arguments from natural language descriptions.",
+  "descriptionZh": "用自然语言生成具有视觉表达力的 Excalidraw 图表 JSON 文件，并可渲染为 PNG/SVG。",
+  "author": { "name": "coleam00" },
+  "homepage": "https://github.com/coleam00/excalidraw-diagram-skill",
+  "repository": "https://github.com/coleam00/excalidraw-diagram-skill",
+  "logo": "./assets/avatar.svg",
+  "keywords": ["qoder-plugin", "skill", "excalidraw", "diagram"],
+  "category": "developer-tools",
+  "tags": ["skill", "diagram", "visualization"],
+  "skills": "./skills/"
+}
