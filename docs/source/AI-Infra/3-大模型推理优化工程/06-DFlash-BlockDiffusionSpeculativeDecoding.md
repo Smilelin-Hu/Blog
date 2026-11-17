@@ -88,7 +88,7 @@ $$H_{target}=\{h_t^{(l_1)},h_t^{(l_2)},\dots\}$$
 
 AR 生成要求未来位置不能看未来位置，因为输出必须逐 token 保持因果性。但 Draft Model 只是在**提出候选**，最终仍会被 AR Target 验证，因此 Drafter 可以让多个未来 mask 位置之间相互通信：
 
-![ai3-06-L96](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l08_02.png)
+![ai3-06-L96](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l06_02.png)
 
 这允许所有 draft positions 在一个 forward 中共同形成候选。需要注意两点工程后果：
 

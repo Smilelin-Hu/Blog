@@ -33,7 +33,7 @@ $$
 
 **适用场景**：Ring 算法适合**小规模集群**（如单机 8 卡或几十卡级别）。在 NVIDIA GPU 之间通过 NVLink/PCIe 高带宽互联的场景下，Ring 是默认选择。
 
-![Ring 拓扑：节点只与相邻两卡通信](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y1_l09_01.png)
+![Ring 拓扑：节点只与相邻两卡通信](https://raw.gitcode.com/weixin_42917352/image-host/blobs/83e45be79e34de714a13bcf1a628f9fde5ce21c0/images/aiinfra_y1_l09_01.png)
 
 ### 1.2 Tree 算法：大规模集群的「低延迟之选」
 

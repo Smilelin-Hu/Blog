@@ -16,11 +16,11 @@
 
 普通自回归生成每一步都由目标模型产出一个 Token：
 
-![ai3-02-L19](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l08_02.png)
+![ai3-02-L19](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l02_02_r2.png)
 
 第一代 speculative decoding 把草拟与验证分开：
 
-![ai3-02-L28](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l08_02.png)
+![ai3-02-L28](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l02_03.png)
 
 如果目标验证已经很高效，新的串行链就变成上面的 Draft 链。这和系统性能工程中常见的「瓶颈迁移」一样：把 A 优化掉以后，B 并不会自动消失，B 只是从过去不重要变成了新的最长阶段。
 
