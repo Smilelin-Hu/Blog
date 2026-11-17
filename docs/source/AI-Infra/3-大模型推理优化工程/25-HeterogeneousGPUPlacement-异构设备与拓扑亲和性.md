@@ -127,10 +127,7 @@ Reasoning 长输出模型优先高带宽/大显存硬件等。
 
 为了高可用：
 
-```text
-Replica A → rack1
-Replica B → rack2
-```
+![ai3-25-L130](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l25_01.png)
 
 避免所有副本在同一故障域。
 

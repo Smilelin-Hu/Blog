@@ -189,10 +189,7 @@ LLM 流式请求可能很长。
 
 直接终止 Replica：
 
-```text
-SIGKILL
-→ 用户生成到一半断开
-```
+![下线方式：SIGKILL 断流 vs Drain 完成后退出](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l29_01.png)
 
 Drain：
 
@@ -228,14 +225,7 @@ $$T_{drain}=\min(T_{all-active-finish},GracePeriod)$$
 
 某个 backend 连续失败：
 
-```text
-fail rate > threshold
-→ OPEN
-→ 暂停新流量
-→ fallback / fail-fast
-→ half-open probe
-→ recover
-```
+![熔断状态机：OPEN 保护下游，half-open 试探恢复](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l29_02.png)
 
 比无限重试更安全。
 

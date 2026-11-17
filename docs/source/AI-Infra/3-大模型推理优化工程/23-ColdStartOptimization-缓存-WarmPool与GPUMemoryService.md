@@ -50,16 +50,7 @@
 
 准备一组尚未分配给具体流量的 Ready/near-ready 容量：
 
-```text
-Cold Nodes
-   ↓
-Warm Pool
-├─ Ready GPU worker 1
-├─ Ready GPU worker 2
-└─ Ready GPU worker 3
-   ↓ 分配
-Production Replica
-```
+![冷节点预热入池：Warm Pool 就绪后分配为生产副本](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l23_01.png)
 
 优点：扩容快。
 
@@ -89,10 +80,7 @@ $$C_{idle}<E[C_{cold}]$$
 
 如果流量具有周期性：
 
-```text
-每天 8:50 开始预热
-9:00 流量高峰
-```
+![预测性预热：赶在流量高峰前就绪](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l23_07.png)
 
 可以在到达前：
 
@@ -109,43 +97,27 @@ $$C_{idle}<E[C_{cold}]$$
 
 最冷：
 
-```text
-remote model → node → GPU
-```
+![ai3-23-L112](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l23_02.png)
 
 Local cache：
 
-```text
-node NVMe → GPU
-```
+![ai3-23-L118](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l23_03.png)
 
 Warm pool：
 
-```text
-model already on GPU → route immediately
-```
+![ai3-23-L124](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l23_04.png)
 
 越热，启动快，常驻成本越高。
 
 因此可以构建层级：
 
-```text
-Hot GPU
-   ↓
-Warm GPU/Process
-   ↓
-Local NVMe Cache
-   ↓
-Remote Artifact Store
-```
+![ai3-23-L132](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l23_05.png)
 
 ### 5.9 Scale-Down 不应等于“全部清空”
 
 流量下降时，Replica 可以从 Serving 退到：
 
-```text
-READY → DRAIN → STOP GPU process
-```
+![ai3-23-L146](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l23_06.png)
 
 但模型文件仍保留 Node NVMe。
 

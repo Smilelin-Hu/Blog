@@ -4,15 +4,7 @@
 
 它把 Benchmark、PyTorch Profiler、混合精度、数据管线、`torch.compile` 与性能回归方法串成一个完整训练优化闭环：从一个可运行的 MLP 分类训练基线出发，在不改变模型语义与有效 Batch Size 的前提下，逐项验证以下优化。
 
-```text
-可复现基线
-  → 找到 Data、Forward、Backward、Optimizer 的时间占比
-  → zero_grad(set_to_none=True)
-  → CUDA 自动混合精度
-  → DataLoader pinned memory / workers / persistent workers
-  → 可选 torch.compile
-  → 正确性、吞吐、显存与回归门禁
-```
+![ai2-31-L7](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l31_01.png)
 
 目标不是证明「某个开关永远更快」，而是建立一套任何 PyTorch 训练任务都能复用的测量方法。CPU 机器可以完成 Level 0；常见 NVIDIA GPU 可以完成 Level 1；Level 2 用于 BF16、TF32、编译器与架构专项验证。
 
@@ -81,15 +73,7 @@ $$
 
 ## 4. 瓶颈分析决策树
 
-```text
-GPU 利用率低？
-├─ CPU 线程忙、DataLoader 间隙明显 → 数据/预处理瓶颈
-├─ 大量短 Kernel 与 Launch 空洞 → Python/Runtime 开销
-├─ H2D 拷贝串行且耗时明显 → Pinned Memory / non_blocking / Batch 太小
-├─ GEMM 时间占主导但吞吐低 → Shape、精度、Tensor Core、内存带宽
-├─ Optimizer/zero_grad 占比高 → set_to_none、融合优化器、参数规模
-└─ 多卡通信占比高 → Bucket、重叠、拓扑、慢 Rank
-```
+![训练 GPU 利用率低：六类症状对应六类旋钮](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l31_02.png)
 
 先定位占比最大的阶段，再改变一个变量。一次同时打开 AMP、编译、更多 Worker 与更大 Batch，会让因果关系不可解释。
 

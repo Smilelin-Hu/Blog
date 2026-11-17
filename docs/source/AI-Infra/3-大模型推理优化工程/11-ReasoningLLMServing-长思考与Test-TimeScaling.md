@@ -253,17 +253,7 @@ $$\bar T=0.9\times6+0.1\times200=25.4\ \text{s}$$
 
 一种常见思路是同一个问题生成多个 reasoning candidates，再选择最优：
 
-```text
-Question
-├→ Reasoning 1
-├→ Reasoning 2
-├→ Reasoning 3
-└→ Reasoning 4
-       ↓
-    Verifier/Judge
-       ↓
-     Answer
-```
+![长推理链：逐步 Reasoning，Verifier 把关后出答案](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l11_02.png)
 
 如果并行生成 $M$ 条轨迹，总成本近似：
 

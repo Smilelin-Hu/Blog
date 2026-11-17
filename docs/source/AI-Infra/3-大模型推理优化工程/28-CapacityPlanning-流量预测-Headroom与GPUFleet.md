@@ -113,11 +113,7 @@ $$h=h_{forecast}+h_{failure}+h_{deployment}+h_{burst}$$
 
 如果服务不能因单节点故障失去 SLO：
 
-```text
-正常需要 8 replicas
-任意1 replica故障仍要满足
-→ 至少需要9或更高
-```
+![Headroom：N+1 保证单副本故障仍守 SLO](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l28_01.png)
 
 跨 Zone 服务还要考虑：
 

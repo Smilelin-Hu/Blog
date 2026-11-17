@@ -41,6 +41,8 @@ $$
 
 **资源争用**：NCCL Kernel 会占用 SM、HBM、Copy Engine、NVLink/PCIe 与 NIC。Timeline 上并发不代表互不干扰：GEMM 和通信可能争 HBM，通信 CTA 可能抢 SM，GPU 与 NIC 可能共享 PCIe 上行。最终要看 Step Time，而非重叠面积。
 
+![计算优化会暴露通信：占比上升直至进入关键路径](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l17_01.png)
+
 ## 4. Bucket 与梯度融合
 
 | Bucket 较小 | Bucket 较大 |

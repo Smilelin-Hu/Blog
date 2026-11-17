@@ -21,10 +21,7 @@
 
 ### 2.1 共置式推理
 
-```text
-Request -> [同一组 GPU]
-           Prefill + Decode + Prefill + Decode ...
-```
+![混部互相干扰 vs PD 分离各自流水](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l27_02.png)
 
 优点是没有跨实例 KV 传输，模型只部署一组，故障与调度逻辑简单。缺点是阶段互相干扰：一条长 Prompt 进入批次后，可能拉长其他请求下一 Token 的等待时间；为了保 TPOT 只能限制 Prefill 或切成小块，又可能损失 TTFT 与 Prefill 吞吐。
 
@@ -83,6 +80,8 @@ D Worker 要正确继续 Decode，至少要获得并校验：每层 K/V 数据�
 | Shared Store | P 写入分布式 KV 池，D 按 key 读取 | 易复用、迁移与多级缓存 | 元数据、一致性、存储与网络更复杂 |
 
 长上下文、多轮对话与前缀复用场景更适合 KV-centric 架构；单轮短请求未必能摊薄额外编排成本。
+
+![PD 分离：Prefill 与 Decode 各自扩缩、各自守 SLO](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l27_01.png)
 
 ## 4. 关键公式与性能模型
 
@@ -158,13 +157,7 @@ $\rho$ 是为突发与尾延迟保留余量后的目标利用率。P/D 比例会
 
 至少打点：
 
-```text
-gateway_queue
-prefill_queue -> prefill_compute
-kv_metadata -> kv_register -> kv_transfer -> kv_ready
-decode_queue -> first_decode -> decode_iterations
-stream_flush -> request_finish
-```
+![PD 分离请求状态流：KV commit 是交接点](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l27_03.png)
 
 应记录 P50/P95/P99，而不只记录均值。KV Transfer 还要记录 size、setup、有效带宽、重试、目标拓扑与是否与计算重叠。
 

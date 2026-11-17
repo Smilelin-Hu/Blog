@@ -67,9 +67,7 @@ Replica Pool
 
 一个模型的状态可以动态变化：
 
-```text
-Cold → Warm → Hot → Warm → Cold
-```
+![ai3-20-L70](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l20_02.png)
 
 ### 热度模型
 
@@ -129,10 +127,7 @@ $$Score_m=\frac{PredictedReuse_m\cdot LoadCost_m}{Memory_m}$$
 
 例如：
 
-```text
-reasoning-pro cold
-→ fallback reasoning-balanced
-```
+![ai3-20-L132](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l20_03.png)
 
 Model Alias 让客户端不需要知道内部切换。
 

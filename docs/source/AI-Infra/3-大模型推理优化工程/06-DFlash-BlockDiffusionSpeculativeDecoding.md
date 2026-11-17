@@ -42,12 +42,7 @@ Diffusion Drafter 不负责最终答案质量，它只需要满足三点：
 
 假设当前已经生成到位置 $t$，希望草拟 $K$ 个未来 token。AR Drafter 的做法是逐位置 rollout：
 
-```text
-x1 = Draft(context)
-x2 = Draft(context, x1)
-x3 = Draft(context, x1, x2)
-...
-```
+![草稿器自回归：逐 token 条件追加](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l06_03.png)
 
 Block-Diffusion Drafter 可以把未来位置初始化成 mask：
 
@@ -93,11 +88,7 @@ $$H_{target}=\{h_t^{(l_1)},h_t^{(l_2)},\dots\}$$
 
 AR 生成要求未来位置不能看未来位置，因为输出必须逐 token 保持因果性。但 Draft Model 只是在**提出候选**，最终仍会被 AR Target 验证，因此 Drafter 可以让多个未来 mask 位置之间相互通信：
 
-```text
-Mask1 ←→ Mask2 ←→ Mask3 ←→ Mask4
-   ↖        ↑        ↑        ↗
-       Target Context Features
-```
+![ai3-06-L96](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l06_02.png)
 
 这允许所有 draft positions 在一个 forward 中共同形成候选。需要注意两点工程后果：
 

@@ -20,18 +20,11 @@ CUDA Graph 的核心价值是：把一段重复的 GPU 工作及其依赖捕获�
 
 普通 Eager 执行像工厂每完成一道工序，都回办公室领取下一张工单：
 
-```text
-CPU: Launch A ─ Launch B ─ Launch C ─ Launch D
-         │          │          │          │
-GPU:    Kernel A   Kernel B   Kernel C   Kernel D
-```
+![逐 op Launch 的 CPU/GPU 空洞 vs CUDA Graph 整图回放](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l21_03.png)
 
 CUDA Graph 则先记录完整工艺流程，后续只提交一次：
 
-```text
-首次：Capture(A→B→C→D) → Instantiate
-后续：Graph Launch ─────→ GPU 执行 A→B→C→D
-```
+![CUDA Graph：一次捕获、多次回放，launch 开销摊薄](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l21_01.png)
 
 它省下的是重复提交与调度成本。若 A、B、C、D 本身都是很长的大 GEMM，CPU 早已提前把任务排入队列，Graph 收益可能很小；若它们是大量极短 Kernel，Graph 更容易显著降低空洞。
 
@@ -89,17 +82,7 @@ CUDA Graph 是有向无环图：Node 是 Kernel、Memcpy、Memset、Event、Host
 
 一个常见生命周期是：
 
-```text
-Warmup
-  ↓
-Capture / Explicit Construction
-  ↓
-cudaGraph_t
-  ↓ Instantiate
-cudaGraphExec_t
-  ↓ Launch / Replay many times
-Destroy
-```
+![ai2-21-L92](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l21_02.png)
 
 Instantiate 可能进行拓扑验证、资源准备与调度优化，所以不能把它混入稳态延迟。
 

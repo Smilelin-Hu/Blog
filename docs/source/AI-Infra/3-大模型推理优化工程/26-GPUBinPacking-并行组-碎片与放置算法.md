@@ -120,10 +120,7 @@ $$F=1-\frac{LargestFeasibleCapacity}{TotalFreeCapacity}$$
 
 一个 TP=4 Replica 需要同时获得 4 张兼容 GPU：
 
-```text
-要么4张一起拿到
-要么不启动
-```
+![Gang Scheduling：要么整组拿到，要么不启动](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l26_02.png)
 
 这叫 gang scheduling/placement 语义。
 
@@ -153,13 +150,7 @@ $$SLO(m,g,ColocatedSet)\le Threshold$$
 
 为了减少碎片，可以迁移 Replica：
 
-```text
-GPU1: A + B
-GPU2: C
-→
-GPU1: A + C
-GPU2: B
-```
+![放置交换：把碎片凑整，腾出整卡空位](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l26_01.png)
 
 但模型迁移会：
 

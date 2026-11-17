@@ -125,6 +125,7 @@ Prefill 与 Decode 的最优路径不同：
 
 同一套 MoE kernel 很难同时覆盖两种极端形状，这也是解耦推理与阶段专用 Runtime 的价值。
 
+
 ## 4. 关键公式与性能模型
 
 ### 4.1 稀疏计算不等于稀疏显存
@@ -230,11 +231,7 @@ DeepEP 针对 EP 的 Dispatch/Combine 提供高吞吐与低延迟 All-to-All ker
 
 ### 6.3 拆解 MoE 时间线
 
-```text
-router -> topk -> permutation
-       -> dispatch_a2a -> grouped_gemm
-       -> combine_a2a -> unpermute
-```
+![MoE 推理：算力问题变成数据搬运与排队问题](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l28_01.png)
 
 用 NVTX/Nsight Systems 看通信与计算是否重叠；用 Nsight Compute 检查 Grouped GEMM 的 Tensor Core、带宽、Occupancy 与小矩阵效率；用 NCCL/通信库计数器看链路与拓扑。
 
@@ -553,12 +550,7 @@ vllm serve /path/to/supported-moe-model \
 
 ### 10.2 闭环控制的四个环节
 
-```text
-Observe  -> 分段延迟、专家负载、KV 命中、链路带宽、接受率
-Decide   -> 在 SLO 约束下选择并行度、批大小、K、P/D 比例、放置
-Act      -> 重分片、迁移专家、调整准入、切换 kernel 与通信后端
-Verify   -> 正确性校验 + Goodput 是否真的提升，否则回滚
-```
+![MoE Runtime 自适应闭环：Observe → Decide → Act → Verify](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l28_02.png)
 
 四个环节缺一不可。只 Observe 不 Act 是仪表盘；只 Act 不 Verify 是把系统推向不可解释的状态。每次决策都要有明确的回滚条件与生效范围，且不能改变模型语义——这也是 MoE 里「不能随意改 Router」的同一条原则在 Runtime 层的推广。
 

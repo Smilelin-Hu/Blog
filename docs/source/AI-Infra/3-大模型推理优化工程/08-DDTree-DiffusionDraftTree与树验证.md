@@ -24,19 +24,11 @@
 
 线性 Draft 只会验证一条路径：
 
-```text
-A → C → E
-```
+![ai3-08-L27](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l08_02.png)
 
 但如果 Target 在第 2 个位置更偏好 D，整条线性后缀很快被截断。树可以覆盖多条分支：
 
-```text
-        A
-      /   \
-     C     D
-    / \   / \
-   E  F  E   F
-```
+![树状草稿：一次验证覆盖多条候选路径](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l08_03.png)
 
 只要真实 Target path 落在树中，就可能继续接受更多 token。树的本质是**用共享前缀把「被丢掉的第二名候选」重新纳入验证**，代价是节点数上升与掩码、KV 布局复杂化。
 

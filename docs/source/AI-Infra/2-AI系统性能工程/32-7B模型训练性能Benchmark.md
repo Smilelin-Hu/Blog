@@ -483,11 +483,7 @@ RTX 3080/3090 属于 Ampere，RTX 4090 属于 Ada Lovelace，RTX 5090 属于 Bla
 
 ### 7.2 运行阶段
 
-```text
-环境记录 → 容量模型 → 正确性 Smoke Test → 热身
-→ 稳态 20～100 步 → Profiler 窗口 → 重复运行
-→ 中位数/尾部统计 → 回归对比 → 保存证据
-```
+![ai2-32-L486](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l32_01.png)
 
 ### 7.3 结果表
 

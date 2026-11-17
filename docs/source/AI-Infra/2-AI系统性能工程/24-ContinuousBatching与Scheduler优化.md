@@ -28,6 +28,8 @@ $$
 
 Continuous Batching 在短请求结束后立刻把新请求放入空槽，使活动 Batch 尽量保持充实。它不能减少每个有效 Token 本身的模型计算，却能减少：等待固定 Batch 凑齐的时间；等最长序列完成造成的空槽；短请求被长请求拖住的队头阻塞；请求取消后仍执行的无效 Decode；低负载时的大量 Padding。
 
+![槽位利用：Static 整批等到最长 vs Continuous 随完随补](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l24_01.png)
+
 ## 3. 三种 Batching 不要混淆
 
 ### 3.1 Static Batching
@@ -42,13 +44,7 @@ Continuous Batching 在短请求结束后立刻把新请求放入空槽，使活
 
 每个推理迭代重新形成活动集合：
 
-```text
-Iteration 0: A(Prefill), B(Prefill)
-Iteration 1: A(Decode), B(Decode), C(Prefill chunk)
-Iteration 2: A(Decode), B完成, C(Prefill chunk)
-Iteration 3: A(Decode), C(Decode), D(Prefill)
-Iteration 4: A完成, C(Decode), D(Decode), E(Prefill)
-```
+![Continuous Batching：迭代级进出与 Prefill chunk 混排](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l24_02.png)
 
 Continuous Batching 是调度策略，不是单个 CUDA Kernel。生产系统还需要 Packed Input、Block Table、KV Cache Manager、变长 Attention 与输出状态管理配合。
 
@@ -187,11 +183,7 @@ $$
 
 将变长 Prompt Padding 到最大长度会浪费计算。生产 Runtime 常把有效 Token 紧凑排列，并用位置、序列边界与 Block Table 还原逻辑关系：
 
-```text
-Padded : [A A A A][B B _ _][C C C _]
-Packed : [A A A A B B C C C]
-Meta   : offsets=[0,4,6,9]
-```
+![Padded 批的无效槽位 vs Packed 序列拼接](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l24_03.png)
 
 Packed Input 提高有效 Token 密度，但要求 Attention Kernel 与调度元数据正确处理边界。
 

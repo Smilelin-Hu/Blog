@@ -26,13 +26,7 @@ $$T_{parallel}=\max_i T_i$$
 
 复杂 DAG 的用户延迟由最长依赖路径决定。例如：
 
-```text
-Embedding 10ms
-Vector Search 20ms
-Reranker 100ms
-LLM 2000ms
-Safety 50ms
-```
+![RAG 链路耗时构成：LLM 占绝对主导](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l15_04.png)
 
 把 Embedding 从 10 ms 优化到 2 ms，端到端只省 8 ms。
 
@@ -309,12 +303,7 @@ P95 合计 $15+40+150+900+60=1165$ ms。按占比分配 1500 ms：
 
 Compound system 最怕多层自动重试：
 
-```text
-Gateway retry 2
- × RAG service retry 2
- × LLM SDK retry 2
- = 最坏 8 次调用
-```
+![重试放大：三层各 retry 2 → 最坏 8 次调用](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l15_05.png)
 
 因此需要统一 retry budget：
 
@@ -399,10 +388,7 @@ Judge Pool
 
 方案不是只有「整个 API 500」。可以：
 
-```text
-Reranker healthy → rerank top50 → top10 → LLM
-Reranker down    → vector top10        → LLM
-```
+![ai3-15-L402](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l15_02.png)
 
 质量略降，但服务仍可用。类似地：大模型超载 → 小模型；Deep reasoning 超时 → balanced；tool unavailable → cached result；image encoder overloaded → lower resolution。
 
@@ -668,9 +654,7 @@ root trace 携带 `trace_id`/`task_id`/`stage_id`/父 span/修订/`deadline`/`re
 
 阶段拓扑：
 
-```text
-Embedding → Search → Rerank → LLM
-```
+![ai3-15-L671](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l15_03.png)
 
 可配置项（设计规格，非可执行代码）：
 

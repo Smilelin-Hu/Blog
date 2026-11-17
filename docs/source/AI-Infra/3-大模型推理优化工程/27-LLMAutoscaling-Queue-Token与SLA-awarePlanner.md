@@ -34,20 +34,7 @@
 
 LLM Replica 可能有几十秒级甚至更长的启动关键路径，因此 Autoscaler 必须同时估计当前 backlog、未来到达和 pending capacity。
 
-```text
-Traffic
-  ↓
-Metrics
-  ↓
-Planner
-  ↓
-Target Replicas
-  ↓
-Control Plane
-  ↓
-Ready Replicas
-  └────→ Metrics
-```
+![LLM Autoscaling 闭环：从流量到就绪副本再回测](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l27_01.png)
 
 问题：这个环不是即时的。
 
@@ -61,10 +48,7 @@ Planner 看到过载后才扩容，未来 60 秒仍没有新容量。
 
 同一 Replica：
 
-```text
-短输入短输出 → 20 req/s
-长 reasoning → 2 req/s
-```
+![服务率按工作负载口径：短请求与长 reasoning 差一个数量级](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l27_02.png)
 
 所以容量更适合写成 workload-conditioned：
 
@@ -158,10 +142,7 @@ load<70% scale in
 
 使用：
 
-```text
->75% 持续3个窗口 → out
-<40% 持续10个窗口 → in
-```
+![扩缩滞回：扩得快、缩得慢，防振荡](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l27_03.png)
 
 这叫 hysteresis。
 
