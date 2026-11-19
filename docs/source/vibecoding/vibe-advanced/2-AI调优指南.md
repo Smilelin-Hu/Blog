@@ -1,6 +1,6 @@
 # AI 调优指南：经济性、工作流与扩展能力
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_02-dev-tools-ai-tuning_index.png
+![AI 使用说明书](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_02-dev-tools-ai-tuning_index.png)
 
 <p>图 1：AI 使用说明书</p>
 
@@ -424,11 +424,11 @@ AI 直接看到真实错误、不用转述，小问题（版本冲突、缺依�
 
 ## 9. 推荐配置
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260203183832193.png
+![输入 /plugin 打开插件商店](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260203183832193.png)
 
 <p>图 2：输入 /plugin 打开插件商店</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260203184020360.png
+![选择并安装插件](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260203184020360.png)
 
 <p>图 3：选择并安装插件</p>
 
@@ -436,17 +436,17 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202602
 
 **用 CC-SWITCH 管理供应商、MCP 与 Skills**：Windows 下载安装包，macOS `brew tap farion1231/ccswitch && brew install --cask cc-switch`。主界面选供应商点「启用」，或系统托盘直接点击供应商名称；切换后重启终端或客户端生效。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_add-zh.png
+![CC-SWITCH 添加供应商](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_add-zh.png)
 
 <p>图 4：CC-SWITCH 添加供应商</p>
 
 MCP 管理界面可以导入已有配置，也可以添加 context7 服务器——装好后在对话里输入 `usecontext7`，AI 就会去查官方文档，提高代码准确性。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260203185306838.png
+![CC-SWITCH 的 MCP 管理](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260203185306838.png)
 
 <p>图 5：CC-SWITCH 的 MCP 管理</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260203184852968.png
+![添加 context7 MCP 服务器](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260203184852968.png)
 
 <p>图 6：添加 context7 MCP 服务器</p>
 
