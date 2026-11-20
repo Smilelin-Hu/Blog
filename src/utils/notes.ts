@@ -71,6 +71,7 @@ export const SERIES: SeriesMeta[] = [
   { slug: '视频结构化', label: '视频结构化', icon: '🎬', blurb: '视频理解与结构化 pipeline' },
   { slug: '产品经理', label: '产品经理', icon: '📐', blurb: 'JTBD / Mom Test / 双钻模型与 AI 产品实战' },
   { slug: '论文阅读', label: '论文阅读', icon: '📄', blurb: '论文精读笔记' },
+  { slug: '推理优化课程册', label: '推理优化课程册', icon: '📚', blurb: 'llm-inference-opt 课程按课次整理的实验笔记：机制、实验闭环与判读纪律' },
 ];
 
 /** 系列序号：按 SERIES 策展顺序 1..N，目录展示统一带序号。 */
