@@ -1,7 +1,7 @@
 ---
 import NotesSidebar from './NotesSidebar.astro';
 import type { TreeNode } from '../utils/notes';
-import { titleOf, pathOf, stemOf } from '../utils/notes';
+import { titleOf, pathOf, stemOf, seriesNum, metaOf } from '../utils/notes';
 import { getPath } from '../utils/paths';
 
 interface Props {
@@ -25,9 +25,12 @@ const under = (path: string) => currentId === path || currentId.startsWith(path 
               <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>
             {readme ? (
-              <a href={getPath(`/source/${pathOf(readme)}`)} class="truncate hover:underline">{node.name}</a>
+              <a href={getPath(`/source/${pathOf(readme)}`)} class="truncate hover:underline">{depth === 0 ? `${seriesNum(node.name)}. ` : ''}{node.name}</a>
             ) : (
-              <span class="truncate">{node.name}</span>
+              <span class="truncate">{depth === 0 ? `${seriesNum(node.name)}. ` : ''}{node.name}</span>
+            )}
+            {depth === 0 && metaOf(node.name)?.status === 'wip' && (
+              <span class="shrink-0 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-medium">待完成</span>
             )}
           </summary>
           <div class="pb-1">

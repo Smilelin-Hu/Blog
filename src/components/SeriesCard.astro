@@ -5,8 +5,10 @@ interface Props {
   description: string;
   href: string;
   count: number;
+  num?: number;
+  wip?: boolean;
 }
-const { icon, title, description, href, count } = Astro.props;
+const { icon, title, description, href, count, num, wip } = Astro.props;
 ---
 
 <a
@@ -20,7 +22,10 @@ const { icon, title, description, href, count } = Astro.props;
       {icon}
     </div>
     <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-[#007aff] dark:group-hover:text-[#0a84ff] transition-colors">
-      {title}
+      {num ? `${num}. ` : ''}{title}
+      {wip && (
+        <span class="ml-2 align-middle px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-medium">待完成</span>
+      )}
     </h3>
     <p class="text-[13px] leading-relaxed text-gray-500 dark:text-gray-400 mb-4 line-clamp-2">
       {description}

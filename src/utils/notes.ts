@@ -53,13 +53,15 @@ export interface SeriesMeta {
   label: string;
   icon: string;
   blurb: string;
+  /** wip = 系列尚未完成，目录处备注「待完成」 */
+  status?: 'wip';
 }
 
 /** 顶层系列目录的展示元信息（图标与一句话简介）。 */
 export const SERIES: SeriesMeta[] = [
   { slug: 'AI-Infra', label: 'AI Infra', icon: '🏗️', blurb: '训练 / 性能 / 推理 / 平台 / 数据与后训练五大主题的系统笔记' },
   { slug: 'GPU算子优化', label: 'GPU 算子优化', icon: '⚡', blurb: '从硬件到算子的优化主线：HIP / Profiling / GEMM / Attention' },
-  { slug: '国产GPGPU推理优化', label: '国产 GPGPU 推理优化', icon: '🧮', blurb: '国产算力适配方法论与推理引擎横向评测' },
+  { slug: '国产GPGPU推理优化', label: '国产 GPGPU 推理优化', icon: '🧮', blurb: '国产算力适配方法论与推理引擎横向评测', status: 'wip' },
   { slug: '大模型', label: '大模型', icon: '🧠', blurb: '理论 / 微调量化 / 多模态 / 部署工程与开源模型实战' },
   { slug: 'agent', label: 'Agent', icon: '🤖', blurb: 'RAG 全栈、智能体构建与企业级 Agent 手册' },
   { slug: 'vibecoding', label: 'Vibe Coding', icon: '💻', blurb: 'AI 编程入门到规范驱动开发的实践路径' },
@@ -70,6 +72,16 @@ export const SERIES: SeriesMeta[] = [
   { slug: '产品经理', label: '产品经理', icon: '📐', blurb: 'JTBD / Mom Test / 双钻模型与 AI 产品实战' },
   { slug: '论文阅读', label: '论文阅读', icon: '📄', blurb: '论文精读笔记' },
 ];
+
+/** 系列序号：按 SERIES 策展顺序 1..N，目录展示统一带序号。 */
+export function seriesNum(slug: string): number {
+  const i = SERIES.findIndex((s) => s.slug === slug);
+  return i >= 0 ? i + 1 : SERIES.length + 1;
+}
+
+export function metaOf(slug: string): SeriesMeta | undefined {
+  return SERIES.find((s) => s.slug === slug);
+}
 
 export function seriesOf(entry: Note): SeriesMeta {
   const top = pathOf(entry).split('/')[0];
@@ -111,6 +123,8 @@ export function buildTree(entries: Note[]): TreeNode[] {
     n.dirs.forEach(sortNode);
   };
   sortNode(root);
+  // 顶层系列按策展顺序排列，保证序号递增；未收录目录排最后
+  root.dirs.sort((a, b) => seriesNum(a.name) - seriesNum(b.name) || cmpName(a.name, b.name));
   return root.dirs;
 }
 

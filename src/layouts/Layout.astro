@@ -9,7 +9,7 @@ import '../styles/global.css';
 import ThemeToggle from '../components/ThemeToggle.astro';
 import Search from '../components/Search.astro';
 import CopyButton from '../components/CopyButton.astro';
-import { SERIES } from '../utils/notes';
+import { SERIES, seriesNum } from '../utils/notes';
 import { getPath } from '../utils/paths';
 
 interface Props {
@@ -128,7 +128,8 @@ const isActive = (path: string) => currentPath === getPath(path) || currentPath.
         <a href={getPath('/')} class="mobile-nav-link block py-2.5 px-4 rounded-xl text-[13px] font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04] cursor-pointer">首页</a>
         {SERIES.map((s) => (
           <a href={getPath(`/source/${s.slug}/README`)} class="mobile-nav-link flex items-center gap-2 py-2.5 px-4 rounded-xl text-[13px] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.04] cursor-pointer">
-            <span>{s.icon}</span>{s.label}
+            <span>{s.icon}</span>{seriesNum(s.slug)}. {s.label}
+            {s.status === 'wip' && <span class="ml-auto px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-medium">待完成</span>}
           </a>
         ))}
       </nav>
