@@ -8,8 +8,10 @@ interface Props {
   nodes: TreeNode[];
   currentId: string;
   depth?: number;
+  /** 父级层级序号基数（如 "5.1"），顶层不传 */
+  baseNum?: string;
 }
-const { nodes, currentId, depth = 0 } = Astro.props;
+const { nodes, currentId, depth = 0, baseNum } = Astro.props;
 const under = (path: string) => currentId === path || currentId.startsWith(path + '/');
 ---
 
@@ -17,8 +19,10 @@ const under = (path: string) => currentId === path || currentId.startsWith(path 
   {nodes.map((node, idx) => {
     const readme = node.files.find((f) => pathOf(f) === `${node.path}/README`);
     const open = under(node.path);
-    // 顶层用系列策展序号；子系列无数字前缀时按 README 顺序补序号
-    const numPrefix = depth === 0 ? `${seriesNum(node.name)}. ` : (/^\d+-/.test(node.name) ? '' : `${idx + 1}. `);
+    // 统一层级序号：系列 "1-"、子系列 "1.1"、文章 "1.1.1"，按位置递增
+    const nodeNum = depth === 0 ? String(seriesNum(node.name)) : `${baseNum}.${idx + 1}`;
+    const numPrefix = depth === 0 ? `${nodeNum}- ` : `${nodeNum} `;
+    const dirLabel = node.name.replace(/^(\d+-)+/, '');
     return (
       <li>
         <details open={open} class="group">
@@ -27,9 +31,9 @@ const under = (path: string) => currentId === path || currentId.startsWith(path 
               <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>
             {readme ? (
-              <a href={getPath(`/source/${pathOf(readme)}`)} class="truncate hover:underline">{numPrefix}{node.name}</a>
+              <a href={getPath(`/source/${pathOf(readme)}`)} class="truncate hover:underline">{numPrefix}{dirLabel}</a>
             ) : (
-              <span class="truncate">{numPrefix}{node.name}</span>
+              <span class="truncate">{numPrefix}{dirLabel}</span>
             )}
             {depth === 0 && metaOf(node.name)?.status === 'wip' && (
               <span class="shrink-0 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-medium">待完成</span>
@@ -38,7 +42,9 @@ const under = (path: string) => currentId === path || currentId.startsWith(path 
           <div class="pb-1">
             {node.files.filter((f) => !pathOf(f).endsWith('/README')).length > 0 && (
               <ul class="ml-3 border-l border-gray-200 dark:border-white/[0.06] pl-2 space-y-px">
-                {node.files.filter((f) => !pathOf(f).endsWith('/README')).map((f) => (
+                {node.files.filter((f) => !pathOf(f).endsWith('/README')).map((f, fi) => {
+                  const fileLabel = stemOf(f).replace(/^(\d+-)+/, '');
+                  return (
                   <li>
                     <a
                       href={getPath(`/source/${pathOf(f)}`)}
@@ -50,13 +56,14 @@ const under = (path: string) => currentId === path || currentId.startsWith(path 
                       ]}
                       title={titleOf(f)}
                     >
-                      {stemOf(f)}
+                      {nodeNum}.{fi + 1} {fileLabel}
                     </a>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             )}
-            {node.dirs.length > 0 && <NotesSidebar nodes={node.dirs} currentId={currentId} depth={depth + 1} />}
+            {node.dirs.length > 0 && <NotesSidebar nodes={node.dirs} currentId={currentId} depth={depth + 1} baseNum={nodeNum} />}
           </div>
         </details>
       </li>
