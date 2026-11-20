@@ -1,0 +1,60 @@
+---
+import NotesSidebar from './NotesSidebar.astro';
+import type { TreeNode } from '../utils/notes';
+import { titleOf, pathOf } from '../utils/notes';
+import { getPath } from '../utils/paths';
+
+interface Props {
+  nodes: TreeNode[];
+  currentId: string;
+  depth?: number;
+}
+const { nodes, currentId, depth = 0 } = Astro.props;
+const under = (path: string) => currentId === path || currentId.startsWith(path + '/');
+---
+
+<ul class:list={['space-y-px', depth > 0 && 'ml-3 border-l border-gray-200 dark:border-white/[0.06] pl-2']}>
+  {nodes.map((node) => {
+    const readme = node.files.find((f) => pathOf(f) === `${node.path}/README`);
+    const open = under(node.path);
+    return (
+      <li>
+        <details open={open} class="group">
+          <summary class="flex items-center gap-1.5 py-1.5 pr-2 text-[13px] font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none hover:text-[#007aff] dark:hover:text-[#0a84ff] transition-colors list-none [&::-webkit-details-marker]:hidden">
+            <svg class="w-3 h-3 shrink-0 text-gray-400 transition-transform duration-200 group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+            {readme ? (
+              <a href={getPath(`/source/${pathOf(readme)}`)} class="truncate hover:underline">{node.name}</a>
+            ) : (
+              <span class="truncate">{node.name}</span>
+            )}
+          </summary>
+          <div class="pb-1">
+            {node.files.filter((f) => !pathOf(f).endsWith('/README')).length > 0 && (
+              <ul class="ml-3 border-l border-gray-200 dark:border-white/[0.06] pl-2 space-y-px">
+                {node.files.filter((f) => !pathOf(f).endsWith('/README')).map((f) => (
+                  <li>
+                    <a
+                      href={getPath(`/source/${pathOf(f)}`)}
+                      class:list={[
+                        'block py-1.5 pr-2 text-[13px] leading-snug truncate transition-colors duration-150',
+                        pathOf(f) === currentId
+                          ? 'text-[#007aff] dark:text-[#0a84ff] font-semibold'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200',
+                      ]}
+                      title={titleOf(f)}
+                    >
+                      {titleOf(f)}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {node.dirs.length > 0 && <NotesSidebar nodes={node.dirs} currentId={currentId} depth={depth + 1} />}
+          </div>
+        </details>
+      </li>
+    );
+  })}
+</ul>

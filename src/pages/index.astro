@@ -1,0 +1,92 @@
+---
+import Layout from '../layouts/Layout.astro';
+import SeriesCard from '../components/SeriesCard.astro';
+import { getCollection } from 'astro:content';
+import { SERIES, pathOf } from '../utils/notes';
+import { getPath } from '../utils/paths';
+
+const notes = await getCollection('notes');
+const counts = new Map<string, number>();
+for (const n of notes) {
+  const top = pathOf(n).split('/')[0];
+  counts.set(top, (counts.get(top) ?? 0) + 1);
+}
+const series = SERIES.filter((s) => counts.has(s.slug));
+const total = notes.length;
+---
+
+<Layout title="笔记课堂 - AI Infra / 系统 / 算法笔记" description="AI Infra、GPU 算子、大模型、Agent 与工程实践的系统笔记">
+  <!-- Hero -->
+  <section class="relative pt-32 pb-20 overflow-hidden">
+    <div class="absolute inset-0 pointer-events-none" style="background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0,122,255,0.12), transparent);"></div>
+    <div class="relative max-w-5xl mx-auto px-6 text-center">
+      <span class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.08] text-xs font-medium text-gray-500 dark:text-gray-400 mb-8">
+        <span class="w-1.5 h-1.5 rounded-full bg-[#007aff]"></span>
+        个人笔记 · 持续更新
+      </span>
+      <h1 class="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
+        笔记课堂
+      </h1>
+      <p class="text-lg md:text-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto mb-4 leading-relaxed">
+        如果不是为了让她哭，那么卷人又有什么意义？
+      </p>
+      <p class="text-sm text-gray-400 dark:text-gray-500 max-w-2xl mx-auto mb-10">
+        AI Infra · GPU 算子优化 · 大模型 · Agent · 工程实践 —— 先测量、再定位、一次只改一处、结果可复现。
+      </p>
+      <div class="flex items-center justify-center gap-4 flex-wrap">
+        <a
+          href={getPath('/source/AI-Infra/README')}
+          class="inline-flex items-center gap-2 px-6 py-3 bg-[#007aff] text-white rounded-xl font-medium hover:bg-[#0062cc] transition-colors cursor-pointer"
+        >
+          开始阅读
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+          </svg>
+        </a>
+        <a
+          href="https://github.com/swpucwf/Blog"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2 px-6 py-3 bg-white dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.08] text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:border-gray-300 dark:hover:border-white/[0.16] transition-colors cursor-pointer"
+        >
+          GitHub
+        </a>
+      </div>
+      <div class="mt-14 flex items-center justify-center gap-10 text-center">
+        <div>
+          <div class="text-2xl font-bold text-gray-900 dark:text-white">{series.length}</div>
+          <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">系列</div>
+        </div>
+        <div class="w-px h-8 bg-gray-200 dark:bg-white/[0.08]"></div>
+        <div>
+          <div class="text-2xl font-bold text-gray-900 dark:text-white">{total}</div>
+          <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">篇笔记</div>
+        </div>
+        <div class="w-px h-8 bg-gray-200 dark:bg-white/[0.08]"></div>
+        <div>
+          <div class="text-2xl font-bold text-gray-900 dark:text-white">∞</div>
+          <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">持续更新</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Series -->
+  <section id="series" class="max-w-7xl mx-auto px-6 pb-24">
+    <div class="flex items-center gap-3 mb-8">
+      <div class="w-1 h-6 rounded-full bg-gradient-to-b from-[#007aff] to-[#5856D6]"></div>
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white">系列目录</h2>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+      {series.map((s) => (
+        <SeriesCard
+          icon={s.icon}
+          title={s.label}
+          description={s.blurb}
+          href={getPath(`/source/${s.slug}/README`)}
+          count={counts.get(s.slug) ?? 0}
+        />
+      ))}
+    </div>
+  </section>
+</Layout>
