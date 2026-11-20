@@ -14,9 +14,11 @@ const under = (path: string) => currentId === path || currentId.startsWith(path 
 ---
 
 <ul class:list={['space-y-px', depth > 0 && 'ml-3 border-l border-gray-200 dark:border-white/[0.06] pl-2']}>
-  {nodes.map((node) => {
+  {nodes.map((node, idx) => {
     const readme = node.files.find((f) => pathOf(f) === `${node.path}/README`);
     const open = under(node.path);
+    // 顶层用系列策展序号；子系列无数字前缀时按 README 顺序补序号
+    const numPrefix = depth === 0 ? `${seriesNum(node.name)}. ` : (/^\d+-/.test(node.name) ? '' : `${idx + 1}. `);
     return (
       <li>
         <details open={open} class="group">
@@ -25,9 +27,9 @@ const under = (path: string) => currentId === path || currentId.startsWith(path 
               <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>
             {readme ? (
-              <a href={getPath(`/source/${pathOf(readme)}`)} class="truncate hover:underline">{depth === 0 ? `${seriesNum(node.name)}. ` : ''}{node.name}</a>
+              <a href={getPath(`/source/${pathOf(readme)}`)} class="truncate hover:underline">{numPrefix}{node.name}</a>
             ) : (
-              <span class="truncate">{depth === 0 ? `${seriesNum(node.name)}. ` : ''}{node.name}</span>
+              <span class="truncate">{numPrefix}{node.name}</span>
             )}
             {depth === 0 && metaOf(node.name)?.status === 'wip' && (
               <span class="shrink-0 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-medium">待完成</span>

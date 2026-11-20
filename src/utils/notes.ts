@@ -114,6 +114,17 @@ export function buildTree(entries: Note[]): TreeNode[] {
   }
   const sortNode = (n: TreeNode) => {
     n.dirs.sort((a, b) => cmpName(a.name, b.name));
+    // 子系列顺序跟随本目录 README 的出场顺序（学习路径），未提及的排最后
+    const readme = n.files.find((f) => pathOf(f) === `${n.path}/README`);
+    if (readme?.body) {
+      const body = readme.body;
+      const pos = (name: string) => {
+        const cands = [`](${name}/`, `](${name})`, `](./${name}/`, `](./${name})`, `/${name}/`, `/${name})`];
+        const hits = cands.map((c) => body.indexOf(c)).filter((i) => i >= 0);
+        return hits.length ? Math.min(...hits) : Number.MAX_SAFE_INTEGER;
+      };
+      n.dirs.sort((a, b) => pos(a.name) - pos(b.name) || cmpName(a.name, b.name));
+    }
     n.files.sort((a, b) => {
       const ra = pathOf(a).endsWith('/README');
       const rb = pathOf(b).endsWith('/README');
