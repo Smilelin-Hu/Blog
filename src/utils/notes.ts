@@ -43,6 +43,11 @@ export function dirOf(entry: Note): string {
   return i <= 0 ? '' : p.slice(0, i);
 }
 
+/** 文件名主干（保留序号前缀），侧边栏与 README 目录链接文本保持一致。 */
+export function stemOf(entry: Note): string {
+  return pathOf(entry).split('/').pop() ?? pathOf(entry);
+}
+
 export interface SeriesMeta {
   slug: string;
   label: string;

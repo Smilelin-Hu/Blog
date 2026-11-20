@@ -1,7 +1,7 @@
 ---
 import NotesSidebar from './NotesSidebar.astro';
 import type { TreeNode } from '../utils/notes';
-import { titleOf, pathOf } from '../utils/notes';
+import { titleOf, pathOf, stemOf } from '../utils/notes';
 import { getPath } from '../utils/paths';
 
 interface Props {
@@ -45,7 +45,7 @@ const under = (path: string) => currentId === path || currentId.startsWith(path 
                       ]}
                       title={titleOf(f)}
                     >
-                      {titleOf(f)}
+                      {stemOf(f)}
                     </a>
                   </li>
                 ))}
