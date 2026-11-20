@@ -8,10 +8,12 @@ interface Props {
   nodes: TreeNode[];
   currentId: string;
   depth?: number;
-  /** 父级层级序号基数（如 "5.1"），顶层不传 */
+  /** 父级层级序号基数（如 "6"），顶层不传 */
   baseNum?: string;
+  /** 父级直挂文章数：第二层序号需要接在文章之后连续编排 */
+  siblingFileCount?: number;
 }
-const { nodes, currentId, depth = 0, baseNum } = Astro.props;
+const { nodes, currentId, depth = 0, baseNum, siblingFileCount } = Astro.props;
 const under = (path: string) => currentId === path || currentId.startsWith(path + '/');
 ---
 
@@ -19,8 +21,10 @@ const under = (path: string) => currentId === path || currentId.startsWith(path 
   {nodes.map((node, idx) => {
     const readme = node.files.find((f) => pathOf(f) === `${node.path}/README`);
     const open = under(node.path);
-    // 统一层级序号：系列 "1-"、子系列 "1.1"、文章 "1.1.1"，按位置递增
-    const nodeNum = depth === 0 ? String(seriesNum(node.name)) : `${baseNum}.${idx + 1}`;
+    // 序号规则：系列 "1-"；第二层平铺连续（文章 1..5 后子目录接 6..10）；
+    // 第三层起用父子 dash 号（6-1、6-2），仅含子节点的课程才会出现
+    const k = (siblingFileCount ?? 0) + idx + 1;
+    const nodeNum = depth === 0 ? String(seriesNum(node.name)) : depth === 1 ? String(k) : `${baseNum}-${k}`;
     const numPrefix = depth === 0 ? `${nodeNum}- ` : `${nodeNum} `;
     const dirLabel = node.name.replace(/^(\d+-)+/, '');
     return (
@@ -56,14 +60,14 @@ const under = (path: string) => currentId === path || currentId.startsWith(path 
                       ]}
                       title={titleOf(f)}
                     >
-                      {depth === 0 ? `${fi + 1} ` : `${nodeNum}.${fi + 1} `}{fileLabel}
+                      {depth === 0 ? `${fi + 1} ` : `${nodeNum}-${fi + 1} `}{fileLabel}
                     </a>
                   </li>
                   );
                 })}
               </ul>
             )}
-            {node.dirs.length > 0 && <NotesSidebar nodes={node.dirs} currentId={currentId} depth={depth + 1} baseNum={nodeNum} />}
+            {node.dirs.length > 0 && <NotesSidebar nodes={node.dirs} currentId={currentId} depth={depth + 1} baseNum={nodeNum} siblingFileCount={node.files.filter((f) => !pathOf(f).endsWith('/README')).length} />}
           </div>
         </details>
       </li>
