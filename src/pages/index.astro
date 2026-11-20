@@ -16,27 +16,40 @@ const total = notes.length;
 ---
 
 <Layout title="笔记课堂 - AI Infra / 系统 / 算法笔记" description="AI Infra、GPU 算子、大模型、Agent 与工程实践的系统笔记">
-  <!-- Hero -->
-  <section class="relative pt-32 pb-20 overflow-hidden">
-    <div class="absolute inset-0 pointer-events-none" style="background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0,122,255,0.12), transparent);"></div>
+  <!-- Hero：术核AI（dxzyai.com）深色聚光风格 -->
+  <section class="relative pt-28 pb-24 overflow-hidden text-white" style="background: radial-gradient(circle at 74% 28%, rgba(47,107,255,0.11), transparent 32%), radial-gradient(circle at 54% 48%, rgba(72,199,255,0.04), transparent 27%), linear-gradient(120deg, #020712 0%, #071126 54%, #0b1835 100%);">
+    <div class="absolute inset-0 pointer-events-none" style="background: linear-gradient(135deg, rgba(255,255,255,0.02), transparent 36%); mask-image: linear-gradient(rgba(0,0,0,0.88), transparent 84%); -webkit-mask-image: linear-gradient(rgba(0,0,0,0.88), transparent 84%);"></div>
+    <svg class="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 3787 2842" fill="none" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <g filter="url(#hero-beam)">
+        <ellipse cx="1924.71" cy="273.501" rx="1924.71" ry="273.501" transform="matrix(-0.822377 -0.568943 -0.568943 0.822377 3631.88 2291.09)" fill="white" fill-opacity="0.12"></ellipse>
+      </g>
+      <defs>
+        <filter id="hero-beam" x="0.860352" y="0.838989" width="3785.16" height="2840.26" filterUnits="userSpaceOnUse" color-interpolation="sRGB">
+          <feFlood flood-opacity="0" result="BackgroundImageFix"></feFlood>
+          <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"></feBlend>
+          <feGaussianBlur stdDeviation="151" result="effect1_foregroundBlur"></feGaussianBlur>
+        </filter>
+      </defs>
+    </svg>
     <div class="relative max-w-5xl mx-auto px-6 text-center">
-      <span class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.08] text-xs font-medium text-gray-500 dark:text-gray-400 mb-8">
-        <span class="w-1.5 h-1.5 rounded-full bg-[#007aff]"></span>
-        个人笔记 · 持续更新
+      <span class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.06] border border-white/10 text-xs font-medium text-gray-300 mb-8">
+        <span class="w-1.5 h-1.5 rounded-full bg-[#48c7ff]"></span>
+        术核AI · 个人笔记 · 持续更新
       </span>
-      <h1 class="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
-        笔记课堂
+      <h1 class="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
+        从大模型原理<br />到 <span class="bg-gradient-to-r from-[#2f6bff] to-[#48c7ff] bg-clip-text text-transparent">系统交付</span>
       </h1>
-      <p class="text-lg md:text-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto mb-4 leading-relaxed">
-        如果不是为了让她哭，那么卷人又有什么意义？
+      <p class="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto mb-4 leading-relaxed">
+        AI Infra · GPU 算子优化 · 大模型 · Agent · 工程实践的系统笔记。
       </p>
-      <p class="text-sm text-gray-400 dark:text-gray-500 max-w-2xl mx-auto mb-10">
-        AI Infra · GPU 算子优化 · 大模型 · Agent · 工程实践 —— 先测量、再定位、一次只改一处、结果可复现。
+      <p class="text-sm text-gray-400 max-w-2xl mx-auto mb-10">
+        先测量、再定位、一次只改一处、结果可复现。
       </p>
       <div class="flex items-center justify-center gap-4 flex-wrap">
         <a
           href={getPath('/source/AI-Infra/README')}
-          class="inline-flex items-center gap-2 px-6 py-3 bg-[#007aff] text-white rounded-xl font-medium hover:bg-[#0062cc] transition-colors cursor-pointer"
+          class="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium text-white transition-all cursor-pointer hover:brightness-110"
+          style="background: linear-gradient(135deg, #3678ff 0%, #2f6bff 100%); box-shadow: 0 12px 24px rgba(47,107,255,0.24);"
         >
           开始阅读
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -47,25 +60,25 @@ const total = notes.length;
           href="https://github.com/swpucwf/Blog"
           target="_blank"
           rel="noopener noreferrer"
-          class="inline-flex items-center gap-2 px-6 py-3 bg-white dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.08] text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:border-gray-300 dark:hover:border-white/[0.16] transition-colors cursor-pointer"
+          class="inline-flex items-center gap-2 px-6 py-3 bg-white/[0.06] border border-white/15 text-gray-200 rounded-xl font-medium hover:border-white/30 transition-colors cursor-pointer"
         >
           GitHub
         </a>
       </div>
       <div class="mt-14 flex items-center justify-center gap-10 text-center">
         <div>
-          <div class="text-2xl font-bold text-gray-900 dark:text-white">{series.length}</div>
-          <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">系列</div>
+          <div class="text-2xl font-bold text-white">{series.length}</div>
+          <div class="text-xs text-gray-400 mt-1">系列</div>
         </div>
-        <div class="w-px h-8 bg-gray-200 dark:bg-white/[0.08]"></div>
+        <div class="w-px h-8 bg-white/10"></div>
         <div>
-          <div class="text-2xl font-bold text-gray-900 dark:text-white">{total}</div>
-          <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">篇笔记</div>
+          <div class="text-2xl font-bold text-white">{total}</div>
+          <div class="text-xs text-gray-400 mt-1">篇笔记</div>
         </div>
-        <div class="w-px h-8 bg-gray-200 dark:bg-white/[0.08]"></div>
+        <div class="w-px h-8 bg-white/10"></div>
         <div>
-          <div class="text-2xl font-bold text-gray-900 dark:text-white">∞</div>
-          <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">持续更新</div>
+          <div class="text-2xl font-bold text-white">∞</div>
+          <div class="text-xs text-gray-400 mt-1">持续更新</div>
         </div>
       </div>
     </div>
