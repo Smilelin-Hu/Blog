@@ -1,0 +1,76 @@
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+
+def gpu_inventory() -> list[dict[str, object]]:
+    if shutil.which("nvidia-smi") is None:
+        return []
+    query = [
+        "nvidia-smi",
+        "--query-gpu=index,name,memory.total,driver_version",
+        "--format=csv,noheader,nounits",
+    ]
+    completed = subprocess.run(query, check=False, capture_output=True, text=True)
+    if completed.returncode != 0:
+        return []
+    result = []
+    for line in completed.stdout.strip().splitlines():
+        index, name, memory, driver = [part.strip() for part in line.split(",", 3)]
+        result.append({"index": index, "name": name, "memory_mib": int(memory), "driver": driver})
+    return result
+
+
+def main() -> None:
+    gpus = gpu_inventory()
+    manifest = {
+        "experiment": "lesson-24-offline-preference",
+        "requested_gpus": 1,
+        "inventory": gpus,
+        "status": "ready",
+        "reason": None,
+    }
+    if len(gpus) < 1:
+        manifest["status"] = "skipped"
+        manifest["reason"] = "requires_at_least_one_visible_cuda_gpu"
+        print(json.dumps(manifest, ensure_ascii=False, indent=2))
+        return
+    if min(int(gpu["memory_mib"]) for gpu in gpus[:1]) < 1:
+        manifest["status"] = "skipped"
+        manifest["reason"] = "reported_gpu_memory_is_invalid"
+        print(json.dumps(manifest, ensure_ascii=False, indent=2))
+        return
+    required = ["MODEL_ID", "TRAIN_FILE", "OUTPUT_DIR"]
+    missing = [name for name in required if not os.environ.get(name)]
+    if missing:
+        manifest["status"] = "skipped"
+        manifest["reason"] = "missing_environment:" + ",".join(missing)
+        print(json.dumps(manifest, ensure_ascii=False, indent=2))
+        return
+    command = [
+        "torchrun", "--standalone", "--nproc_per_node=1", "train_preference.py",
+        "--model", os.environ["MODEL_ID"],
+        "--train-file", os.environ["TRAIN_FILE"],
+        "--output-dir", os.environ["OUTPUT_DIR"],
+        "--loss", os.environ.get("LOSS_NAME", "dpo"),
+        "--max-length", os.environ.get("MAX_LENGTH", "1024"),
+        "--per-device-batch", "1",
+        "--gradient-accumulation", "16",
+        "--lora-r", "16",
+    ]
+    manifest["command"] = command
+    Path(os.environ["OUTPUT_DIR"]).mkdir(parents=True, exist_ok=True)
+    Path(os.environ["OUTPUT_DIR"], "launch_manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    completed = subprocess.run(command, check=False)
+    raise SystemExit(completed.returncode)
+
+
+if __name__ == "__main__":
+    main()

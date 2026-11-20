@@ -1,0 +1,17 @@
+driver:
+  enabled: true
+  kernelModuleType: auto
+toolkit:
+  enabled: true
+devicePlugin:
+  enabled: true
+gfd:
+  enabled: true
+dcgm:
+  enabled: true
+dcgmExporter:
+  enabled: true
+validator:
+  enabled: true
+operator:
+  defaultRuntime: containerd

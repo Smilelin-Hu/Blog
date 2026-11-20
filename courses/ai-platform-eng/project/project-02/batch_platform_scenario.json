@@ -1,0 +1,215 @@
+{
+  "thresholds": {
+    "maximum_queue_wait_seconds_p95": 120,
+    "minimum_admission_success_rate": 0.75,
+    "maximum_fair_share_deviation": 0.5,
+    "maximum_gpu_fragmentation_ratio": 0.5,
+    "maximum_preemption_recovery_seconds": 90
+  },
+  "tenants": [
+    {
+      "tenant": "team-a",
+      "gpu_quota": 16
+    },
+    {
+      "tenant": "team-b",
+      "gpu_quota": 16
+    }
+  ],
+  "nodes": [
+    {
+      "name": "a100-1",
+      "rack": "r1",
+      "gpu_type": "A100_80GB",
+      "total_gpus": 8,
+      "available_gpus": 8
+    },
+    {
+      "name": "a100-2",
+      "rack": "r1",
+      "gpu_type": "A100_80GB",
+      "total_gpus": 8,
+      "available_gpus": 8
+    },
+    {
+      "name": "a100-3",
+      "rack": "r2",
+      "gpu_type": "A100_80GB",
+      "total_gpus": 8,
+      "available_gpus": 8
+    },
+    {
+      "name": "a100-4",
+      "rack": "r2",
+      "gpu_type": "A100_80GB",
+      "total_gpus": 8,
+      "available_gpus": 8
+    }
+  ],
+  "jobs": [
+    {
+      "name": "train-a",
+      "tenant": "team-a",
+      "project": "foundation",
+      "owner": "alice",
+      "cost_center": "cc-100",
+      "queue": "team-a",
+      "priority": 100,
+      "submitted_at": 1,
+      "members": 4,
+      "minimum_members": 4,
+      "gpus_per_member": 2,
+      "gpu_type": "A100_80GB",
+      "allowed_racks": [
+        "r1"
+      ],
+      "wait_seconds": 20
+    },
+    {
+      "name": "train-b",
+      "tenant": "team-b",
+      "project": "vision",
+      "owner": "bob",
+      "cost_center": "cc-200",
+      "queue": "team-b",
+      "priority": 90,
+      "submitted_at": 2,
+      "members": 4,
+      "minimum_members": 4,
+      "gpus_per_member": 2,
+      "gpu_type": "A100_80GB",
+      "allowed_racks": [
+        "r2"
+      ],
+      "wait_seconds": 35
+    },
+    {
+      "name": "batch-a",
+      "tenant": "team-a",
+      "project": "eval",
+      "owner": "carol",
+      "cost_center": "cc-100",
+      "queue": "team-a",
+      "priority": 50,
+      "submitted_at": 3,
+      "members": 2,
+      "minimum_members": 2,
+      "gpus_per_member": 2,
+      "gpu_type": "A100_80GB",
+      "allowed_racks": [
+        "r1",
+        "r2"
+      ],
+      "wait_seconds": 48
+    },
+    {
+      "name": "batch-b",
+      "tenant": "team-b",
+      "project": "data",
+      "owner": "dave",
+      "cost_center": "cc-200",
+      "queue": "team-b",
+      "priority": 40,
+      "submitted_at": 4,
+      "members": 1,
+      "minimum_members": 1,
+      "gpus_per_member": 2,
+      "gpu_type": "A100_80GB",
+      "allowed_racks": [
+        "r1",
+        "r2"
+      ],
+      "wait_seconds": 60
+    }
+  ],
+  "recovery": {
+    "preemption_recovery_seconds": 55
+  },
+  "faults": [
+    {
+      "type": "partial_gang",
+      "expected_phase": "REJECTED",
+      "expected_reason": "PartialGangAllocationForbidden"
+    },
+    {
+      "type": "quota_bypass",
+      "expected_phase": "REJECTED",
+      "expected_reason": "TenantQuotaRequired"
+    },
+    {
+      "type": "missing_cost_label",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "CostIdentityMissing"
+    },
+    {
+      "type": "topology_split",
+      "expected_phase": "PENDING",
+      "expected_reason": "GangTopologyUnavailable"
+    },
+    {
+      "type": "queue_owner_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "QueueOwnerMissing"
+    },
+    {
+      "type": "duplicate_workload",
+      "expected_phase": "REJECTED",
+      "expected_reason": "WorkloadIdentityCollision"
+    },
+    {
+      "type": "borrowing_unbounded",
+      "expected_phase": "REJECTED",
+      "expected_reason": "BorrowingLimitRequired"
+    },
+    {
+      "type": "reclaim_without_priority",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ReclaimPolicyUndefined"
+    },
+    {
+      "type": "preemption_without_checkpoint",
+      "expected_phase": "BLOCKED",
+      "expected_reason": "CheckpointRequiredBeforePreemption"
+    },
+    {
+      "type": "recovery_slo_missed",
+      "expected_phase": "SLO_VIOLATED",
+      "expected_reason": "PreemptionRecoveryTooSlow"
+    },
+    {
+      "type": "fairness_evidence_missing",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "FairShareEvidenceMissing"
+    },
+    {
+      "type": "node_shape_fragmented",
+      "expected_phase": "PENDING",
+      "expected_reason": "ContiguousGPUShapeUnavailable"
+    },
+    {
+      "type": "resource_flavor_unknown",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ResourceFlavorUnknown"
+    },
+    {
+      "type": "mixed_scheduler",
+      "expected_phase": "REJECTED",
+      "expected_reason": "SchedulerContractConflict"
+    },
+    {
+      "type": "spot_without_budget",
+      "expected_phase": "REJECTED",
+      "expected_reason": "InterruptionBudgetRequired"
+    },
+    {
+      "type": "slurm_duplicate_submission",
+      "expected_phase": "BLOCKED",
+      "expected_reason": "BackendRunLeaseAlreadyOwned"
+    },
+    {
+      "type": "live_cluster_missing",
+      "expected_phase": "SKIPPED",
+      "expected_reason": "NoKubernetesContextProvided"
+    }
+  ]
+}

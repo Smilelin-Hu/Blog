@@ -1,0 +1,16 @@
+import json
+import os
+
+checks = {"model_path": bool(os.environ.get("MODEL_PATH")), "dataset_manifest": bool(os.environ.get("DATASET_MANIFEST"))}
+try:
+    import torch
+    checks["cuda"] = torch.cuda.is_available()
+    checks["gpu_count"] = torch.cuda.device_count()
+    checks["devices"] = [
+        {"name": torch.cuda.get_device_name(i), "memory_gib": round(torch.cuda.get_device_properties(i).total_memory / 1024 ** 3, 1)}
+        for i in range(torch.cuda.device_count())
+    ]
+except Exception as exc:
+    checks.update({"cuda": False, "error": type(exc).__name__})
+ready = checks.get("cuda") and checks.get("gpu_count", 0) >= 2 and checks["model_path"] and checks["dataset_manifest"]
+print(json.dumps({"status": "ready" if ready else "skipped", "reason": None if ready else "dual_rtx_path_unavailable", "checks": checks}))

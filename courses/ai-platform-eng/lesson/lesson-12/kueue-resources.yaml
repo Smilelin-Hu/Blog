@@ -1,0 +1,82 @@
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ResourceFlavor
+metadata:
+  name: a100-on-demand
+spec:
+  nodeLabels:
+    accelerator.platform.training.invalid/model: a100
+    capacity.platform.training.invalid/type: on-demand
+  tolerations:
+  - key: dedicated.platform.training.invalid/training
+    operator: Equal
+    value: "true"
+    effect: NoSchedule
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ResourceFlavor
+metadata:
+  name: l4-spot
+spec:
+  nodeLabels:
+    accelerator.platform.training.invalid/model: l4
+    capacity.platform.training.invalid/type: spot
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: Cohort
+metadata:
+  name: ai-shared
+spec:
+  fairSharing:
+    weight: "1"
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata:
+  name: team-a-cq
+spec:
+  cohortName: ai-shared
+  namespaceSelector:
+    matchLabels:
+      platform.training.invalid/tenant: team-a
+  queueingStrategy: BestEffortFIFO
+  fairSharing:
+    weight: "2"
+  preemption:
+    reclaimWithinCohort: LowerPriority
+    withinClusterQueue: LowerPriority
+  resourceGroups:
+  - coveredResources: ["cpu", "memory", "nvidia.com/gpu"]
+    flavors:
+    - name: a100-on-demand
+      resources:
+      - name: nvidia.com/gpu
+        nominalQuota: 4
+        borrowingLimit: 2
+        lendingLimit: 1
+      - name: cpu
+        nominalQuota: 128
+      - name: memory
+        nominalQuota: 1Ti
+    - name: l4-spot
+      resources:
+      - name: nvidia.com/gpu
+        nominalQuota: 2
+        borrowingLimit: 2
+        lendingLimit: 1
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: LocalQueue
+metadata:
+  name: training
+  namespace: team-a
+spec:
+  clusterQueue: team-a-cq
+  fairSharing:
+    weight: "2"
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: WorkloadPriorityClass
+metadata:
+  name: production-urgent
+value: 200
+description: Production recovery work that may reclaim borrowed quota.

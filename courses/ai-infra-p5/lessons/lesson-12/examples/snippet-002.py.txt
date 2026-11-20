@@ -1,0 +1,84 @@
+from __future__ import annotations
+
+import json
+import os
+import sys
+import torch
+import torch.distributed as dist
+from torch import nn
+
+
+class Encoder(nn.Module):
+    def __init__(self, dim=128):
+        super().__init__()
+        torch.manual_seed(23)
+        self.emb = nn.Embedding(256, dim)
+        self.proj = nn.Linear(dim, dim, bias=False)
+
+    def forward(self, ids, mask):
+        x = self.emb(ids)
+        pooled = (x * mask[..., None]).sum(1) / mask.sum(1, keepdim=True).clamp_min(1)
+        return torch.nn.functional.normalize(self.proj(pooled).float(), dim=-1)
+
+
+def encode_inputs(texts, width, device):
+    ids = torch.zeros((len(texts), width), dtype=torch.long, device=device)
+    mask = torch.zeros((len(texts), width), dtype=torch.float32, device=device)
+    for i, text in enumerate(texts):
+        raw = list(text.encode("utf-8")[:width])
+        if raw:
+            ids[i, :len(raw)] = torch.tensor(raw, device=device)
+            mask[i, :len(raw)] = 1
+    return ids, mask
+
+
+def emit(x):
+    print(json.dumps(x, ensure_ascii=False))
+
+
+def main():
+    if not torch.cuda.is_available() or torch.cuda.device_count() < 1:
+        emit({"status": "skipped", "reason": "requires at least one visible CUDA GPU"})
+        return
+    if "RANK" not in os.environ:
+        emit({"status": "skipped", "reason": "launch with torchrun"})
+        return
+    dist.init_process_group("nccl")
+    rank, world = dist.get_rank(), dist.get_world_size()
+    if world < 1:
+        if rank == 0:
+            emit({"status": "skipped", "reason": f"expected world_size>=1, got {world}"})
+        dist.destroy_process_group(); return
+    torch.cuda.set_device(rank)
+    device = torch.device("cuda", rank)
+    corpus = [
+        "语义相似只是候选证据。", "相近含义需要进一步复核。",
+        "基准污染会破坏评测可信度。", "测试泄漏让评测不可信。",
+        "多样性必须在去重中保护。", "保留不同语言和观点。",
+    ]
+    local_ids = list(range(rank, len(corpus), world))
+    local_texts = [corpus[i] for i in local_ids]
+    ids, mask = encode_inputs(local_texts, 96, device)
+    with torch.no_grad():
+        vectors = Encoder().to(device)(ids, mask).cpu()
+    payload = [(i, v.tolist()) for i, v in zip(local_ids, vectors)]
+    gathered = [None] * world if rank == 0 else None
+    dist.gather_object(payload, gathered, dst=0)
+    if rank == 0:
+        flat = sorted([item for part in gathered for item in part])
+        matrix = torch.tensor([v for _, v in flat])
+        sim = matrix @ matrix.T
+        emit({"status": "passed", "world_size": world,
+              "device": torch.cuda.get_device_name(0),
+              "norm_error_max": float((matrix.norm(dim=1)-1).abs().max()),
+              "similarity": sim.tolist(),
+              "claim": "mechanism validation only; toy encoder"})
+    dist.destroy_process_group()
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as exc:
+        emit({"status": "failed", "error": repr(exc)})
+        sys.exit(1)

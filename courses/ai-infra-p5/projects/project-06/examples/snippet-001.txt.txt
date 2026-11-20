@@ -1,0 +1,20 @@
+agentic_rl_platform/
+  api/
+  schemas/task.json
+  schemas/experience.json
+  schemas/policy_bundle.json
+  services/scheduler/
+  services/rollout/
+  services/environment/
+  services/reward/
+  services/sealer/
+  services/trainer/
+  services/publisher/
+  services/registry/
+  workflows/recovery/
+  deploy/local/
+  deploy/kubernetes/
+  tests/state_machine/
+  tests/fault_injection/
+  dashboards/
+  runbooks/

@@ -1,0 +1,59 @@
+import json
+import random
+from collections import Counter
+
+
+def make_data(seed: int = 20260822):
+    rng = random.Random(seed)
+    rows = []
+    for index in range(300):
+        bucket = ["reason", "code", "safety"][index % 3]
+        cluster = f"{bucket}-{index % (12 if bucket != 'safety' else 7)}"
+        length = rng.randint(40, 420)
+        quality = min(1.0, max(0.0, rng.gauss(0.72, 0.16)))
+        gain = quality * {"reason": 1.0, "code": 1.2, "safety": 0.9}[bucket]
+        rows.append({"id": index, "bucket": bucket, "cluster": cluster,
+                     "length": length, "quality": quality, "gain": gain})
+    return rows
+
+
+def summarize(name, chosen):
+    buckets = Counter(x["bucket"] for x in chosen)
+    clusters = Counter(x["cluster"] for x in chosen)
+    token = sum(x["length"] for x in chosen)
+    repeated = sum(max(0, count - 1) for count in clusters.values())
+    value = sum(x["gain"] / (1 + 0.18 * (clusters[x["cluster"]] - 1)) for x in chosen)
+    return {"name": name, "samples": len(chosen), "tokens": token,
+            "bucket_counts": dict(buckets), "unique_clusters": len(clusters),
+            "repeated_members": repeated, "proxy_value": round(value, 4)}
+
+
+def main():
+    rows = make_data()
+    budget = 90
+    top = sorted(rows, key=lambda x: x["quality"], reverse=True)[:budget]
+    dedup = []
+    seen = set()
+    for row in sorted(rows, key=lambda x: x["quality"], reverse=True):
+        if row["cluster"] not in seen:
+            dedup.append(row)
+            seen.add(row["cluster"])
+    constrained = list(dedup)
+    target = {"reason": 30, "code": 30, "safety": 30}
+    for bucket, count in target.items():
+        pool = [x for x in rows if x["bucket"] == bucket and x not in constrained]
+        pool.sort(key=lambda x: x["quality"], reverse=True)
+        need = count - sum(x["bucket"] == bucket for x in constrained)
+        constrained.extend(pool[:max(0, need)])
+    constrained = constrained[:budget]
+    report = {
+        "status": "passed",
+        "claim_boundary": "synthetic selection mechanism only",
+        "strategies": [summarize("all", rows), summarize("top_k", top),
+                       summarize("coverage_dedup", constrained)],
+    }
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

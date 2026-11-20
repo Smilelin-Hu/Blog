@@ -1,0 +1,127 @@
+from __future__ import annotations
+
+import hashlib
+import json
+from dataclasses import dataclass
+
+
+EOS = 256
+PAD = 257
+
+
+def encode(text: str) -> list[int]:
+    return list(text.encode("utf-8"))
+
+
+def decode(token_ids: list[int]) -> str:
+    raw = bytes(token for token in token_ids if token < 256)
+    return raw.decode("utf-8")
+
+
+@dataclass(frozen=True)
+class Sample:
+    record_id: str
+    tokens: tuple[int, ...]
+
+
+def make_sample(record_id: str, text: str) -> Sample:
+    tokens = tuple(encode(text) + [EOS])
+    if len(tokens) < 2:
+        raise ValueError("empty sample")
+    return Sample(record_id, tokens)
+
+
+def first_fit_decreasing(samples: list[Sample], max_length: int) -> list[list[Sample]]:
+    bins: list[list[Sample]] = []
+    remaining: list[int] = []
+    for sample in sorted(samples, key=lambda x: (-len(x.tokens), x.record_id)):
+        if len(sample.tokens) > max_length:
+            raise ValueError(f"sample too long: {sample.record_id}")
+        candidates = [
+            (space - len(sample.tokens), index)
+            for index, space in enumerate(remaining)
+            if space >= len(sample.tokens)
+        ]
+        if not candidates:
+            bins.append([sample])
+            remaining.append(max_length - len(sample.tokens))
+        else:
+            _, index = min(candidates)
+            bins[index].append(sample)
+            remaining[index] -= len(sample.tokens)
+    return bins
+
+
+def compile_pack(members: list[Sample], max_length: int) -> dict[str, object]:
+    flat: list[int] = []
+    positions: list[int] = []
+    segment_ids: list[int] = []
+    cu_seqlens = [0]
+    spans = []
+    for segment, sample in enumerate(members):
+        start = len(flat)
+        flat.extend(sample.tokens)
+        positions.extend(range(len(sample.tokens)))
+        segment_ids.extend([segment] * len(sample.tokens))
+        end = len(flat)
+        cu_seqlens.append(end)
+        spans.append({"record_id": sample.record_id, "start": start, "end": end})
+    valid = len(flat)
+    flat.extend([PAD] * (max_length - valid))
+    positions.extend([0] * (max_length - valid))
+    segment_ids.extend([-1] * (max_length - valid))
+    labels = flat[1:] + [PAD]
+    loss_mask = [1] * max_length
+    for end in cu_seqlens[1:]:
+        loss_mask[end - 1] = 0  # 段尾不能预测下一段或PAD
+    for index in range(valid, max_length):
+        loss_mask[index] = 0
+    for index, enabled in enumerate(loss_mask):
+        if not enabled:
+            continue
+        assert segment_ids[index] == segment_ids[index + 1]
+    payload = {
+        "input_ids": flat,
+        "labels": labels,
+        "loss_mask": loss_mask,
+        "position_ids": positions,
+        "segment_ids": segment_ids,
+        "cu_seqlens": cu_seqlens,
+        "spans": spans,
+        "valid_tokens": valid,
+    }
+    packed = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    payload["digest"] = hashlib.sha256(packed).hexdigest()
+    return payload
+
+
+def main() -> None:
+    documents = {
+        "r1": "短文本。",
+        "r2": "Packing必须保留文档边界。",
+        "r3": "code: for i in range(3): print(i)",
+        "r4": "长上下文不等于很多无关短文的简单拼接。",
+        "r5": "EOS提供边界信号，注意力隔离需要额外结构。",
+    }
+    samples = [make_sample(key, value) for key, value in documents.items()]
+    bins = first_fit_decreasing(samples, max_length=96)
+    packs = [compile_pack(members, 96) for members in bins]
+    used = sum(pack["valid_tokens"] for pack in packs)
+    capacity = len(packs) * 96
+    result = {
+        "status": "passed",
+        "pack_count": len(packs),
+        "utilization": round(used / capacity, 6),
+        "packs": [{
+            "members": [span["record_id"] for span in pack["spans"]],
+            "cu_seqlens": pack["cu_seqlens"],
+            "digest": pack["digest"],
+        } for pack in packs],
+    }
+    second = [compile_pack(members, 96)["digest"] for members in bins]
+    assert second == [pack["digest"] for pack in packs]
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

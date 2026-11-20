@@ -1,0 +1,218 @@
+{
+  "physical_capacity": {
+    "a100": 8,
+    "l4": 6
+  },
+  "resource_flavors": {
+    "a100-on-demand": {
+      "resource": "a100",
+      "node_labels": {
+        "accelerator": "a100",
+        "capacity-type": "on-demand"
+      },
+      "tolerations": [
+        {
+          "key": "dedicated",
+          "value": "training",
+          "effect": "NoSchedule"
+        }
+      ]
+    },
+    "l4-spot": {
+      "resource": "l4",
+      "node_labels": {
+        "accelerator": "l4",
+        "capacity-type": "spot"
+      },
+      "tolerations": [
+        {
+          "key": "capacity-type",
+          "value": "spot",
+          "effect": "NoSchedule"
+        }
+      ]
+    }
+  },
+  "cluster_queues": {
+    "team-a-cq": {
+      "nominal": {
+        "a100": 4,
+        "l4": 2
+      },
+      "borrowing_limit": {
+        "a100": 2,
+        "l4": 2
+      },
+      "lending_limit": {
+        "a100": 1,
+        "l4": 1
+      },
+      "fair_weight": 2
+    },
+    "team-b-cq": {
+      "nominal": {
+        "a100": 4,
+        "l4": 4
+      },
+      "borrowing_limit": {
+        "a100": 2,
+        "l4": 2
+      },
+      "lending_limit": {
+        "a100": 1,
+        "l4": 2
+      },
+      "fair_weight": 1
+    }
+  },
+  "local_queues": [
+    {
+      "name": "team-a-prod",
+      "cluster_queue": "team-a-cq",
+      "historical_usage": 120,
+      "entry_penalty": 0,
+      "weight": 2
+    },
+    {
+      "name": "team-b-dev",
+      "cluster_queue": "team-b-cq",
+      "historical_usage": 50,
+      "entry_penalty": 0,
+      "weight": 1
+    }
+  ],
+  "workloads": [
+    {
+      "name": "team-a-base",
+      "cluster_queue": "team-a-cq",
+      "resource": "a100",
+      "count": 2,
+      "priority": 100
+    },
+    {
+      "name": "team-b-base",
+      "cluster_queue": "team-b-cq",
+      "resource": "a100",
+      "count": 4,
+      "priority": 100
+    },
+    {
+      "name": "team-b-borrow",
+      "cluster_queue": "team-b-cq",
+      "resource": "a100",
+      "count": 1,
+      "priority": 50
+    }
+  ],
+  "urgent_workload": {
+    "name": "team-a-urgent",
+    "cluster_queue": "team-a-cq",
+    "resource": "a100",
+    "count": 2,
+    "priority": 200
+  },
+  "flavor_workloads": [
+    {
+      "name": "train-a100",
+      "requested_flavor": "a100-on-demand",
+      "required_node_labels": {
+        "accelerator": "a100"
+      }
+    },
+    {
+      "name": "infer-l4",
+      "requested_flavor": "l4-spot",
+      "required_node_labels": {
+        "capacity-type": "spot"
+      }
+    }
+  ],
+  "head_of_line_workloads": [
+    {
+      "name": "large",
+      "count": 4,
+      "priority": 100,
+      "age": 1
+    },
+    {
+      "name": "small",
+      "count": 2,
+      "priority": 100,
+      "age": 2
+    }
+  ],
+  "faults": [
+    {
+      "name": "namespace-outside-clusterqueue-selector",
+      "type": "namespace_not_selected",
+      "expected_phase": "PENDING",
+      "expected_reason": "ClusterQueueNamespaceMismatch"
+    },
+    {
+      "name": "localqueue-stopped-for-maintenance",
+      "type": "local_queue_stopped",
+      "expected_phase": "PENDING",
+      "expected_reason": "LocalQueueStopped"
+    },
+    {
+      "name": "resourceflavor-object-missing",
+      "type": "unknown_flavor",
+      "expected_phase": "PENDING",
+      "expected_reason": "ResourceFlavorNotFound"
+    },
+    {
+      "name": "workload-affinity-conflicts-with-flavor",
+      "type": "flavor_label_conflict",
+      "expected_phase": "PENDING",
+      "expected_reason": "FlavorNodeLabelsConflict"
+    },
+    {
+      "name": "borrow-request-exceeds-limit",
+      "type": "borrowing_limit",
+      "expected_phase": "PENDING",
+      "expected_reason": "BorrowingLimitExceeded"
+    },
+    {
+      "name": "owner-protects-quota-with-lending-limit",
+      "type": "lending_limit",
+      "expected_phase": "PENDING",
+      "expected_reason": "LendingLimitProtectsNominalQuota"
+    },
+    {
+      "name": "quota-exists-but-no-physical-gpu",
+      "type": "physical_capacity",
+      "expected_phase": "PENDING",
+      "expected_reason": "PhysicalCapacityUnavailable"
+    },
+    {
+      "name": "provisioning-check-asks-for-retry",
+      "type": "admission_check_retry",
+      "expected_phase": "REQUEUED",
+      "expected_reason": "AdmissionCheckRetry"
+    },
+    {
+      "name": "policy-check-rejects-workload",
+      "type": "admission_check_rejected",
+      "expected_phase": "DEACTIVATED",
+      "expected_reason": "AdmissionCheckRejected"
+    },
+    {
+      "name": "referenced-workloadpriorityclass-missing",
+      "type": "priority_class_missing",
+      "expected_phase": "PENDING",
+      "expected_reason": "WorkloadPriorityClassNotFound"
+    },
+    {
+      "name": "quota-release-event-is-delivered-twice",
+      "type": "duplicate_release",
+      "expected_phase": "RELEASED",
+      "expected_reason": "IdempotentQuotaRelease"
+    },
+    {
+      "name": "clusterqueue-is-stopped",
+      "type": "stopped_cluster_queue",
+      "expected_phase": "EVICTED",
+      "expected_reason": "ClusterQueueStopped"
+    }
+  ]
+}

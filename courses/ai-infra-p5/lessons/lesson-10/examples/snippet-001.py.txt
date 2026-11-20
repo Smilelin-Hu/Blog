@@ -1,0 +1,114 @@
+from __future__ import annotations
+
+import json
+import math
+import random
+import re
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Example:
+    text: str
+    quality: int
+    domain: int
+
+
+def feats(text: str) -> list[float]:
+    words = re.findall(r"[A-Za-z\u3400-\u9fff]+", text.lower())
+    n = max(len(text), 1)
+    return [1.0, min(len(text), 200) / 200, len(words) / 30,
+            sum(c.isdigit() for c in text) / n,
+            sum(c in "。.!?！？" for c in text) / n,
+            len(set(words)) / max(len(words), 1)]
+
+
+def dot(w, x):
+    return sum(a * b for a, b in zip(w, x))
+
+
+def sigmoid(z):
+    z = max(-30.0, min(30.0, z))
+    return 1.0 / (1.0 + math.exp(-z))
+
+
+def softmax(zs, temperature=1.0):
+    zs = [z / temperature for z in zs]
+    m = max(zs)
+    es = [math.exp(z - m) for z in zs]
+    s = sum(es)
+    return [e / s for e in es]
+
+
+def train_binary(data, steps=500, lr=0.3):
+    w = [0.0] * len(feats(data[0].text))
+    for _ in range(steps):
+        grad = [0.0] * len(w)
+        for e in data:
+            x, p = feats(e.text), sigmoid(dot(w, feats(e.text)))
+            for j in range(len(w)):
+                grad[j] += (p - e.quality) * x[j]
+        for j in range(len(w)):
+            w[j] -= lr * grad[j] / len(data)
+    return w
+
+
+def train_domain(data, classes=3, steps=600, lr=0.2):
+    dim = len(feats(data[0].text))
+    w = [[0.0] * dim for _ in range(classes)]
+    for _ in range(steps):
+        grad = [[0.0] * dim for _ in range(classes)]
+        for e in data:
+            x = feats(e.text)
+            ps = softmax([dot(row, x) for row in w])
+            for k in range(classes):
+                for j in range(dim):
+                    grad[k][j] += (ps[k] - (k == e.domain)) * x[j]
+        for k in range(classes):
+            for j in range(dim):
+                w[k][j] -= lr * grad[k][j] / len(data)
+    return w
+
+
+def nll(logits_and_labels, temperature):
+    total = 0.0
+    for logits, label in logits_and_labels:
+        total -= math.log(max(softmax(logits, temperature)[label], 1e-12))
+    return total / len(logits_and_labels)
+
+
+def main():
+    random.seed(7)
+    data = [
+        Example("本文逐步解释矩阵乘法并给出验证例题。", 1, 0),
+        Example("实验记录包含假设、步骤、数据和误差讨论。", 1, 0),
+        Example("Python function returns a sorted list with tests.", 1, 1),
+        Example("def add(a, b): return a + b", 1, 1),
+        Example("市场风险报告说明波动率与仓位限制。", 1, 2),
+        Example("财务报表包含收入、成本与现金流解释。", 1, 2),
+        Example("点击点击优惠优惠立即立即", 0, 2),
+        Example("...... !!!!! ......", 0, 0),
+        Example("var a=1;var a=1;var a=1;", 0, 1),
+    ]
+    train, calibration = data[:6], data[6:]
+    qw = train_binary(data)
+    dw = train_domain(train)
+    cal = [([dot(row, feats(e.text)) for row in dw], e.domain) for e in calibration]
+    candidates = [0.5, 0.75, 1.0, 1.5, 2.0, 3.0]
+    temperature = min(candidates, key=lambda t: nll(cal, t))
+    predictions = []
+    for e in data:
+        x = feats(e.text)
+        q = sigmoid(dot(qw, x))
+        dp = softmax([dot(row, x) for row in dw], temperature)
+        status = "gray" if 0.35 < q < 0.65 else "accepted" if q >= 0.65 else "rejected"
+        predictions.append({"text": e.text, "quality_probability": q,
+                            "domain_probabilities": dp, "status": status})
+    print(json.dumps({"status": "passed", "temperature": temperature,
+                      "feature_dim": len(qw), "predictions": predictions,
+                      "limitations": "toy labels and features; mechanism only"},
+                     ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

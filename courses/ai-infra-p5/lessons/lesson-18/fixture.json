@@ -1,0 +1,10 @@
+{
+  "weights": {
+    "domain": 0.65,
+    "general_replay": 0.35
+  },
+  "seed": 17,
+  "draws": 5000,
+  "tolerance": 0.03,
+  "replay_floor": 0.3
+}

@@ -1,0 +1,16 @@
+import json
+import os
+
+try:
+    import torch
+    checks = {
+        "cuda": torch.cuda.is_available(),
+        "gpu_count": torch.cuda.device_count(),
+        "memory_gib": [round(torch.cuda.get_device_properties(i).total_memory / 1024 ** 3, 1) for i in range(torch.cuda.device_count())],
+        "policy_model": bool(os.environ.get("POLICY_MODEL")),
+        "environment_image": bool(os.environ.get("ENVIRONMENT_IMAGE")),
+    }
+except Exception as exc:
+    checks = {"cuda": False, "error": type(exc).__name__}
+ready = checks.get("cuda") and checks.get("gpu_count", 0) >= 1 and checks.get("policy_model") and checks.get("environment_image")
+print(json.dumps({"status": "ready" if ready else "skipped", "reason": None if ready else "single_gpu_agentic_path_unavailable", "checks": checks}))

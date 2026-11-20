@@ -1,0 +1,181 @@
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import time
+from pathlib import Path
+
+import torch
+import torch.distributed as dist
+from torch import nn
+
+
+def stable_partition(unit_id: str, world_size: int) -> int:
+    value = int(hashlib.sha256(unit_id.encode("utf-8")).hexdigest()[:16], 16)
+    return value % world_size
+
+
+def encode(text: str, length: int, buckets: int) -> torch.Tensor:
+    values = [ord(char) % buckets for char in text[:length]]
+    values.extend([0] * (length - len(values)))
+    return torch.tensor(values, dtype=torch.long)
+
+
+class TinyEncoder(nn.Module):
+    def __init__(self, buckets: int, hidden: int) -> None:
+        super().__init__()
+        self.embedding = nn.Embedding(buckets, hidden, padding_idx=0)
+        self.projection = nn.Linear(hidden, buckets)
+
+    def forward(self, tokens: torch.Tensor) -> torch.Tensor:
+        hidden = self.embedding(tokens)
+        return self.projection(hidden)
+
+
+def load_units(path: Path | None) -> list[dict[str, str]]:
+    if path is None:
+        texts = [
+            "网页正文保留标题与段落结构",
+            "PDF阅读顺序不能只按坐标排序",
+            "def add(a, b): return a + b",
+            "tool call and result must keep the same call id",
+        ] * 128
+        return [
+            {
+                "unit_id": hashlib.sha256(f"{index}:{text}".encode()).hexdigest()[:24],
+                "text": text,
+            }
+            for index, text in enumerate(texts)
+        ]
+    result: list[dict[str, str]] = []
+    with path.open("r", encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            value = json.loads(line)
+            if not isinstance(value.get("unit_id"), str) or not isinstance(value.get("text"), str):
+                raise ValueError(f"invalid unit at line {line_number}")
+            result.append({"unit_id": value["unit_id"], "text": value["text"]})
+    return result
+
+
+def run(args: argparse.Namespace) -> None:
+    local_rank = int(os.environ.get("LOCAL_RANK", "0"))
+    rank = int(os.environ.get("RANK", "0"))
+    world_size = int(os.environ.get("WORLD_SIZE", "1"))
+    if not torch.cuda.is_available() or torch.cuda.device_count() < 1 or world_size < 1:
+        if rank == 0:
+            print(
+                json.dumps(
+                    {
+                        "status": "skipped",
+                        "reason": "requires torchrun with at least one visible CUDA device",
+                        "cuda_devices": torch.cuda.device_count(),
+                        "world_size": world_size,
+                    },
+                    ensure_ascii=False,
+                )
+            )
+        return
+    torch.cuda.set_device(local_rank)
+    dist.init_process_group("nccl")
+    device = torch.device("cuda", local_rank)
+    torch.manual_seed(args.seed)
+    units = load_units(Path(args.units) if args.units else None)
+    manifest_digest = hashlib.sha256(
+        json.dumps(units, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    ).hexdigest()
+    digests = [None for _ in range(world_size)]
+    dist.all_gather_object(digests, manifest_digest)
+    if len(set(digests)) != 1:
+        raise RuntimeError("manifest digest differs across ranks")
+    owned = [item for item in units if stable_partition(item["unit_id"], world_size) == rank]
+    model = TinyEncoder(args.buckets, args.hidden).to(device)
+    model = nn.parallel.DistributedDataParallel(model, device_ids=[local_rank])
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
+    criterion = nn.CrossEntropyLoss(ignore_index=0)
+    start = time.perf_counter()
+    local_examples = 0
+    local_chars = 0
+    local_steps = 0
+    for offset in range(0, len(owned), args.batch_size):
+        batch = owned[offset : offset + args.batch_size]
+        if len(batch) < args.batch_size:
+            batch = batch + [batch[-1]] * (args.batch_size - len(batch)) if batch else []
+        has_batch = torch.tensor([1 if batch else 0], device=device, dtype=torch.int32)
+        dist.all_reduce(has_batch, op=dist.ReduceOp.MIN)
+        if has_batch.item() == 0:
+            break
+        tokens = torch.stack(
+            [encode(item["text"], args.length, args.buckets) for item in batch]
+        ).to(device)
+        logits = model(tokens[:, :-1])
+        target = tokens[:, 1:]
+        loss = criterion(logits.reshape(-1, args.buckets), target.reshape(-1))
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        optimizer.step()
+        real_count = min(args.batch_size, len(owned) - offset)
+        local_examples += max(real_count, 0)
+        local_chars += sum(len(item["text"]) for item in owned[offset : offset + args.batch_size])
+        local_steps += 1
+    torch.cuda.synchronize()
+    elapsed = time.perf_counter() - start
+    totals = torch.tensor(
+        [local_examples, local_chars, local_steps], device=device, dtype=torch.long
+    )
+    dist.all_reduce(totals, op=dist.ReduceOp.SUM)
+    max_memory = torch.tensor(
+        [torch.cuda.max_memory_allocated(device)], device=device, dtype=torch.long
+    )
+    dist.all_reduce(max_memory, op=dist.ReduceOp.MAX)
+    max_elapsed = torch.tensor([elapsed], device=device, dtype=torch.float64)
+    dist.all_reduce(max_elapsed, op=dist.ReduceOp.MAX)
+    if rank == 0:
+        total_examples, total_chars, total_steps = totals.tolist()
+        expected_ids = {item["unit_id"] for item in units}
+        gathered_owned: list[list[str] | None] = [None for _ in range(world_size)]
+    else:
+        gathered_owned = None
+        expected_ids = set()
+    dist.gather_object([item["unit_id"] for item in owned], gathered_owned, dst=0)
+    if rank == 0:
+        flattened = [item for partition in gathered_owned or [] for item in (partition or [])]
+        coverage_ok = len(flattened) == len(set(flattened)) == len(expected_ids)
+        print(
+            json.dumps(
+                {
+                    "status": "passed" if coverage_ok else "failed",
+                    "manifest_digest": manifest_digest,
+                    "world_size": world_size,
+                    "units": len(units),
+                    "consumed_examples": total_examples,
+                    "consumed_characters": total_chars,
+                    "summed_rank_steps": total_steps,
+                    "max_elapsed_seconds": max_elapsed.item(),
+                    "characters_per_second": total_chars / max(max_elapsed.item(), 1e-9),
+                    "max_memory_allocated_bytes": max_memory.item(),
+                    "partition_coverage_ok": coverage_ok,
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+                indent=2,
+            )
+        )
+    dist.destroy_process_group()
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--units", default=None)
+    parser.add_argument("--batch-size", type=int, default=8)
+    parser.add_argument("--length", type=int, default=128)
+    parser.add_argument("--buckets", type=int, default=4096)
+    parser.add_argument("--hidden", type=int, default=128)
+    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--seed", type=int, default=2026)
+    run(parser.parse_args())
+
+
+if __name__ == "__main__":
+    main()

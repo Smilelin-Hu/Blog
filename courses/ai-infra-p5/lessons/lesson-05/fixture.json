@@ -1,0 +1,15 @@
+{
+  "min_chars": 12,
+  "objects": [
+    {
+      "object_id": "warc-1",
+      "locator": "capture-2026/segment-1:42",
+      "payload": "A complete article with retained capture evidence."
+    },
+    {
+      "object_id": "pdf-2",
+      "locator": "document-2.pdf#page=3",
+      "payload": "short"
+    }
+  ]
+}

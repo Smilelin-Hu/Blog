@@ -1,0 +1,352 @@
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import math
+import os
+import random
+import sys
+import time
+from dataclasses import asdict, dataclass
+from typing import Dict, List, Tuple
+
+
+def emit(payload: Dict[str, object]) -> None:
+    print(json.dumps(payload, ensure_ascii=False), flush=True)
+
+
+try:
+    import torch
+    import torch.distributed as dist
+    import torch.nn as nn
+    from torch.nn.parallel import DistributedDataParallel as DDP
+except Exception as exc:
+    emit({
+        "status": "skipped",
+        "reason": "pytorch_import_failed",
+        "detail": str(exc),
+    })
+    raise SystemExit(0)
+
+
+@dataclass
+class RecipeResult:
+    recipe: str
+    nominal_tokens: int
+    observed_samples: int
+    observed_unique_sequences: int
+    unique_exposure_ratio: float
+    final_train_loss: float
+    validation_loss: float
+    tokens_per_second: float
+    steps: int
+
+
+class TinyCausalLM(nn.Module):
+    def __init__(
+        self,
+        vocab_size: int,
+        sequence_length: int,
+        hidden_size: int,
+        layers: int,
+        heads: int,
+    ) -> None:
+        super().__init__()
+        self.token_embedding = nn.Embedding(vocab_size, hidden_size)
+        self.position_embedding = nn.Embedding(sequence_length, hidden_size)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=hidden_size,
+            nhead=heads,
+            dim_feedforward=4 * hidden_size,
+            dropout=0.0,
+            activation="gelu",
+            batch_first=True,
+            norm_first=True,
+        )
+        self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=layers)
+        self.norm = nn.LayerNorm(hidden_size)
+        self.output = nn.Linear(hidden_size, vocab_size, bias=False)
+        self.output.weight = self.token_embedding.weight
+
+    def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
+        batch, length = input_ids.shape
+        positions = torch.arange(length, device=input_ids.device).unsqueeze(0)
+        hidden = self.token_embedding(input_ids) + self.position_embedding(positions)
+        causal_mask = torch.full(
+            (length, length),
+            float("-inf"),
+            device=input_ids.device,
+        )
+        causal_mask = torch.triu(causal_mask, diagonal=1)
+        hidden = self.encoder(hidden, mask=causal_mask, is_causal=True)
+        return self.output(self.norm(hidden))
+
+
+class ControlledCorpus:
+    def __init__(
+        self,
+        recipe: str,
+        vocab_size: int,
+        sequence_length: int,
+        pool_size: int,
+        seed: int,
+    ) -> None:
+        self.recipe = recipe
+        self.vocab_size = vocab_size
+        self.sequence_length = sequence_length
+        self.pool_size = pool_size
+        self.seed = seed
+        self.pool = [self._clean_sequence(index) for index in range(pool_size)]
+
+    def _clean_sequence(self, key: int) -> List[int]:
+        rng = random.Random(self.seed * 1_000_003 + key)
+        start = rng.randrange(4, self.vocab_size)
+        step = 1 + rng.randrange(1, 11)
+        period = 3 + rng.randrange(2, 13)
+        sequence = [start]
+        for position in range(1, self.sequence_length + 1):
+            phase = (position // period) % 3
+            delta = step + phase
+            sequence.append(4 + ((sequence[-1] - 4 + delta) % (self.vocab_size - 4)))
+        return sequence
+
+    def batch(
+        self,
+        step_index: int,
+        rank: int,
+        batch_size: int,
+    ) -> Tuple[torch.Tensor, List[str]]:
+        rng = random.Random(
+            self.seed + step_index * 100_003 + rank * 10_007
+        )
+        rows: List[List[int]] = []
+        fingerprints: List[str] = []
+        for item_index in range(batch_size):
+            if self.recipe == "duplicate":
+                pool_index = rng.randrange(min(16, self.pool_size))
+            else:
+                pool_index = rng.randrange(self.pool_size)
+            row = list(self.pool[pool_index])
+            if self.recipe == "noisy":
+                for token_index in range(1, len(row)):
+                    if rng.random() < 0.22:
+                        row[token_index] = rng.randrange(4, self.vocab_size)
+            digest = hashlib.sha1(bytes(value % 256 for value in row)).hexdigest()
+            rows.append(row)
+            fingerprints.append(digest)
+        return torch.tensor(rows, dtype=torch.long), fingerprints
+
+
+def setup_distributed() -> Tuple[int, int, int]:
+    if not torch.cuda.is_available():
+        emit({"status": "skipped", "reason": "cuda_unavailable"})
+        raise SystemExit(0)
+    if torch.cuda.device_count() < 1:
+        emit({
+            "status": "skipped",
+            "reason": "requires_two_cuda_gpus",
+            "detected_gpu_count": torch.cuda.device_count(),
+        })
+        raise SystemExit(0)
+    required = ("RANK", "WORLD_SIZE", "LOCAL_RANK")
+    if any(name not in os.environ for name in required):
+        emit({
+            "status": "skipped",
+            "reason": "launch_with_torchrun",
+            "command": "torchrun --standalone --nproc_per_node=1 train_data_value_probe.py",
+        })
+        raise SystemExit(0)
+    rank = int(os.environ["RANK"])
+    world_size = int(os.environ["WORLD_SIZE"])
+    local_rank = int(os.environ["LOCAL_RANK"])
+    if world_size != 2:
+        if rank == 0:
+            emit({
+                "status": "skipped",
+                "reason": "world_size_must_be_positive",
+                "world_size": world_size,
+            })
+        raise SystemExit(0)
+    torch.cuda.set_device(local_rank)
+    dist.init_process_group(backend="nccl")
+    return rank, world_size, local_rank
+
+
+def set_seed(seed: int, rank: int) -> None:
+    random.seed(seed + rank)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
+
+@torch.no_grad()
+def evaluate(
+    model: DDP,
+    device: torch.device,
+    args: argparse.Namespace,
+    rank: int,
+) -> float:
+    model.eval()
+    validation = ControlledCorpus(
+        recipe="unique",
+        vocab_size=args.vocab_size,
+        sequence_length=args.sequence_length,
+        pool_size=args.validation_pool_size,
+        seed=args.seed + 90_000,
+    )
+    total_loss = torch.zeros(1, device=device)
+    total_tokens = torch.zeros(1, device=device)
+    loss_function = nn.CrossEntropyLoss(reduction="sum")
+    for step_index in range(args.validation_steps):
+        rows, _ = validation.batch(step_index, rank, args.micro_batch_size)
+        rows = rows.to(device, non_blocking=True)
+        logits = model(rows[:, :-1])
+        labels = rows[:, 1:]
+        total_loss += loss_function(
+            logits.reshape(-1, args.vocab_size), labels.reshape(-1)
+        )
+        total_tokens += labels.numel()
+    dist.all_reduce(total_loss, op=dist.ReduceOp.SUM)
+    dist.all_reduce(total_tokens, op=dist.ReduceOp.SUM)
+    model.train()
+    return (total_loss / total_tokens).item()
+
+
+def train_recipe(
+    recipe: str,
+    rank: int,
+    world_size: int,
+    local_rank: int,
+    args: argparse.Namespace,
+) -> RecipeResult:
+    set_seed(args.seed, rank)
+    device = torch.device("cuda", local_rank)
+    model = TinyCausalLM(
+        vocab_size=args.vocab_size,
+        sequence_length=args.sequence_length,
+        hidden_size=args.hidden_size,
+        layers=args.layers,
+        heads=args.heads,
+    ).to(device)
+    model = DDP(model, device_ids=[local_rank], output_device=local_rank)
+    optimizer = torch.optim.AdamW(
+        model.parameters(), lr=args.learning_rate, weight_decay=0.01
+    )
+    loss_function = nn.CrossEntropyLoss()
+    corpus = ControlledCorpus(
+        recipe=recipe,
+        vocab_size=args.vocab_size,
+        sequence_length=args.sequence_length,
+        pool_size=args.unique_pool_size,
+        seed=args.seed + 1_000,
+    )
+    recent_losses: List[float] = []
+    local_fingerprints = set()
+    observed_samples = 0
+    nominal_tokens = 0
+    torch.cuda.synchronize(device)
+    started = time.perf_counter()
+
+    for step_index in range(args.steps):
+        rows, fingerprints = corpus.batch(
+            step_index, rank, args.micro_batch_size
+        )
+        local_fingerprints.update(fingerprints)
+        observed_samples += len(fingerprints)
+        rows = rows.to(device, non_blocking=True)
+        optimizer.zero_grad(set_to_none=True)
+        logits = model(rows[:, :-1])
+        labels = rows[:, 1:]
+        loss = loss_function(
+            logits.reshape(-1, args.vocab_size), labels.reshape(-1)
+        )
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        optimizer.step()
+        recent_losses.append(loss.detach().item())
+        recent_losses = recent_losses[-20:]
+        nominal_tokens += labels.numel()
+
+    torch.cuda.synchronize(device)
+    elapsed = time.perf_counter() - started
+    validation_loss = evaluate(model, device, args, rank)
+
+    local_counts = torch.tensor(
+        [nominal_tokens, observed_samples], dtype=torch.long, device=device
+    )
+    dist.all_reduce(local_counts, op=dist.ReduceOp.SUM)
+    gathered_fingerprints: List[object] = [None for _ in range(world_size)]
+    dist.all_gather_object(gathered_fingerprints, sorted(local_fingerprints))
+    merged = set()
+    for values in gathered_fingerprints:
+        merged.update(values)
+    global_tokens = int(local_counts[0].item())
+    global_samples = int(local_counts[1].item())
+    return RecipeResult(
+        recipe=recipe,
+        nominal_tokens=global_tokens,
+        observed_samples=global_samples,
+        observed_unique_sequences=len(merged),
+        unique_exposure_ratio=len(merged) / max(1, global_samples),
+        final_train_loss=sum(recent_losses) / len(recent_losses),
+        validation_loss=validation_loss,
+        tokens_per_second=global_tokens / elapsed,
+        steps=args.steps,
+    )
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--steps", type=int, default=240)
+    parser.add_argument("--validation-steps", type=int, default=30)
+    parser.add_argument("--micro-batch-size", type=int, default=24)
+    parser.add_argument("--sequence-length", type=int, default=128)
+    parser.add_argument("--vocab-size", type=int, default=512)
+    parser.add_argument("--hidden-size", type=int, default=256)
+    parser.add_argument("--layers", type=int, default=6)
+    parser.add_argument("--heads", type=int, default=8)
+    parser.add_argument("--unique-pool-size", type=int, default=20000)
+    parser.add_argument("--validation-pool-size", type=int, default=4096)
+    parser.add_argument("--learning-rate", type=float, default=3e-4)
+    parser.add_argument("--seed", type=int, default=20260821)
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    rank, world_size, local_rank = setup_distributed()
+    results = []
+    try:
+        for recipe in ("unique", "duplicate", "noisy"):
+            dist.barrier()
+            result = train_recipe(recipe, rank, world_size, local_rank, args)
+            if rank == 0:
+                results.append(asdict(result))
+            dist.barrier()
+        if rank == 0:
+            emit({
+                "status": "completed",
+                "experiment": "two_gpu_data_value_probe",
+                "hardware": {
+                    "world_size": world_size,
+                    "gpu_0": torch.cuda.get_device_name(0),
+                    "gpu_1": torch.cuda.get_device_name(1),
+                    "torch_version": torch.__version__,
+                    "cuda_version": torch.version.cuda,
+                },
+                "contract": {
+                    "same_model_initialization": True,
+                    "same_nominal_token_budget": True,
+                    "same_validation_generator": True,
+                    "corpus_type": "controlled_synthetic_sequences",
+                    "proof_limit": "mechanism and real CUDA/DDP path, not web-corpus benchmark",
+                },
+                "results": results,
+            })
+    finally:
+        if dist.is_initialized():
+            dist.destroy_process_group()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,1 @@
+CUDA_VISIBLE_DEVICES=0 torchrun --standalone --nproc-per-node=1 language_stage_ddp_lab.py

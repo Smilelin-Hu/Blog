@@ -1,0 +1,12 @@
+import json
+import os
+
+try:
+    import torch
+    gpus = torch.cuda.device_count()
+    memory = [round(torch.cuda.get_device_properties(i).total_memory / 1024 ** 3, 1) for i in range(gpus)]
+    checks = {"cuda": torch.cuda.is_available(), "gpus": gpus, "memory_gib": memory, "teacher": bool(os.environ.get("TEACHER_MODEL")), "reward": bool(os.environ.get("REWARD_BASE_MODEL"))}
+except Exception as exc:
+    checks = {"cuda": False, "error": type(exc).__name__}
+ready = checks.get("cuda") and checks.get("gpus", 0) >= 1 and checks.get("teacher") and checks.get("reward")
+print(json.dumps({"status": "ready" if ready else "skipped", "reason": None if ready else "gpu_or_model_unavailable", "checks": checks}))

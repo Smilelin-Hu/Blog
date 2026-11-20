@@ -1,0 +1,222 @@
+{
+  "policy": {
+    "required_evidence": [
+      "model_signature",
+      "image_signature",
+      "sbom",
+      "provenance",
+      "evaluation"
+    ],
+    "trusted_signers": [
+      "spiffe://platform.example/release-signer"
+    ],
+    "trusted_builders": [
+      "https://tekton.dev/chains/v2"
+    ],
+    "minimum_canary_requests": 1000,
+    "maximum_error_rate": 0.01,
+    "maximum_p95_latency_ms": 350
+  },
+  "thresholds": {
+    "maximum_lead_time_seconds": 1800,
+    "maximum_change_failure_rate": 0.5,
+    "maximum_automatic_rollback_seconds": 120,
+    "minimum_supply_chain_evidence_coverage": 1.0
+  },
+  "releases": [
+    {
+      "release_id": "recommendation-2026-08-22.1",
+      "owner": "recommendation-team",
+      "environment": "production",
+      "model_digest": "sha256:model-v42",
+      "image": "registry.example/serving@sha256:image-v17",
+      "source_revision": "9a78be2",
+      "policy_digest": "sha256:policy-v8",
+      "approval": "change-2142",
+      "lead_time_seconds": 1280,
+      "evidence": {
+        "model_signature": true,
+        "image_signature": true,
+        "sbom": true,
+        "provenance": true,
+        "evaluation": true,
+        "signer": "spiffe://platform.example/release-signer",
+        "builder": "https://tekton.dev/chains/v2",
+        "subjects": {
+          "model": "sha256:model-v42",
+          "image": "sha256:image-v17"
+        }
+      },
+      "canary": [
+        {
+          "weight": 5,
+          "requests": 1300,
+          "error_rate": 0.003,
+          "p95_latency_ms": 241,
+          "rollback_seconds": 0
+        },
+        {
+          "weight": 25,
+          "requests": 4200,
+          "error_rate": 0.004,
+          "p95_latency_ms": 249,
+          "rollback_seconds": 0
+        },
+        {
+          "weight": 100,
+          "requests": 12000,
+          "error_rate": 0.004,
+          "p95_latency_ms": 252,
+          "rollback_seconds": 0
+        }
+      ]
+    },
+    {
+      "release_id": "vision-2026-08-22.2",
+      "owner": "vision-team",
+      "environment": "production",
+      "model_digest": "sha256:model-v19",
+      "image": "registry.example/vision-serving@sha256:image-v9",
+      "source_revision": "8fc1d44",
+      "policy_digest": "sha256:policy-v8",
+      "approval": "change-2143",
+      "lead_time_seconds": 1420,
+      "evidence": {
+        "model_signature": true,
+        "image_signature": true,
+        "sbom": true,
+        "provenance": true,
+        "evaluation": true,
+        "signer": "spiffe://platform.example/release-signer",
+        "builder": "https://tekton.dev/chains/v2",
+        "subjects": {
+          "model": "sha256:model-v19",
+          "image": "sha256:image-v9"
+        }
+      },
+      "canary": [
+        {
+          "weight": 5,
+          "requests": 1500,
+          "error_rate": 0.004,
+          "p95_latency_ms": 280,
+          "rollback_seconds": 0
+        },
+        {
+          "weight": 25,
+          "requests": 5000,
+          "error_rate": 0.024,
+          "p95_latency_ms": 420,
+          "rollback_seconds": 48
+        }
+      ]
+    }
+  ],
+  "faults": [
+    {
+      "type": "mutable_model",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ImmutableModelVersionRequired"
+    },
+    {
+      "type": "mutable_image",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ImageDigestRequired"
+    },
+    {
+      "type": "unsigned_model",
+      "expected_phase": "REJECTED",
+      "expected_reason": "RequiredEvidenceMissing:model_signature"
+    },
+    {
+      "type": "unsigned_image",
+      "expected_phase": "REJECTED",
+      "expected_reason": "RequiredEvidenceMissing:image_signature"
+    },
+    {
+      "type": "sbom_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "RequiredEvidenceMissing:sbom"
+    },
+    {
+      "type": "provenance_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "RequiredEvidenceMissing:provenance"
+    },
+    {
+      "type": "evaluation_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "RequiredEvidenceMissing:evaluation"
+    },
+    {
+      "type": "evaluation_failed",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ModelEvaluationGateFailed"
+    },
+    {
+      "type": "model_subject_mismatch",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ModelEvidenceSubjectMismatch"
+    },
+    {
+      "type": "image_subject_mismatch",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ImageEvidenceSubjectMismatch"
+    },
+    {
+      "type": "untrusted_signer",
+      "expected_phase": "REJECTED",
+      "expected_reason": "SignerIdentityNotAllowed"
+    },
+    {
+      "type": "untrusted_builder",
+      "expected_phase": "REJECTED",
+      "expected_reason": "BuilderIdentityNotAllowed"
+    },
+    {
+      "type": "production_approval_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ProductionApprovalMissing"
+    },
+    {
+      "type": "direct_production_write",
+      "expected_phase": "REJECTED",
+      "expected_reason": "GitOpsPromotionRequired"
+    },
+    {
+      "type": "canary_sample_insufficient",
+      "expected_phase": "PAUSED",
+      "expected_reason": "CanarySampleInsufficient"
+    },
+    {
+      "type": "canary_error_degraded",
+      "expected_phase": "ROLLED_BACK",
+      "expected_reason": "CanarySLOViolated"
+    },
+    {
+      "type": "canary_latency_degraded",
+      "expected_phase": "ROLLED_BACK",
+      "expected_reason": "CanarySLOViolated"
+    },
+    {
+      "type": "metric_provider_unavailable",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "CanaryMetricEvidenceUnavailable"
+    },
+    {
+      "type": "rollback_slo_missed",
+      "expected_phase": "SLO_VIOLATED",
+      "expected_reason": "AutomaticRollbackTooSlow"
+    },
+    {
+      "type": "registry_alias_race",
+      "expected_phase": "REJECTED",
+      "expected_reason": "RegistryAliasCompareAndSwapConflict"
+    },
+    {
+      "type": "live_cluster_missing",
+      "expected_phase": "SKIPPED",
+      "expected_reason": "NoKubernetesContextProvided"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "samples": [
+    {
+      "id": "sft-1",
+      "tokens": [
+        101,
+        102,
+        201,
+        202,
+        203
+      ],
+      "roles": [
+        "system",
+        "user",
+        "assistant",
+        "assistant",
+        "assistant"
+      ]
+    },
+    {
+      "id": "sft-2",
+      "tokens": [
+        111,
+        211,
+        212
+      ],
+      "roles": [
+        "user",
+        "assistant",
+        "assistant"
+      ]
+    }
+  ]
+}

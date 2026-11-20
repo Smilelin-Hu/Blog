@@ -1,0 +1,17 @@
+recipe_factory/
+  catalogs/domains.yaml
+  catalogs/capabilities.yaml
+  recipes/cpt/
+  recipes/sft/
+  schemas/sample.json
+  schemas/chat.json
+  src/profile.py
+  src/generate_candidates.py
+  src/materialize.py
+  src/train_proxy.py
+  src/evaluate.py
+  src/select_recipe.py
+  configs/hardware/cuda_scalable.yaml
+  tests/test_sampling.py
+  artifacts/manifests/
+  artifacts/reports/

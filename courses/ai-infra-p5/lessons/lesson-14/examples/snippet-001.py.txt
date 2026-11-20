@@ -1,0 +1,160 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import random
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Domain:
+    name: str
+    tokens: int
+    prior: float
+    floor: float
+    cap: float
+    max_exposure: float
+
+
+DOMAINS = [
+    Domain("web", 9_000_000, 0.7, 0.15, 0.55, 2.0),
+    Domain("books", 1_800_000, 1.1, 0.08, 0.25, 3.0),
+    Domain("code", 900_000, 1.6, 0.10, 0.28, 4.0),
+    Domain("math", 260_000, 2.2, 0.06, 0.18, 5.0),
+    Domain("science", 520_000, 1.7, 0.08, 0.22, 4.0),
+    Domain("dialog", 700_000, 1.2, 0.06, 0.20, 3.0),
+]
+
+
+def normalize(values: dict[str, float]) -> dict[str, float]:
+    total = sum(values.values())
+    if total <= 0:
+        raise ValueError("non-positive mixture mass")
+    return {key: value / total for key, value in values.items()}
+
+
+def project_bounds(
+    scores: dict[str, float],
+    domains: list[Domain],
+) -> dict[str, float]:
+    if sum(d.floor for d in domains) > 1.0 + 1e-12:
+        raise ValueError("infeasible floors")
+    if sum(d.cap for d in domains) < 1.0 - 1e-12:
+        raise ValueError("infeasible caps")
+    result: dict[str, float] = {}
+    free = {d.name for d in domains}
+    by_name = {d.name: d for d in domains}
+    remaining = 1.0
+    while free:
+        free_score = sum(scores[name] for name in free)
+        if free_score <= 0:
+            raise ValueError("free scores vanished")
+        proposal = {
+            name: remaining * scores[name] / free_score for name in free
+        }
+        violated = False
+        for name in sorted(free):
+            d = by_name[name]
+            if proposal[name] < d.floor - 1e-12:
+                result[name] = d.floor
+                remaining -= d.floor
+                free.remove(name)
+                violated = True
+                break
+            if proposal[name] > d.cap + 1e-12:
+                result[name] = d.cap
+                remaining -= d.cap
+                free.remove(name)
+                violated = True
+                break
+        if not violated:
+            result.update(proposal)
+            break
+    return normalize(result)
+
+
+def compile_mix(
+    domains: list[Domain],
+    alpha: float,
+    token_budget: int,
+    stage_bias: dict[str, float],
+) -> dict[str, float]:
+    inventory = normalize({d.name: float(d.tokens) for d in domains})
+    scores = {
+        d.name: d.prior * stage_bias.get(d.name, 1.0)
+        * math.pow(inventory[d.name], alpha)
+        for d in domains
+    }
+    mix = project_bounds(scores, domains)
+    for d in domains:
+        exposure = mix[d.name] * token_budget / d.tokens
+        if exposure > d.max_exposure + 1e-12:
+            raise ValueError(
+                f"{d.name} exposure {exposure:.3f} exceeds {d.max_exposure}"
+            )
+    return mix
+
+
+def debt_schedule(
+    mix: dict[str, float],
+    total_tokens: int,
+    seed: int,
+) -> tuple[dict[str, int], list[tuple[str, int]]]:
+    rng = random.Random(seed)
+    consumed = {name: 0 for name in mix}
+    trace: list[tuple[str, int]] = []
+    while sum(consumed.values()) < total_tokens:
+        done = sum(consumed.values())
+        debt = {
+            name: mix[name] * done - consumed[name] for name in mix
+        }
+        max_debt = max(debt.values())
+        candidates = [
+            name for name, value in debt.items()
+            if abs(value - max_debt) < 1e-9
+        ]
+        name = rng.choice(sorted(candidates))
+        remaining = total_tokens - done
+        sequence_tokens = min(remaining, rng.choice([512, 768, 1024, 1536]))
+        consumed[name] += sequence_tokens
+        trace.append((name, sequence_tokens))
+    return consumed, trace
+
+
+def digest(value: object) -> str:
+    payload = json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def main() -> None:
+    stages = [
+        ("warmup", 1_000_000, {"web": 1.2, "books": 1.4, "math": 0.7}),
+        ("expand", 1_200_000, {"code": 1.3, "science": 1.3}),
+        ("target", 1_000_000, {"math": 1.8, "code": 1.4, "web": 0.7}),
+    ]
+    all_reports = []
+    for stage_id, budget, bias in stages:
+        mix = compile_mix(DOMAINS, alpha=0.55, token_budget=budget, stage_bias=bias)
+        consumed, trace = debt_schedule(mix, budget, seed=20260822)
+        actual = normalize({k: float(v) for k, v in consumed.items()})
+        max_error = max(abs(actual[k] - mix[k]) for k in mix)
+        report = {
+            "stage": stage_id,
+            "budget": budget,
+            "planned": {k: round(v, 6) for k, v in sorted(mix.items())},
+            "actual": {k: round(v, 6) for k, v in sorted(actual.items())},
+            "max_abs_error": round(max_error, 6),
+            "trace_digest": digest(trace),
+        }
+        second = debt_schedule(mix, budget, seed=20260822)[1]
+        assert digest(trace) == digest(second), "schedule is not deterministic"
+        assert max_error < 0.002, report
+        all_reports.append(report)
+    print(json.dumps({"status": "passed", "stages": all_reports}, indent=2))
+
+
+if __name__ == "__main__":
+    main()

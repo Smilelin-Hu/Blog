@@ -1,0 +1,42 @@
+{
+  "aijob": {
+    "apiVersion": "platform.example.io/v1alpha1",
+    "kind": "AIJob",
+    "metadata": {
+      "name": "recommendation-train",
+      "namespace": "team-recommendation",
+      "uid": "aijob-0001",
+      "generation": 1,
+      "resourceVersion": "1",
+      "finalizers": []
+    },
+    "spec": {
+      "image": "registry.example.io/training/recommendation@sha256:demo",
+      "command": [
+        "python",
+        "train.py"
+      ],
+      "replicas": 4,
+      "acceleratorClass": "high-memory",
+      "checkpointURI": "s3://course-demo/checkpoints/recommendation-train",
+      "retryLimit": 3
+    },
+    "status": {
+      "phase": "Pending",
+      "observedGeneration": 0,
+      "conditions": []
+    }
+  },
+  "faults": {
+    "create_child_transient_failures": 1,
+    "cleanup_transient_failures": 1
+  },
+  "lifecycle": [
+    "create",
+    "duplicate-event",
+    "child-running",
+    "spec-update",
+    "child-succeeded",
+    "delete"
+  ]
+}

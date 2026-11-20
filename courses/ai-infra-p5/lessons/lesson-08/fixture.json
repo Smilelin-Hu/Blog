@@ -1,0 +1,8 @@
+{
+  "form": "NFKC",
+  "texts": [
+    "ＡＩ Infra\r\nline two",
+    "café",
+    "safe\u0000unsafe"
+  ]
+}

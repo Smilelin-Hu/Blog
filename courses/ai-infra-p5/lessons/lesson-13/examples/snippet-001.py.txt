@@ -1,0 +1,68 @@
+from __future__ import annotations
+
+import hashlib
+import json
+from collections import defaultdict, deque
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Right:
+    asset_id: str
+    purpose: str
+    state: str
+    policy: str
+
+
+@dataclass(frozen=True)
+class Tombstone:
+    case_id: str
+    asset_id: str
+    scope: str
+    policy: str
+
+
+def descendants(root: str, edges: list[tuple[str, str]]) -> list[str]:
+    graph = defaultdict(list)
+    for parent, child in edges:
+        graph[parent].append(child)
+    seen, queue = {root}, deque([root])
+    while queue:
+        node = queue.popleft()
+        for child in sorted(graph[node]):
+            if child not in seen:
+                seen.add(child); queue.append(child)
+    return sorted(seen)
+
+
+def digest(payload) -> str:
+    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def main():
+    edges = [
+        ("source:1", "clean:1"), ("clean:1", "feature:1"),
+        ("clean:1", "embedding:1"), ("clean:1", "train-release:7"),
+        ("train-release:7", "checkpoint:42"),
+    ]
+    rights = [Right("source:1", "pretraining", "allowed", "rights-v3")]
+    tombstones = [Tombstone("case-2026-001", "source:1", "all-descendants", "exit-v2")]
+    impacted = descendants(tombstones[0].asset_id, edges)
+    decision = {}
+    for asset in impacted:
+        decision[asset] = {"state": "withdrawn", "case_id": tombstones[0].case_id}
+    payload = {
+        "status": "passed",
+        "rights": [r.__dict__ for r in rights],
+        "tombstones": [t.__dict__ for t in tombstones],
+        "impacted": impacted,
+        "actions": decision,
+        "limitations": "mechanism only; legal and identity decisions are external",
+    }
+    payload["proof_digest"] = digest(payload)
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

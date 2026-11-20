@@ -1,0 +1,161 @@
+{
+  "model_name": "fraud-detector",
+  "policy": {
+    "require_immutable_runtime": true,
+    "evaluation_policy_digest": "sha256:eval-policy-2026-08-22",
+    "minimum_score": 0.9,
+    "promotion_time": "2026-08-22T09:00:00Z"
+  },
+  "versions": [
+    {
+      "version": "1",
+      "author": "trainer-a",
+      "artifact": {
+        "content": {
+          "weights": "baseline-v1",
+          "tokenizer": "tok-v3"
+        },
+        "digest": "sha256:0b74da1083b455c23de5f44a7efbc8383b43eb498a935ff7cda117eef58077a6",
+        "exists": true
+      },
+      "artifact_digest": "sha256:0b74da1083b455c23de5f44a7efbc8383b43eb498a935ff7cda117eef58077a6",
+      "runtime_image": "registry.example/runtime@sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "evaluation": {
+        "status": "PASS",
+        "score": 0.91,
+        "policy_digest": "sha256:eval-policy-2026-08-22"
+      },
+      "approval": {
+        "status": "APPROVED",
+        "approver": "reviewer-a",
+        "expires_at": "2026-09-01T00:00:00Z"
+      },
+      "lineage": {
+        "data": "dataset@sha256:data-v1",
+        "code": "git:6af4412",
+        "train_job": "trainjob/run-001",
+        "runtime": "sha256:runtime-v1",
+        "evaluation": "eval/report-001",
+        "approval": "approval/apr-001",
+        "artifact": "oci://models/fraud@sha256:7d6b42"
+      },
+      "legal_hold": true
+    },
+    {
+      "version": "2",
+      "author": "trainer-b",
+      "artifact": {
+        "content": {
+          "weights": "candidate-v2",
+          "tokenizer": "tok-v3"
+        },
+        "digest": "sha256:defcbd6b0e7eefe1bd914591cfbaed399294df1cc3d80eda3b94fd22045f7039",
+        "exists": true
+      },
+      "artifact_digest": "sha256:defcbd6b0e7eefe1bd914591cfbaed399294df1cc3d80eda3b94fd22045f7039",
+      "runtime_image": "registry.example/runtime@sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "evaluation": {
+        "status": "PASS",
+        "score": 0.94,
+        "policy_digest": "sha256:eval-policy-2026-08-22"
+      },
+      "approval": {
+        "status": "APPROVED",
+        "approver": "reviewer-b",
+        "expires_at": "2026-09-01T00:00:00Z"
+      },
+      "lineage": {
+        "data": "dataset@sha256:data-v2",
+        "code": "git:3d409db",
+        "train_job": "trainjob/run-002",
+        "runtime": "sha256:runtime-v2",
+        "evaluation": "eval/report-002",
+        "approval": "approval/apr-002",
+        "artifact": "oci://models/fraud@sha256:2fabdc"
+      },
+      "legal_hold": false
+    }
+  ],
+  "faults": [
+    {
+      "type": "version_overwrite",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ImmutableVersionAlreadyExists"
+    },
+    {
+      "type": "artifact_digest_mismatch",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ArtifactDigestMismatch"
+    },
+    {
+      "type": "artifact_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ArtifactMissing"
+    },
+    {
+      "type": "mutable_runtime",
+      "expected_phase": "REJECTED",
+      "expected_reason": "MutableRuntimeImage"
+    },
+    {
+      "type": "missing_data_lineage",
+      "expected_phase": "REJECTED",
+      "expected_reason": "MissingLineage:data"
+    },
+    {
+      "type": "missing_code_lineage",
+      "expected_phase": "REJECTED",
+      "expected_reason": "MissingLineage:code"
+    },
+    {
+      "type": "evaluation_failed",
+      "expected_phase": "REJECTED",
+      "expected_reason": "EvaluationGateFailed"
+    },
+    {
+      "type": "evaluation_policy_mismatch",
+      "expected_phase": "REJECTED",
+      "expected_reason": "EvaluationPolicyMismatch"
+    },
+    {
+      "type": "approval_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ApprovalMissing"
+    },
+    {
+      "type": "approval_expired",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ApprovalExpired"
+    },
+    {
+      "type": "same_author_approves",
+      "expected_phase": "REJECTED",
+      "expected_reason": "SeparationOfDutiesViolation"
+    },
+    {
+      "type": "alias_race",
+      "expected_phase": "REJECTED",
+      "expected_reason": "AliasCompareAndSwapConflict"
+    },
+    {
+      "type": "alias_target_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "AliasTargetMissing"
+    },
+    {
+      "type": "cross_env_digest_mismatch",
+      "expected_phase": "REJECTED",
+      "expected_reason": "CrossEnvironmentDigestMismatch"
+    },
+    {
+      "type": "legal_hold_delete",
+      "expected_phase": "REJECTED",
+      "expected_reason": "LegalHoldBlocksDeletion"
+    },
+    {
+      "type": "live_endpoint_missing",
+      "expected_phase": "SKIPPED",
+      "expected_reason": "NoRegistryEndpointProvided"
+    }
+  ]
+}

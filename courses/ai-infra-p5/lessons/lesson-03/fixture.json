@@ -1,0 +1,28 @@
+{
+  "edges": [
+    [
+      "source-withdrawn",
+      "doc-3"
+    ],
+    [
+      "doc-3",
+      "sample-9"
+    ],
+    [
+      "sample-9",
+      "dataset-v8"
+    ],
+    [
+      "dataset-v8",
+      "checkpoint-31"
+    ]
+  ],
+  "withdraw": "source-withdrawn",
+  "expected_affected": [
+    "source-withdrawn",
+    "doc-3",
+    "sample-9",
+    "dataset-v8",
+    "checkpoint-31"
+  ]
+}

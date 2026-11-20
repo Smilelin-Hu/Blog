@@ -1,0 +1,18 @@
+环境安装说明
+
+建议使用 Python 3.10 或更高版本，并先创建独立虚拟环境。
+
+普通 CPU 与建模实验：
+  pip install -r requirements-core.txt
+
+需要 PyTorch 的训练、Profiler 与 GPU 实验：
+  pip install -r requirements-pytorch.txt
+
+需要 vLLM 服务的推理项目：
+  pip install -r requirements-vllm.txt
+
+安装后检查：
+  python 检查运行环境.py
+
+说明：不是所有课程都需要同时安装三组依赖。CUDA、NCCL、Triton、vLLM 和 GPU
+相关实验必须在相应的 NVIDIA 驱动、CUDA 与硬件环境中运行。

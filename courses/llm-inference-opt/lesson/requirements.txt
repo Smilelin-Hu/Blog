@@ -1,0 +1,6 @@
+# Install the CUDA-compatible PyTorch wheel for your environment first.
+torch>=2.2
+transformers>=4.45
+accelerate>=0.34
+pillow>=10.0
+nvidia-ml-py>=12.0

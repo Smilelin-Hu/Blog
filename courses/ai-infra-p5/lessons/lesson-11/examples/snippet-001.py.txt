@@ -1,0 +1,281 @@
+from __future__ import annotations
+
+import argparse
+import hashlib
+import itertools
+import json
+import math
+import random
+import re
+import unicodedata
+from collections import defaultdict
+from dataclasses import dataclass
+
+
+PRIME = 4_294_967_311
+
+
+@dataclass(frozen=True)
+class Document:
+    doc_id: str
+    text: str
+    source_rank: int
+    truth_group: str | None
+
+
+def normalize(text: str) -> str:
+    text = unicodedata.normalize("NFKC", text)
+    text = text.casefold()
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def stable_hash_bytes(value: str) -> bytes:
+    return hashlib.sha256(value.encode("utf-8")).digest()
+
+
+def stable_hash_u64(value: str) -> int:
+    return int.from_bytes(stable_hash_bytes(value)[:8], "big")
+
+
+def exact_digest(text: str) -> str:
+    return hashlib.sha256(normalize(text).encode("utf-8")).hexdigest()
+
+
+def word_shingles(text: str, size: int = 5) -> set[int]:
+    words = re.findall(r"\w+", normalize(text), flags=re.UNICODE)
+    if not words:
+        return set()
+    if len(words) < size:
+        return {stable_hash_u64(" ".join(words))}
+    return {
+        stable_hash_u64(" ".join(words[i:i + size]))
+        for i in range(len(words) - size + 1)
+    }
+
+
+def jaccard(left: set[int], right: set[int]) -> float:
+    if not left and not right:
+        return 1.0
+    if not left or not right:
+        return 0.0
+    return len(left & right) / len(left | right)
+
+
+def containment(left: set[int], right: set[int]) -> float:
+    if not left:
+        return 0.0
+    return len(left & right) / len(left)
+
+
+def make_hash_family(count: int, seed: int) -> list[tuple[int, int]]:
+    rng = random.Random(seed)
+    return [
+        (rng.randrange(1, PRIME), rng.randrange(0, PRIME))
+        for _ in range(count)
+    ]
+
+
+def minhash(
+    shingles: set[int],
+    family: list[tuple[int, int]],
+) -> tuple[int, ...]:
+    if not shingles:
+        raise ValueError("empty shingle set must use a separate path")
+    return tuple(
+        min((a * value + b) % PRIME for value in shingles)
+        for a, b in family
+    )
+
+
+def estimated_jaccard(left: tuple[int, ...], right: tuple[int, ...]) -> float:
+    if len(left) != len(right):
+        raise ValueError("signature lengths differ")
+    return sum(a == b for a, b in zip(left, right)) / len(left)
+
+
+def lsh_candidates(
+    signatures: dict[str, tuple[int, ...]],
+    bands: int,
+    rows: int,
+    max_bucket: int = 1000,
+) -> tuple[set[tuple[str, str]], dict[str, int]]:
+    if bands * rows == 0:
+        raise ValueError("bands and rows must be positive")
+    buckets: dict[tuple[int, bytes], list[str]] = defaultdict(list)
+    for doc_id, signature in signatures.items():
+        if len(signature) != bands * rows:
+            raise ValueError("signature length must equal bands * rows")
+        for band_id in range(bands):
+            start = band_id * rows
+            chunk = signature[start:start + rows]
+            payload = band_id.to_bytes(4, "big") + b"".join(
+                value.to_bytes(8, "big") for value in chunk
+            )
+            band_hash = hashlib.blake2b(payload, digest_size=16).digest()
+            buckets[(band_id, band_hash)].append(doc_id)
+
+    candidates: set[tuple[str, str]] = set()
+    hot = 0
+    largest = 0
+    for members in buckets.values():
+        largest = max(largest, len(members))
+        if len(members) > max_bucket:
+            hot += 1
+            continue
+        for left, right in itertools.combinations(sorted(members), 2):
+            candidates.add((left, right))
+    return candidates, {
+        "bucket_count": len(buckets),
+        "hot_bucket_count": hot,
+        "largest_bucket": largest,
+    }
+
+
+class UnionFind:
+    def __init__(self, ids: list[str]) -> None:
+        self.parent = {item: item for item in ids}
+
+    def find(self, item: str) -> str:
+        while self.parent[item] != item:
+            self.parent[item] = self.parent[self.parent[item]]
+            item = self.parent[item]
+        return item
+
+    def union(self, left: str, right: str) -> None:
+        root_left = self.find(left)
+        root_right = self.find(right)
+        if root_left == root_right:
+            return
+        low, high = sorted((root_left, root_right))
+        self.parent[high] = low
+
+    def components(self) -> list[list[str]]:
+        groups: dict[str, list[str]] = defaultdict(list)
+        for item in sorted(self.parent):
+            groups[self.find(item)].append(item)
+        return sorted(groups.values(), key=lambda group: group[0])
+
+
+def truth_pairs(documents: list[Document]) -> set[tuple[str, str]]:
+    groups: dict[str, list[str]] = defaultdict(list)
+    for document in documents:
+        if document.truth_group:
+            groups[document.truth_group].append(document.doc_id)
+    return {
+        tuple(sorted(pair))
+        for ids in groups.values()
+        for pair in itertools.combinations(ids, 2)
+    }
+
+
+def safe_ratio(numerator: int, denominator: int) -> float:
+    return numerator / denominator if denominator else 0.0
+
+
+def fixture() -> list[Document]:
+    core = (
+        "MinHash estimates Jaccard similarity by comparing the minimum values "
+        "produced by a shared family of hash functions. LSH then turns signatures "
+        "into candidate pairs before exact confirmation."
+    )
+    return [
+        Document("official", core, 100, "minhash"),
+        Document("mirror", "Navigation Home " + core + " Copyright 2026", 10, "minhash"),
+        Document("spacing", "  " + core.replace(" ", "  ") + "  ", 30, "minhash"),
+        Document("excerpt", "LSH then turns signatures into candidate pairs before exact confirmation.", 40, "minhash"),
+        Document("related", "Jaccard similarity measures overlap divided by union for two sets.", 80, None),
+        Document("other", "GPU kernels require careful memory coalescing and occupancy analysis.", 90, None),
+    ]
+
+
+def run(bands: int, rows: int, threshold: float) -> dict:
+    documents = fixture()
+    doc_by_id = {document.doc_id: document for document in documents}
+    shingle_map = {doc.doc_id: word_shingles(doc.text) for doc in documents}
+    family = make_hash_family(bands * rows, seed=20260821)
+    signatures = {
+        doc_id: minhash(values, family)
+        for doc_id, values in shingle_map.items()
+    }
+    candidates, bucket_stats = lsh_candidates(signatures, bands, rows)
+
+    confirmed = set()
+    pair_rows = []
+    for left, right in sorted(candidates):
+        exact = jaccard(shingle_map[left], shingle_map[right])
+        left_in_right = containment(shingle_map[left], shingle_map[right])
+        right_in_left = containment(shingle_map[right], shingle_map[left])
+        estimate = estimated_jaccard(signatures[left], signatures[right])
+        accepted = exact >= threshold or max(left_in_right, right_in_left) >= 0.90
+        if accepted:
+            confirmed.add((left, right))
+        pair_rows.append({
+            "left": left,
+            "right": right,
+            "estimated_jaccard": estimate,
+            "exact_jaccard": exact,
+            "left_in_right": left_in_right,
+            "right_in_left": right_in_left,
+            "accepted": accepted,
+        })
+
+    uf = UnionFind([doc.doc_id for doc in documents])
+    for left, right in confirmed:
+        uf.union(left, right)
+
+    clusters = []
+    for members in uf.components():
+        representative = sorted(
+            members,
+            key=lambda doc_id: (-doc_by_id[doc_id].source_rank, doc_id),
+        )[0]
+        clusters.append({
+            "cluster_id": hashlib.sha256("\n".join(members).encode()).hexdigest()[:16],
+            "members": members,
+            "representative": representative,
+        })
+
+    truth = truth_pairs(documents)
+    true_positive = len(confirmed & truth)
+    return {
+        "status": "succeeded",
+        "parameters": {"bands": bands, "rows": rows, "threshold": threshold},
+        "theoretical_candidate_probability": {
+            str(value): 1 - (1 - value ** rows) ** bands
+            for value in (0.2, 0.5, 0.8, 0.9)
+        },
+        "exact_groups": {
+            digest: sorted(ids)
+            for digest, ids in _exact_groups(documents).items()
+            if len(ids) > 1
+        },
+        "bucket_stats": bucket_stats,
+        "candidate_count": len(candidates),
+        "confirmed_count": len(confirmed),
+        "candidate_recall": safe_ratio(len(candidates & truth), len(truth)),
+        "precision": safe_ratio(true_positive, len(confirmed)),
+        "recall": safe_ratio(true_positive, len(truth)),
+        "pairs": pair_rows,
+        "clusters": clusters,
+    }
+
+
+def _exact_groups(documents: list[Document]) -> dict[str, list[str]]:
+    result: dict[str, list[str]] = defaultdict(list)
+    for document in documents:
+        result[exact_digest(document.text)].append(document.doc_id)
+    return result
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--bands", type=int, default=32)
+    parser.add_argument("--rows", type=int, default=4)
+    parser.add_argument("--threshold", type=float, default=0.70)
+    args = parser.parse_args()
+    print(json.dumps(run(args.bands, args.rows, args.threshold), indent=2))
+
+
+if __name__ == "__main__":
+    main()

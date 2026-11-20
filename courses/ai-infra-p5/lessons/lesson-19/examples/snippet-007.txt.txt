@@ -1,0 +1,15 @@
+19_SFT数据Schema模板与LossMask/
+├── README.md
+├── mechanism/
+│   ├── sft_compiler.py
+│   ├── test_sft_compiler.py
+│   └── expected/
+├── gpu/
+│   ├── sft_mask_gpu.py
+│   ├── audit_real_tokens.py
+│   ├── data/
+│   │   └── sft_fixture.jsonl
+│   └── results/
+└── reports/
+    ├── template_golden.json
+    └── acceptance.json

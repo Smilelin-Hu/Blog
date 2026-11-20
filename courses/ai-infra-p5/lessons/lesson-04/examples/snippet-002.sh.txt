@@ -1,0 +1,2 @@
+python source_registry_policy.py --region us
+python source_registry_policy.py --region jp

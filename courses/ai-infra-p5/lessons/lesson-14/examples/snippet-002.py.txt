@@ -1,0 +1,122 @@
+from __future__ import annotations
+
+import json
+import os
+import random
+import sys
+from dataclasses import dataclass
+
+try:
+    import torch
+    import torch.distributed as dist
+    from torch import nn
+except Exception as exc:
+    print(json.dumps({"status": "skipped", "reason": f"torch unavailable: {exc}"}))
+    raise SystemExit(0)
+
+
+@dataclass(frozen=True)
+class Config:
+    vocab: int = 4096
+    hidden: int = 384
+    seq_len: int = 512
+    micro_batch: int = 2
+    steps: int = 40
+    seed: int = 20260822
+
+
+def skipped(reason: str) -> None:
+    print(json.dumps({"status": "skipped", "reason": reason}))
+    raise SystemExit(0)
+
+
+def choose_domain(step: int, rank: int, seed: int) -> int:
+    # 所有Rank使用全局微批次编号，得到确定性但不同的选择。
+    rng = random.Random(seed + step * 1009 + rank * 9176)
+    weights = [0.44, 0.18, 0.15, 0.09, 0.08, 0.06]
+    value = rng.random()
+    cumulative = 0.0
+    for index, weight in enumerate(weights):
+        cumulative += weight
+        if value <= cumulative:
+            return index
+    return len(weights) - 1
+
+
+def main() -> None:
+    cfg = Config()
+    if not torch.cuda.is_available():
+        skipped("CUDA is unavailable")
+    if torch.cuda.device_count() < 1:
+        skipped(f"requires at least 1 CUDA device, found {torch.cuda.device_count()}")
+    world = int(os.environ.get("WORLD_SIZE", "1"))
+    if world < 1:
+        skipped(f"launch with one or more ranks, WORLD_SIZE={world}")
+    dist.init_process_group("nccl")
+    rank = dist.get_rank()
+    local_rank = int(os.environ["LOCAL_RANK"])
+    torch.cuda.set_device(local_rank)
+    device = torch.device("cuda", local_rank)
+    torch.manual_seed(cfg.seed)
+    torch.cuda.manual_seed_all(cfg.seed)
+
+    model = nn.Sequential(
+        nn.Embedding(cfg.vocab, cfg.hidden),
+        nn.LayerNorm(cfg.hidden),
+        nn.Linear(cfg.hidden, cfg.vocab, bias=False),
+    ).to(device)
+    model = nn.parallel.DistributedDataParallel(model, device_ids=[local_rank])
+    optimizer = torch.optim.AdamW(model.parameters(), lr=2e-4)
+    consumed = torch.zeros(6, dtype=torch.long, device=device)
+
+    try:
+        for step in range(cfg.steps):
+            domain = choose_domain(step, rank, cfg.seed)
+            generator = torch.Generator(device=device)
+            generator.manual_seed(cfg.seed + rank * 1_000_000 + step)
+            tokens = torch.randint(
+                0, cfg.vocab,
+                (cfg.micro_batch, cfg.seq_len + 1),
+                generator=generator,
+                device=device,
+            )
+            logits = model(tokens[:, :-1])
+            loss = nn.functional.cross_entropy(
+                logits.reshape(-1, cfg.vocab), tokens[:, 1:].reshape(-1)
+            )
+            optimizer.zero_grad(set_to_none=True)
+            loss.backward()
+            optimizer.step()
+            consumed[domain] += cfg.micro_batch * cfg.seq_len
+        dist.all_reduce(consumed, op=dist.ReduceOp.SUM)
+        peak = torch.tensor(
+            [torch.cuda.max_memory_allocated(device)],
+            dtype=torch.long,
+            device=device,
+        )
+        dist.reduce(peak, dst=0, op=dist.ReduceOp.MAX)
+        if rank == 0:
+            total = int(consumed.sum().item())
+            names = ["web", "books", "code", "math", "science", "dialog"]
+            report = {
+                "status": "passed",
+                "world_size": world,
+                "tokens": {n: int(consumed[i].item()) for i, n in enumerate(names)},
+                "ratios": {n: round(int(consumed[i]) / total, 6) for i, n in enumerate(names)},
+                "peak_allocated_bytes_max_rank": int(peak.item()),
+                "claim_boundary": "mechanism validation only",
+            }
+            print(json.dumps(report, ensure_ascii=False))
+    except torch.cuda.OutOfMemoryError as exc:
+        if rank == 0:
+            print(json.dumps({
+                "status": "skipped",
+                "reason": f"CUDA OOM: {exc}",
+                "suggestion": "reduce hidden, sequence length, or micro batch",
+            }))
+    finally:
+        dist.destroy_process_group()
+
+
+if __name__ == "__main__":
+    main()

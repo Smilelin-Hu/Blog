@@ -1,0 +1,16 @@
+lineage_control_plane/
+  api/openapi.yaml
+  schemas/asset_manifest.json
+  schemas/lineage_event.json
+  schemas/checkpoint_manifest.json
+  migrations/
+  services/registry/
+  services/projector/
+  services/policy/
+  services/impact/
+  workers/verifier/
+  deploy/compose.yaml
+  deploy/kubernetes/
+  tests/contracts/
+  tests/faults/
+  examples/replay/

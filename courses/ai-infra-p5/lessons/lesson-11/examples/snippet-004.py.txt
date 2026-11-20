@@ -1,0 +1,19 @@
+import json
+
+try:
+    import torch
+except Exception as exc:
+    print(json.dumps({"status": "skipped", "reason": f"PyTorch import failed: {exc}"}))
+    raise SystemExit(0)
+
+if not torch.cuda.is_available():
+    print(json.dumps({"status": "skipped", "reason": "CUDA GPU is not available"}))
+    raise SystemExit(0)
+
+print(json.dumps({
+    "status": "succeeded",
+    "torch": torch.__version__,
+    "cuda_runtime": torch.version.cuda,
+    "device_count": torch.cuda.device_count(),
+    "devices": [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())],
+}, ensure_ascii=False, indent=2))

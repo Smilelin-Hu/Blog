@@ -1,0 +1,67 @@
+import json
+import os
+
+try:
+    import torch
+    import torch.distributed as dist
+    from torch import nn
+except Exception as exc:
+    print(json.dumps({"status": "skipped", "reason": f"torch unavailable: {exc}"}))
+    raise SystemExit(0)
+
+
+def skip(reason: str) -> None:
+    print(json.dumps({"status": "skipped", "reason": reason}))
+    raise SystemExit(0)
+
+
+def main() -> None:
+    if not torch.cuda.is_available():
+        skip("CUDA unavailable")
+    if torch.cuda.device_count() < 1:
+        skip(f"requires at least one CUDA device, found {torch.cuda.device_count()}")
+    if int(os.environ.get("WORLD_SIZE", "1")) < 1:
+        skip("launch with torchrun --nproc_per_node=1")
+    dist.init_process_group("nccl")
+    rank = dist.get_rank()
+    local_rank = int(os.environ["LOCAL_RANK"])
+    torch.cuda.set_device(local_rank)
+    device = torch.device("cuda", local_rank)
+    torch.manual_seed(20260822)
+    vocab, hidden, length = 512, 192, 96
+    model = nn.Sequential(nn.Embedding(vocab, hidden), nn.LayerNorm(hidden),
+                          nn.Linear(hidden, vocab, bias=False)).to(device)
+    model = nn.parallel.DistributedDataParallel(model, device_ids=[local_rank])
+    optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
+    consumed = torch.zeros(2, dtype=torch.long, device=device)
+    try:
+        for step in range(80):
+            generator = torch.Generator(device=device)
+            generator.manual_seed(10_000 * rank + step)
+            tokens = torch.randint(0, vocab, (2, length + 1), generator=generator, device=device)
+            logits = model(tokens[:, :-1])
+            loss = nn.functional.cross_entropy(logits.reshape(-1, vocab), tokens[:, 1:].reshape(-1))
+            optimizer.zero_grad(set_to_none=True)
+            loss.backward()
+            optimizer.step()
+            consumed[0] += tokens[:, 1:].numel()
+            consumed[1] += 1
+        dist.all_reduce(consumed)
+        if rank == 0:
+            print(json.dumps({
+                "status": "passed",
+                "consumed_tokens": int(consumed[0]),
+                "optimizer_steps_across_ranks": int(consumed[1]),
+                "peak_allocated_bytes": torch.cuda.max_memory_allocated(device),
+                "claim_boundary": "synthetic two-GPU SFT control path only",
+            }))
+    except torch.cuda.OutOfMemoryError as exc:
+        if rank == 0:
+            print(json.dumps({"status": "skipped", "reason": f"CUDA OOM: {exc}",
+                              "suggestion": "reduce hidden, sequence length, or micro batch"}))
+    finally:
+        dist.destroy_process_group()
+
+
+if __name__ == "__main__":
+    main()

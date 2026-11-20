@@ -1,0 +1,198 @@
+{
+  "slurm_profile": {
+    "configured_gpu_count": 8,
+    "detected_gpu_count": 8,
+    "select_cons_tres": true,
+    "accounting_tres": [
+      "cpu",
+      "mem",
+      "gres/gpu",
+      "gres/gpu:a100"
+    ],
+    "cgroup_device_constraint": true
+  },
+  "identities": {
+    "user:alice": {
+      "projects": [
+        "foundation-model"
+      ],
+      "slurm_account": "fm-research",
+      "slurm_qos": [
+        "research",
+        "urgent"
+      ],
+      "kubernetes_namespace": "fm-research"
+    }
+  },
+  "qos": {
+    "research": {
+      "max_wall_minutes": 1440,
+      "max_gpu_per_job": 64,
+      "group_gpu_minutes": 200000
+    },
+    "urgent": {
+      "max_wall_minutes": 240,
+      "max_gpu_per_job": 32,
+      "group_gpu_minutes": 50000
+    }
+  },
+  "account_usage_gpu_minutes": 40000,
+  "leaf_switches": [
+    {
+      "name": "leaf-a",
+      "free_nodes": 4
+    },
+    {
+      "name": "leaf-b",
+      "free_nodes": 2
+    },
+    {
+      "name": "leaf-c",
+      "free_nodes": 1
+    }
+  ],
+  "workloads": [
+    {
+      "name": "mpi-training",
+      "principal": "user:alice",
+      "project": "foundation-model",
+      "kind": "batch",
+      "requires_kubernetes_api": false,
+      "tightly_coupled_mpi": true,
+      "requires_bare_metal_fabric": true,
+      "fixed_allocation": true,
+      "job_steps": 3,
+      "nodes": 4,
+      "gpus_per_node": 8,
+      "qos": "research",
+      "time_limit": "04:00:00",
+      "time_limit_minutes": 240,
+      "max_leaf_switches": 1,
+      "switch_wait": "00:20:00"
+    },
+    {
+      "name": "online-inference",
+      "principal": "user:alice",
+      "project": "foundation-model",
+      "kind": "service",
+      "requires_kubernetes_api": true,
+      "tightly_coupled_mpi": false,
+      "requires_bare_metal_fabric": false,
+      "fixed_allocation": false,
+      "job_steps": 1,
+      "nodes": 2,
+      "gpus_per_node": 1,
+      "qos": "research",
+      "time_limit": "01:00:00",
+      "time_limit_minutes": 60,
+      "max_leaf_switches": 0,
+      "switch_wait": "00:00:00"
+    }
+  ],
+  "accounting_records": [
+    {
+      "backend": "slurm",
+      "run_id": "run-001",
+      "account": "foundation-model",
+      "allocated_gpus": 32,
+      "elapsed_seconds": 120,
+      "state": "COMPLETED",
+      "job_id": "cluster-a:1001"
+    },
+    {
+      "backend": "kubernetes",
+      "run_id": "run-002",
+      "project": "foundation-model",
+      "gpu_request": 2,
+      "running_seconds": 120,
+      "phase": "Succeeded",
+      "uid": "job-uid-2002"
+    }
+  ],
+  "faults": [
+    {
+      "name": "configured-gres-does-not-match-node",
+      "type": "gres_mismatch",
+      "expected_phase": "DRAIN",
+      "expected_reason": "ConfiguredGRESDoesNotMatchDetectedGPU"
+    },
+    {
+      "name": "gpu-options-without-cons-tres",
+      "type": "select_plugin_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "GPUOptionsRequireSelectConsTRES"
+    },
+    {
+      "name": "gpu-accounting-not-enabled",
+      "type": "gpu_tres_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "GPUAccountingTRESMissing"
+    },
+    {
+      "name": "device-cgroup-not-enforced",
+      "type": "device_cgroup_missing",
+      "expected_phase": "UNSAFE",
+      "expected_reason": "GPUDeviceIsolationNotEnforced"
+    },
+    {
+      "name": "association-cannot-use-urgent-qos",
+      "type": "qos_unauthorized",
+      "expected_phase": "REJECTED",
+      "expected_reason": "QOSNotAllowedByAssociation"
+    },
+    {
+      "name": "job-walltime-exceeds-qos",
+      "type": "qos_wall_limit",
+      "expected_phase": "PENDING",
+      "expected_reason": "QOSMaxWallLimit"
+    },
+    {
+      "name": "job-gpu-exceeds-qos",
+      "type": "qos_gpu_limit",
+      "expected_phase": "PENDING",
+      "expected_reason": "QOSMaxTRESPERJob"
+    },
+    {
+      "name": "group-gpu-minutes-exhausted",
+      "type": "qos_minutes_limit",
+      "expected_phase": "PENDING",
+      "expected_reason": "QOSGrpTRESMinutesLimit"
+    },
+    {
+      "name": "one-leaf-switch-cannot-fit-job",
+      "type": "single_switch_unavailable",
+      "expected_phase": "PENDING",
+      "expected_reason": "RequestedSwitchCountUnavailable"
+    },
+    {
+      "name": "portal-principal-not-mapped",
+      "type": "identity_unmapped",
+      "expected_phase": "REJECTED",
+      "expected_reason": "PrincipalNotMappedToBackendIdentity"
+    },
+    {
+      "name": "project-association-not-authorized",
+      "type": "project_unauthorized",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ProjectAssociationUnauthorized"
+    },
+    {
+      "name": "same-run-submitted-to-two-backends",
+      "type": "duplicate_cross_backend_submit",
+      "expected_phase": "BLOCKED",
+      "expected_reason": "RunLeaseAlreadyOwnedByAnotherBackend"
+    },
+    {
+      "name": "federation-used-as-high-throughput-bus",
+      "type": "federation_high_throughput",
+      "expected_phase": "DEGRADED",
+      "expected_reason": "FederationNotIntendedForHighThroughputSubmission"
+    },
+    {
+      "name": "portal-polls-rest-without-cache",
+      "type": "rest_polling_storm",
+      "expected_phase": "THROTTLED",
+      "expected_reason": "SlurmRESTQueriesRequireCachingAndConditionalPolling"
+    }
+  ]
+}

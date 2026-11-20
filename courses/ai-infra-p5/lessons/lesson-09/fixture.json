@@ -1,0 +1,41 @@
+{
+  "weights": {
+    "alpha_ratio": 0.5,
+    "sentence_ratio": 0.5
+  },
+  "threshold": 0.55,
+  "samples": [
+    {
+      "features": {
+        "alpha_ratio": 0.9,
+        "sentence_ratio": 0.8
+      },
+      "label": true,
+      "slice": "article"
+    },
+    {
+      "features": {
+        "alpha_ratio": 0.7,
+        "sentence_ratio": 0.3
+      },
+      "label": true,
+      "slice": "code-doc"
+    },
+    {
+      "features": {
+        "alpha_ratio": 0.2,
+        "sentence_ratio": 0.2
+      },
+      "label": false,
+      "slice": "template"
+    },
+    {
+      "features": {
+        "alpha_ratio": 0.8,
+        "sentence_ratio": 0.2
+      },
+      "label": false,
+      "slice": "keyword-spam"
+    }
+  ]
+}

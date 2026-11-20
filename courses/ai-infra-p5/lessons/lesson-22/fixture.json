@@ -1,0 +1,28 @@
+{
+  "comparisons": [
+    {
+      "chosen_position": "left",
+      "chosen_length": 180,
+      "rejected_length": 120,
+      "labelers_agree": true
+    },
+    {
+      "chosen_position": "right",
+      "chosen_length": 90,
+      "rejected_length": 100,
+      "labelers_agree": false
+    },
+    {
+      "chosen_position": "left",
+      "chosen_length": 220,
+      "rejected_length": 140,
+      "labelers_agree": true
+    },
+    {
+      "chosen_position": "left",
+      "chosen_length": 150,
+      "rejected_length": 100,
+      "labelers_agree": false
+    }
+  ]
+}

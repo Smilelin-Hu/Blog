@@ -1,0 +1,7 @@
+CUDA_VISIBLE_DEVICES=0 python real/cuda_recovery.py \
+  --model-path /absolute/path/to/local-model \
+  --output artifacts/dual-gpu-recovery-run \
+  --target-modules q_proj,v_proj \
+  --rounds 3 \
+  --group-size 2 \
+  --max-new-tokens 32

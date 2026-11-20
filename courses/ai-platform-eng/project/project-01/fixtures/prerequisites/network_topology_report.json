@@ -1,0 +1,173 @@
+{
+  "status": "PASS",
+  "traffic_planes": [
+    {
+      "name": "management",
+      "network": "primary-cni",
+      "slo": "available",
+      "bandwidth_gbps": 10
+    },
+    {
+      "name": "pod-service",
+      "network": "primary-cni",
+      "slo": "policy-controlled",
+      "bandwidth_gbps": 25
+    },
+    {
+      "name": "storage",
+      "network": "storage-net",
+      "slo": "throughput",
+      "bandwidth_gbps": 100
+    },
+    {
+      "name": "training",
+      "network": "train-roce",
+      "slo": "low-latency",
+      "bandwidth_gbps": 400
+    },
+    {
+      "name": "observability",
+      "network": "primary-cni",
+      "slo": "non-blocking",
+      "bandwidth_gbps": 10
+    }
+  ],
+  "placements": [
+    {
+      "name": "sixteen-gpu-training",
+      "passed": true,
+      "phase": "Allocated",
+      "reason": "NetworkAndTopologySatisfied",
+      "nodes": [
+        "gpu-a1",
+        "gpu-a2"
+      ],
+      "racks": [
+        "rack-a",
+        "rack-a"
+      ],
+      "network": "train-roce",
+      "rails": [
+        "rail-a",
+        "rail-b"
+      ]
+    },
+    {
+      "name": "ha-inference",
+      "passed": true,
+      "phase": "Allocated",
+      "reason": "NetworkAndTopologySatisfied",
+      "nodes": [
+        "gpu-a1",
+        "gpu-b1"
+      ],
+      "racks": [
+        "rack-a",
+        "rack-b"
+      ],
+      "network": "primary-cni",
+      "rails": []
+    },
+    {
+      "name": "checkpoint-writer",
+      "passed": true,
+      "phase": "Allocated",
+      "reason": "NetworkAndTopologySatisfied",
+      "nodes": [
+        "gpu-a1"
+      ],
+      "racks": [
+        "rack-a"
+      ],
+      "network": "storage-net",
+      "rails": []
+    }
+  ],
+  "path_model": {
+    "tcp_staged": [
+      "GPU memory",
+      "host memory",
+      "kernel socket",
+      "NIC",
+      "fabric",
+      "remote host memory",
+      "remote GPU memory"
+    ],
+    "rdma_staged": [
+      "GPU memory",
+      "host memory",
+      "RNIC",
+      "fabric",
+      "remote host memory",
+      "remote GPU memory"
+    ],
+    "gpudirect_rdma": [
+      "GPU memory",
+      "peer DMA over PCIe",
+      "RNIC",
+      "fabric",
+      "remote RNIC",
+      "peer DMA over PCIe",
+      "remote GPU memory"
+    ],
+    "boundary": "The model validates path selection, not measured bandwidth or latency."
+  },
+  "faults": [
+    {
+      "name": "secondary-network-missing",
+      "passed": true,
+      "phase": "SandboxBlocked",
+      "reason": "NetworkAttachmentDefinitionUnavailable"
+    },
+    {
+      "name": "end-to-end-mtu-mismatch",
+      "passed": true,
+      "phase": "RunningDegraded",
+      "reason": "PathMTUMismatch",
+      "effective_mtu": 1500
+    },
+    {
+      "name": "roce-congestion-control-disabled",
+      "passed": true,
+      "phase": "RunningDegraded",
+      "reason": "RoCECongestionControlMissing"
+    },
+    {
+      "name": "rdma-device-not-advertised",
+      "passed": true,
+      "phase": "Pending",
+      "reason": "RDMAResourceUnavailable"
+    },
+    {
+      "name": "gpudirect-peer-memory-unavailable",
+      "passed": true,
+      "phase": "CapabilityBlocked",
+      "reason": "GPUDirectPathUnavailable"
+    },
+    {
+      "name": "gpu-nic-cross-numa",
+      "passed": true,
+      "phase": "RunningDegraded",
+      "reason": "GPUNICNUMAMisaligned"
+    },
+    {
+      "name": "second-rail-down",
+      "passed": true,
+      "phase": "PlacementBlocked",
+      "reason": "RequiredNetworkRailUnavailable"
+    },
+    {
+      "name": "node-driver-generation-skew",
+      "passed": true,
+      "phase": "Quarantined",
+      "reason": "NetworkDriverGenerationSkew"
+    },
+    {
+      "name": "nccl-selects-unroutable-interface",
+      "passed": true,
+      "phase": "InitializationBlocked",
+      "reason": "SelectedInterfaceUnroutable"
+    }
+  ],
+  "simulation_scope": "control-plane and topology semantics only; no RDMA or GPU performance is fabricated"
+}

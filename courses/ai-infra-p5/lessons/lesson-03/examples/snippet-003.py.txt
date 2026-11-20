@@ -1,0 +1,346 @@
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import shutil
+import sqlite3
+from collections import deque
+from pathlib import Path
+from typing import Dict, Iterable, List, Optional
+
+
+def canonical_json(value: object) -> bytes:
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+
+def sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+class MiniLake:
+    def __init__(self, root: Path) -> None:
+        self.root = root
+        self.blob_root = root / "blobs" / "sha256"
+        self.manifest_root = root / "manifests"
+        self.blob_root.mkdir(parents=True, exist_ok=True)
+        self.manifest_root.mkdir(parents=True, exist_ok=True)
+        self.connection = sqlite3.connect(root / "catalog.db")
+        self.connection.row_factory = sqlite3.Row
+        self.connection.execute("PRAGMA foreign_keys = ON")
+        self._create_schema()
+
+    def _create_schema(self) -> None:
+        self.connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS assets (
+                asset_id TEXT PRIMARY KEY,
+                asset_type TEXT NOT NULL,
+                title TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS blobs (
+                blob_id TEXT PRIMARY KEY,
+                size_bytes INTEGER NOT NULL,
+                relative_path TEXT NOT NULL,
+                state TEXT NOT NULL DEFAULT 'available'
+            );
+            CREATE TABLE IF NOT EXISTS recipes (
+                recipe_id TEXT PRIMARY KEY,
+                payload_json TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS runs (
+                run_id TEXT PRIMARY KEY,
+                recipe_id TEXT NOT NULL,
+                status TEXT NOT NULL,
+                parameters_json TEXT NOT NULL,
+                FOREIGN KEY(recipe_id) REFERENCES recipes(recipe_id)
+            );
+            CREATE TABLE IF NOT EXISTS commits (
+                commit_id TEXT PRIMARY KEY,
+                asset_id TEXT NOT NULL,
+                parent_commit_id TEXT,
+                recipe_id TEXT,
+                run_id TEXT,
+                manifest_path TEXT NOT NULL,
+                state TEXT NOT NULL,
+                FOREIGN KEY(asset_id) REFERENCES assets(asset_id)
+            );
+            CREATE TABLE IF NOT EXISTS commit_objects (
+                commit_id TEXT NOT NULL,
+                logical_path TEXT NOT NULL,
+                blob_id TEXT NOT NULL,
+                PRIMARY KEY(commit_id, logical_path),
+                FOREIGN KEY(commit_id) REFERENCES commits(commit_id),
+                FOREIGN KEY(blob_id) REFERENCES blobs(blob_id)
+            );
+            CREATE TABLE IF NOT EXISTS lineage (
+                parent_id TEXT NOT NULL,
+                child_id TEXT NOT NULL,
+                edge_type TEXT NOT NULL,
+                run_id TEXT,
+                PRIMARY KEY(parent_id, child_id, edge_type)
+            );
+            CREATE TABLE IF NOT EXISTS aliases (
+                asset_id TEXT NOT NULL,
+                alias TEXT NOT NULL,
+                commit_id TEXT NOT NULL,
+                PRIMARY KEY(asset_id, alias)
+            );
+            CREATE TABLE IF NOT EXISTS tombstones (
+                target_id TEXT PRIMARY KEY,
+                reason TEXT NOT NULL,
+                state TEXT NOT NULL
+            );
+            """
+        )
+        self.connection.commit()
+
+    def register_asset(self, asset_id: str, asset_type: str, title: str) -> None:
+        self.connection.execute(
+            "INSERT INTO assets(asset_id, asset_type, title) VALUES (?, ?, ?)",
+            (asset_id, asset_type, title),
+        )
+        self.connection.commit()
+
+    def put_blob(self, data: bytes) -> str:
+        digest = sha256(data)
+        blob_id = f"sha256:{digest}"
+        relative_path = Path("blobs") / "sha256" / digest[:1] / digest
+        target = self.root / relative_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if not target.exists():
+            temporary = target.with_suffix(".tmp")
+            temporary.write_bytes(data)
+            if sha256(temporary.read_bytes()) != digest:
+                raise RuntimeError("blob checksum verification failed")
+            temporary.replace(target)
+        self.connection.execute(
+            "INSERT OR IGNORE INTO blobs(blob_id, size_bytes, relative_path) "
+            "VALUES (?, ?, ?)",
+            (blob_id, len(data), str(relative_path)),
+        )
+        self.connection.commit()
+        return blob_id
+
+    def register_recipe(self, payload: Dict[str, object]) -> str:
+        recipe_id = f"recipe:{sha256(canonical_json(payload))}"
+        self.connection.execute(
+            "INSERT OR IGNORE INTO recipes(recipe_id, payload_json) VALUES (?, ?)",
+            (recipe_id, canonical_json(payload).decode("utf-8")),
+        )
+        self.connection.commit()
+        return recipe_id
+
+    def start_run(
+        self, recipe_id: str, parameters: Dict[str, object]
+    ) -> str:
+        payload = {"recipe_id": recipe_id, "parameters": parameters}
+        run_id = f"run:{sha256(canonical_json(payload))}"
+        self.connection.execute(
+            "INSERT INTO runs(run_id, recipe_id, status, parameters_json) "
+            "VALUES (?, ?, 'running', ?)",
+            (run_id, recipe_id, canonical_json(parameters).decode("utf-8")),
+        )
+        self.connection.commit()
+        return run_id
+
+    def commit(
+        self,
+        asset_id: str,
+        objects: Dict[str, str],
+        parent_commit_id: Optional[str],
+        recipe_id: Optional[str],
+        run_id: Optional[str],
+        input_ids: Iterable[str],
+    ) -> str:
+        manifest = {
+            "asset_id": asset_id,
+            "parent_commit_id": parent_commit_id,
+            "recipe_id": recipe_id,
+            "run_id": run_id,
+            "objects": [
+                {"logical_path": path, "blob_id": objects[path]}
+                for path in sorted(objects)
+            ],
+        }
+        manifest_bytes = canonical_json(manifest)
+        commit_id = f"commit:{sha256(manifest_bytes)}"
+        manifest_path = self.manifest_root / f"{commit_id.split(':')[1]}.json"
+        manifest_path.write_bytes(manifest_bytes)
+        with self.connection:
+            self.connection.execute(
+                "INSERT INTO commits(commit_id, asset_id, parent_commit_id, "
+                "recipe_id, run_id, manifest_path, state) "
+                "VALUES (?, ?, ?, ?, ?, ?, 'committed')",
+                (
+                    commit_id,
+                    asset_id,
+                    parent_commit_id,
+                    recipe_id,
+                    run_id,
+                    str(manifest_path.relative_to(self.root)),
+                ),
+            )
+            for logical_path, blob_id in sorted(objects.items()):
+                self.connection.execute(
+                    "INSERT INTO commit_objects(commit_id, logical_path, blob_id) "
+                    "VALUES (?, ?, ?)",
+                    (commit_id, logical_path, blob_id),
+                )
+                self.connection.execute(
+                    "INSERT OR IGNORE INTO lineage(parent_id, child_id, edge_type, run_id) "
+                    "VALUES (?, ?, 'contains', ?)",
+                    (blob_id, commit_id, run_id),
+                )
+            for input_id in input_ids:
+                self.connection.execute(
+                    "INSERT OR IGNORE INTO lineage(parent_id, child_id, edge_type, run_id) "
+                    "VALUES (?, ?, 'derived_into', ?)",
+                    (input_id, commit_id, run_id),
+                )
+            if run_id:
+                self.connection.execute(
+                    "UPDATE runs SET status='committed' WHERE run_id=?", (run_id,)
+                )
+        return commit_id
+
+    def move_alias(
+        self,
+        asset_id: str,
+        alias: str,
+        new_commit_id: str,
+        expected_commit_id: Optional[str],
+    ) -> None:
+        with self.connection:
+            current = self.connection.execute(
+                "SELECT commit_id FROM aliases WHERE asset_id=? AND alias=?",
+                (asset_id, alias),
+            ).fetchone()
+            current_id = current["commit_id"] if current else None
+            if current_id != expected_commit_id:
+                raise RuntimeError(
+                    f"alias conflict: expected={expected_commit_id}, actual={current_id}"
+                )
+            self.connection.execute(
+                "INSERT INTO aliases(asset_id, alias, commit_id) VALUES (?, ?, ?) "
+                "ON CONFLICT(asset_id, alias) DO UPDATE SET commit_id=excluded.commit_id",
+                (asset_id, alias, new_commit_id),
+            )
+
+    def add_tombstone(self, target_id: str, reason: str) -> None:
+        with self.connection:
+            self.connection.execute(
+                "INSERT OR REPLACE INTO tombstones(target_id, reason, state) "
+                "VALUES (?, ?, 'active')",
+                (target_id, reason),
+            )
+            self.connection.execute(
+                "UPDATE blobs SET state='withdrawn' WHERE blob_id=?", (target_id,)
+            )
+
+    def downstream(self, start_id: str) -> List[Dict[str, object]]:
+        queue = deque([(start_id, 0)])
+        visited = {start_id}
+        result = []
+        while queue:
+            parent_id, depth = queue.popleft()
+            rows = self.connection.execute(
+                "SELECT child_id, edge_type, run_id FROM lineage WHERE parent_id=?",
+                (parent_id,),
+            ).fetchall()
+            for row in rows:
+                child_id = row["child_id"]
+                result.append({
+                    "parent_id": parent_id,
+                    "child_id": child_id,
+                    "edge_type": row["edge_type"],
+                    "run_id": row["run_id"],
+                    "depth": depth + 1,
+                })
+                if child_id not in visited:
+                    visited.add(child_id)
+                    queue.append((child_id, depth + 1))
+        return result
+
+    def close(self) -> None:
+        self.connection.close()
+
+
+def build_demo(root: Path, reset: bool) -> Dict[str, object]:
+    if reset and root.exists():
+        shutil.rmtree(root)
+    lake = MiniLake(root)
+    try:
+        for asset_id, asset_type, title in (
+            ("asset-raw", "raw", "原始技术文档"),
+            ("asset-parsed", "document", "解析技术文档"),
+            ("asset-gold", "gold", "治理后技术语料"),
+            ("asset-train", "train_ready", "训练序列"),
+            ("asset-model", "checkpoint", "模型检查点"),
+        ):
+            lake.register_asset(asset_id, asset_type, title)
+
+        raw_blob = lake.put_blob("GPU 拓扑决定通信路径。".encode("utf-8"))
+        raw_commit = lake.commit(
+            "asset-raw", {"capture/doc-001.txt": raw_blob}, None, None, None, []
+        )
+
+        previous = raw_commit
+        commits = {"raw": raw_commit}
+        for stage, asset_id, output in (
+            ("parse", "asset-parsed", {"doc_id": "doc-001", "text": "GPU 拓扑决定通信路径。"}),
+            ("filter", "asset-gold", {"doc_id": "doc-001", "decision": "accept", "quality": 0.94}),
+            ("tokenize", "asset-train", {"sample_id": "sample-001", "input_ids": [21, 88, 34, 55]}),
+            ("train", "asset-model", {"checkpoint": "step-10", "data_commit": "filled-by-lineage"}),
+        ):
+            recipe = lake.register_recipe({
+                "stage": stage,
+                "code": f"{stage}.py@sha256:course-demo",
+                "parameters": {"deterministic": True},
+            })
+            run = lake.start_run(recipe, {"input_commit": previous})
+            blob = lake.put_blob(canonical_json(output))
+            current = lake.commit(
+                asset_id,
+                {f"{stage}/part-00000.json": blob},
+                None,
+                recipe,
+                run,
+                [previous],
+            )
+            commits[stage] = current
+            previous = current
+
+        lake.move_alias("asset-model", "stable", commits["train"], None)
+        impact_before = lake.downstream(raw_blob)
+        lake.add_tombstone(raw_blob, "source withdrawal demonstration")
+        impact_after = lake.downstream(raw_blob)
+        return {
+            "status": "completed",
+            "root": str(root),
+            "commits": commits,
+            "stable_model_commit": commits["train"],
+            "withdrawn_blob": raw_blob,
+            "impact_before_tombstone": impact_before,
+            "impact_after_tombstone": impact_after,
+            "proof_limit": "local SQLite mechanism simulation, not production lake benchmark",
+        }
+    finally:
+        lake.close()
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--root", type=Path, default=Path("mini_lake"))
+    parser.add_argument("--reset", action="store_true")
+    args = parser.parse_args()
+    print(json.dumps(build_demo(args.root, args.reset), ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

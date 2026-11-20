@@ -1,0 +1,8 @@
+{
+  "sample_id": "sample-01HZX...",
+  "content_sha256": "f0c6...",
+  "parent_document_id": "doc-01HZW...",
+  "recipe_id": "recipe-sft-clean-v4",
+  "dataset_version": "sft-mix-2026-08-21",
+  "source_ids": ["source-support-tickets-2026q2"]
+}

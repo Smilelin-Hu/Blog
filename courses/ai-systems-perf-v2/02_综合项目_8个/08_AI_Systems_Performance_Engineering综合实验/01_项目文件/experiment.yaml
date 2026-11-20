@@ -1,0 +1,17 @@
+schema_version: 1
+experiment_name: rmsnorm-silu-cpu-reference
+owner: course-learner
+seed: 2026
+workload:
+  elements: 200000
+  warmup: 3
+  repeats: 20
+  precision: float64-reference
+acceptance:
+  max_relative_error: 1.0e-12
+  max_p50_regression: 0.05
+  target_speedup: 1.0
+evidence:
+  baseline_metrics: baseline/metrics.json
+  candidate_metrics: candidate/metrics.json
+  command_log: artifacts/commands.txt

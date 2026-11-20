@@ -1,0 +1,2 @@
+python -m pip install "ray[default]>=2.9"
+python sim/ray_control_plane.py --groups 3 --group-size 4

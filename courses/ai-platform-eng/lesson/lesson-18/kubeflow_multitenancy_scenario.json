@@ -1,0 +1,287 @@
+{
+  "name": "kubeflow-two-profile-lab",
+  "baseline": {
+    "verified_at": "2026-08-22",
+    "distribution": "Kubeflow Community Distribution 26.03.1",
+    "profile_api": "kubeflow.org/v1",
+    "notebook_api": "kubeflow.org/v1",
+    "kueue": "v0.19.0"
+  },
+  "required_components": [
+    "central-dashboard",
+    "profile-controller",
+    "access-management",
+    "notebook-controller",
+    "jupyter-web-app",
+    "pipelines-api",
+    "istio-ingressgateway"
+  ],
+  "trusted_principals": [
+    "cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account",
+    "cluster.local/ns/kubeflow/sa/ml-pipeline-ui"
+  ],
+  "profiles": [
+    {
+      "name": "team-alpha",
+      "owner": "alice@example.invalid",
+      "contributors": [
+        {
+          "name": "bob@example.invalid",
+          "role": "edit"
+        },
+        {
+          "name": "auditor@example.invalid",
+          "role": "view"
+        }
+      ],
+      "quota": {
+        "requests.cpu": 16,
+        "requests.memory_gib": 64,
+        "requests.nvidia.com/gpu": 4,
+        "pods": 20,
+        "persistentvolumeclaims": 8
+      },
+      "limit_range": {
+        "default_cpu": 1,
+        "default_memory_gib": 2,
+        "max_cpu": 8,
+        "max_memory_gib": 32
+      },
+      "local_queue": "team-alpha-queue",
+      "notebook": {
+        "name": "alice-lab",
+        "image": "registry.training.invalid/ai/notebook@sha256:alpha",
+        "service_account": "default-editor",
+        "pvc": "alice-lab-workspace",
+        "gpu": 1,
+        "idle_shutdown_minutes": 120
+      }
+    },
+    {
+      "name": "team-beta",
+      "owner": "carol@example.invalid",
+      "contributors": [
+        {
+          "name": "dave@example.invalid",
+          "role": "edit"
+        },
+        {
+          "name": "auditor@example.invalid",
+          "role": "view"
+        }
+      ],
+      "quota": {
+        "requests.cpu": 12,
+        "requests.memory_gib": 48,
+        "requests.nvidia.com/gpu": 2,
+        "pods": 16,
+        "persistentvolumeclaims": 6
+      },
+      "limit_range": {
+        "default_cpu": 1,
+        "default_memory_gib": 2,
+        "max_cpu": 8,
+        "max_memory_gib": 24
+      },
+      "local_queue": "team-beta-queue",
+      "notebook": {
+        "name": "carol-lab",
+        "image": "registry.training.invalid/ai/notebook@sha256:beta",
+        "service_account": "default-editor",
+        "pvc": "carol-lab-workspace",
+        "gpu": 1,
+        "idle_shutdown_minutes": 90
+      }
+    }
+  ],
+  "access_requests": [
+    {
+      "name": "alpha-owner-creates-notebook",
+      "user": "alice@example.invalid",
+      "namespace": "team-alpha",
+      "verb": "create",
+      "resource": "notebooks",
+      "expected": "ALLOW"
+    },
+    {
+      "name": "alpha-editor-updates-notebook",
+      "user": "bob@example.invalid",
+      "namespace": "team-alpha",
+      "verb": "update",
+      "resource": "notebooks",
+      "expected": "ALLOW"
+    },
+    {
+      "name": "auditor-reads-alpha",
+      "user": "auditor@example.invalid",
+      "namespace": "team-alpha",
+      "verb": "get",
+      "resource": "notebooks",
+      "expected": "ALLOW"
+    },
+    {
+      "name": "auditor-cannot-delete-alpha",
+      "user": "auditor@example.invalid",
+      "namespace": "team-alpha",
+      "verb": "delete",
+      "resource": "notebooks",
+      "expected": "DENY"
+    },
+    {
+      "name": "alpha-owner-cannot-read-beta",
+      "user": "alice@example.invalid",
+      "namespace": "team-beta",
+      "verb": "get",
+      "resource": "secrets",
+      "expected": "DENY"
+    },
+    {
+      "name": "beta-editor-cannot-write-alpha",
+      "user": "dave@example.invalid",
+      "namespace": "team-alpha",
+      "verb": "create",
+      "resource": "pods",
+      "expected": "DENY"
+    }
+  ],
+  "network_probes": [
+    {
+      "name": "alpha-notebook-to-alpha-service",
+      "source": "team-alpha",
+      "destination": "team-alpha",
+      "port": 8080,
+      "expected": "ALLOW"
+    },
+    {
+      "name": "alpha-notebook-to-beta-notebook",
+      "source": "team-alpha",
+      "destination": "team-beta",
+      "port": 8888,
+      "expected": "DENY"
+    },
+    {
+      "name": "beta-notebook-to-alpha-metadata",
+      "source": "team-beta",
+      "destination": "team-alpha",
+      "port": 8080,
+      "expected": "DENY"
+    },
+    {
+      "name": "dashboard-to-alpha-webapp",
+      "source": "kubeflow",
+      "destination": "team-alpha",
+      "port": 80,
+      "expected": "ALLOW"
+    }
+  ],
+  "quota_probe": {
+    "namespace": "team-alpha",
+    "used": {
+      "requests.nvidia.com/gpu": 3,
+      "pods": 12
+    },
+    "request": {
+      "requests.nvidia.com/gpu": 2,
+      "pods": 1
+    },
+    "expected": "REJECTED"
+  },
+  "faults": [
+    {
+      "name": "profile-name-collides-with-existing-namespace",
+      "type": "namespace_collision",
+      "expected_phase": "BLOCKED",
+      "expected_reason": "ProfileNamespaceNameCollision"
+    },
+    {
+      "name": "identity-case-does-not-match-binding",
+      "type": "identity_case",
+      "expected_phase": "DENIED",
+      "expected_reason": "CaseSensitiveSubjectMismatch"
+    },
+    {
+      "name": "contributor-rolebinding-is-missing",
+      "type": "missing_rolebinding",
+      "expected_phase": "API_DENIED",
+      "expected_reason": "KubernetesRBACBindingMissing"
+    },
+    {
+      "name": "contributor-authorizationpolicy-is-missing",
+      "type": "missing_authorizationpolicy",
+      "expected_phase": "UI_DENIED",
+      "expected_reason": "IstioAuthorizationPolicyMissing"
+    },
+    {
+      "name": "untrusted-client-spoofs-user-header",
+      "type": "spoofed_header",
+      "expected_phase": "DENIED",
+      "expected_reason": "UntrustedGatewayPrincipal"
+    },
+    {
+      "name": "editor-is-bound-with-clusterrolebinding",
+      "type": "clusterrolebinding_scope",
+      "expected_phase": "UNSAFE",
+      "expected_reason": "CrossNamespacePrivilegeGranted"
+    },
+    {
+      "name": "notebook-uses-overprivileged-serviceaccount",
+      "type": "overprivileged_serviceaccount",
+      "expected_phase": "UNSAFE",
+      "expected_reason": "NotebookWorkloadIdentityTooBroad"
+    },
+    {
+      "name": "networkpolicy-has-no-enforcing-cni",
+      "type": "networkpolicy_no_controller",
+      "expected_phase": "UNENFORCED",
+      "expected_reason": "NetworkPolicyProviderUnavailable"
+    },
+    {
+      "name": "limit-default-is-lower-than-explicit-request",
+      "type": "limitrange_conflict",
+      "expected_phase": "REJECTED",
+      "expected_reason": "DefaultLimitBelowRequest"
+    },
+    {
+      "name": "profile-quota-omits-gpu",
+      "type": "gpu_quota_missing",
+      "expected_phase": "UNSAFE",
+      "expected_reason": "NamespaceGPUConsumptionUnbounded"
+    },
+    {
+      "name": "pipeline-definition-assumed-private",
+      "type": "pipeline_definition_shared",
+      "expected_phase": "SHARED",
+      "expected_reason": "PipelineDefinitionsNotNamespaceIsolated"
+    },
+    {
+      "name": "mlmd-entities-assumed-private",
+      "type": "mlmd_shared",
+      "expected_phase": "SHARED",
+      "expected_reason": "MLMDNamespaceIsolationUnavailable"
+    },
+    {
+      "name": "profile-delete-is-treated-as-metadata-only",
+      "type": "profile_delete",
+      "expected_phase": "DESTRUCTIVE",
+      "expected_reason": "ProfileDeletionCascadesNamespace"
+    },
+    {
+      "name": "notebook-has-no-idle-reclamation",
+      "type": "idle_reclaim_missing",
+      "expected_phase": "COST_RISK",
+      "expected_reason": "InteractiveCapacityNeverReleased"
+    },
+    {
+      "name": "automatic-profile-owner-can-delegate-access",
+      "type": "automatic_owner_delegation",
+      "expected_phase": "GOVERNANCE_RISK",
+      "expected_reason": "EndUserCanManageContributors"
+    },
+    {
+      "name": "resourcequota-is-assumed-to-reserve-nodes",
+      "type": "quota_as_capacity",
+      "expected_phase": "PENDING",
+      "expected_reason": "QuotaDoesNotGuaranteePhysicalCapacity"
+    }
+  ]
+}

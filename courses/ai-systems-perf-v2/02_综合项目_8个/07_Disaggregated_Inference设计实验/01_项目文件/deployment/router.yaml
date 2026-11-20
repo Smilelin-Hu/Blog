@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: ai-infra-router-config}
+data:
+  default.conf: |
+    upstream decode_pool { server ai-infra-decode:8000; }
+    server { listen 8080; location / { proxy_pass http://decode_pool; } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: ai-infra-router}
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: ai-infra-router}
+  template:
+    metadata:
+      labels: {app: ai-infra-router}
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports: [{containerPort: 8080}]
+          volumeMounts: [{name: config, mountPath: /etc/nginx/conf.d}]
+      volumes:
+        - name: config
+          configMap: {name: ai-infra-router-config}

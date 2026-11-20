@@ -1,0 +1,39 @@
+import unittest
+import numpy as np
+
+from policy_objectives import (
+    dynamic_sampling,
+    fixture,
+    group_advantages,
+    overlong_penalty,
+    rloo_advantages,
+)
+
+
+class ObjectiveTest(unittest.TestCase):
+    def test_group_advantages_sum_to_zero(self) -> None:
+        batch = fixture()
+        values, _ = group_advantages(batch, normalize=False)
+        for group in np.unique(batch.group_ids):
+            self.assertAlmostEqual(float(values[batch.group_ids == group].sum()), 0.0)
+
+    def test_rloo_relation(self) -> None:
+        batch = fixture()
+        centered, _ = group_advantages(batch, normalize=False)
+        rloo = rloo_advantages(batch)
+        for group in np.unique(batch.group_ids):
+            indices = batch.group_ids == group
+            size = int(indices.sum())
+            np.testing.assert_allclose(rloo[indices], centered[indices] * size / (size - 1))
+
+    def test_dynamic_sampling_drops_zero_variance(self) -> None:
+        accepted = dynamic_sampling(fixture())
+        self.assertTrue(all(index < 4 or index >= 8 for index in accepted))
+
+    def test_overlong_is_continuous_and_monotonic(self) -> None:
+        values = [overlong_penalty(length, 6, 8, -0.5) for length in range(5, 10)]
+        self.assertTrue(all(left >= right for left, right in zip(values, values[1:])))
+
+
+if __name__ == "__main__":
+    unittest.main()

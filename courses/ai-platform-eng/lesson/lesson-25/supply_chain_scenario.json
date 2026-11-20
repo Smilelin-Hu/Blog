@@ -1,0 +1,238 @@
+{
+  "release_id": "recommendation-2026-08-22.25",
+  "source": {
+    "repository": "https://github.com/example/recommendation-runtime",
+    "commit": "4c9d7f1a6b3e2d109876543210abcdef12345678",
+    "verified_pr": true
+  },
+  "build": {
+    "pipeline_ref": "oci://registry.training.invalid/tekton/pipelines/ai-release@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "task_refs": [
+      "registry.training.invalid/tekton/tasks/git-clone@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "registry.training.invalid/tekton/tasks/build-image@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "registry.training.invalid/tekton/tasks/package-model@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    ],
+    "builder_id": "https://tekton.training.invalid/builders/ai-release/v1",
+    "build_type": "https://tekton.training.invalid/buildtypes/ai-model-service/v1",
+    "pipeline_run_uid": "0d7bfc53-7fa6-4db7-8938-6cb0a9c55125",
+    "started_on": "2026-08-22T01:00:00Z",
+    "finished_on": "2026-08-22T01:08:00Z",
+    "image_repository": "registry.training.invalid/ai/recommendation-runtime",
+    "model_repository": "registry.training.invalid/ai/recommendation-model",
+    "image_payload": "oci-image-fixture:recommendation-runtime:4c9d7f1",
+    "model_payload": "model-fixture:recommendation-v25:weights-and-tokenizer",
+    "network_access_during_build": false,
+    "service_account": "tekton-ai-builder",
+    "privileged": false,
+    "reproducible_inputs": true
+  },
+  "sbom": {
+    "spec_version": "1.7",
+    "serial_number": "urn:uuid:9306f219-5f74-4ed0-aeaf-2901e0aa32f5",
+    "components": [
+      {
+        "type": "library",
+        "name": "python",
+        "version": "3.12.5",
+        "purl": "pkg:generic/python@3.12.5"
+      },
+      {
+        "type": "library",
+        "name": "runtime-core",
+        "version": "1.8.0",
+        "purl": "pkg:pypi/runtime-core@1.8.0"
+      },
+      {
+        "type": "file",
+        "name": "model-loader",
+        "version": "4c9d7f1",
+        "hashes": [
+          {
+            "alg": "SHA-256",
+            "content": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          }
+        ]
+      }
+    ]
+  },
+  "scan": {
+    "critical": 0,
+    "high": 1,
+    "licenses": [
+      "Apache-2.0",
+      "BSD-3-Clause"
+    ],
+    "scanner_database_updated_at": "2026-08-22T00:00:00Z"
+  },
+  "evaluation": {
+    "evidence_id": "eval-recommendation-v25-policy-7",
+    "status": "PASS",
+    "model_digest": "sha256:659c720a2fe420fe4412aad522dcde0600cf466c29f9f80e9ff2e4344b999158",
+    "policy_version": "quality-gate-7",
+    "quality": 0.947,
+    "minimum_quality": 0.93
+  },
+  "signer": {
+    "identity": "https://tekton.training.invalid/ns/ai-build/sa/tekton-chains",
+    "oidc_issuer": "https://issuer.training.invalid",
+    "simulation_key": "lesson-25-deterministic-teaching-mac",
+    "transparency_included": true,
+    "transparency_log_index": 8421
+  },
+  "policy": {
+    "require_hermetic": true,
+    "required_sbom_version": "1.7",
+    "minimum_sbom_components": 3,
+    "maximum_critical_vulnerabilities": 0,
+    "maximum_high_vulnerabilities": 2,
+    "denied_licenses": [
+      "GPL-3.0-only"
+    ],
+    "allowed_build_service_accounts": [
+      "tekton-ai-builder"
+    ],
+    "allowed_builder_ids": [
+      "https://tekton.training.invalid/builders/ai-release/v1"
+    ],
+    "allowed_build_types": [
+      "https://tekton.training.invalid/buildtypes/ai-model-service/v1"
+    ],
+    "allowed_signer_identities": [
+      "https://tekton.training.invalid/ns/ai-build/sa/tekton-chains"
+    ],
+    "allowed_oidc_issuers": [
+      "https://issuer.training.invalid"
+    ],
+    "allowed_image_repositories": [
+      "registry.training.invalid/ai/recommendation-runtime"
+    ],
+    "require_transparency": true,
+    "policy_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  },
+  "admission": {
+    "namespace_opt_in": true,
+    "matching_policy": true,
+    "requested_image_repository": "registry.training.invalid/ai/recommendation-runtime",
+    "image_ref": "registry.training.invalid/ai/recommendation-runtime@$IMAGE_DIGEST",
+    "policy_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  },
+  "promotion": {
+    "image_ref": "$IMAGE_REF",
+    "model_ref": "$MODEL_REF",
+    "signed_commit": true,
+    "evaluation_id": "eval-recommendation-v25-policy-7",
+    "source_pipeline_run_uid": "0d7bfc53-7fa6-4db7-8938-6cb0a9c55125"
+  },
+  "faults": [
+    {
+      "type": "mutable_source",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ImmutableSourceRevisionRequired"
+    },
+    {
+      "type": "unreviewed_source",
+      "expected_phase": "REJECTED",
+      "expected_reason": "SourceReviewEvidenceMissing"
+    },
+    {
+      "type": "unpinned_task",
+      "expected_phase": "REJECTED",
+      "expected_reason": "PinnedTaskReferenceRequired"
+    },
+    {
+      "type": "non_hermetic_build",
+      "expected_phase": "REJECTED",
+      "expected_reason": "HermeticBuildRequired"
+    },
+    {
+      "type": "privileged_builder",
+      "expected_phase": "REJECTED",
+      "expected_reason": "PrivilegedBuildForbidden"
+    },
+    {
+      "type": "mutable_image",
+      "expected_phase": "REJECTED",
+      "expected_reason": "DeploymentImageDigestRequired"
+    },
+    {
+      "type": "sbom_subject_mismatch",
+      "expected_phase": "REJECTED",
+      "expected_reason": "SBOMSubjectDigestMismatch"
+    },
+    {
+      "type": "sbom_empty",
+      "expected_phase": "REJECTED",
+      "expected_reason": "SBOMComponentInventoryIncomplete"
+    },
+    {
+      "type": "critical_vulnerability",
+      "expected_phase": "REJECTED",
+      "expected_reason": "CriticalVulnerabilityGateFailed"
+    },
+    {
+      "type": "denied_license",
+      "expected_phase": "REJECTED",
+      "expected_reason": "DeniedLicenseDetected"
+    },
+    {
+      "type": "evaluation_failed",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ModelEvaluationGateFailed"
+    },
+    {
+      "type": "evaluation_subject_mismatch",
+      "expected_phase": "REJECTED",
+      "expected_reason": "EvaluationSubjectDigestMismatch"
+    },
+    {
+      "type": "provenance_subject_mismatch",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ProvenanceSubjectDigestMismatch"
+    },
+    {
+      "type": "untrusted_builder",
+      "expected_phase": "REJECTED",
+      "expected_reason": "BuilderIdentityNotAllowed"
+    },
+    {
+      "type": "invalid_signature",
+      "expected_phase": "REJECTED",
+      "expected_reason": "SignatureVerificationFailed"
+    },
+    {
+      "type": "untrusted_signer",
+      "expected_phase": "REJECTED",
+      "expected_reason": "SignerIdentityNotAllowed"
+    },
+    {
+      "type": "transparency_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "TransparencyInclusionRequired"
+    },
+    {
+      "type": "policy_digest_mismatch",
+      "expected_phase": "REJECTED",
+      "expected_reason": "AdmissionPolicyDigestMismatch"
+    },
+    {
+      "type": "namespace_not_opted_in",
+      "expected_phase": "REJECTED",
+      "expected_reason": "NamespacePolicyNotEnabled"
+    },
+    {
+      "type": "no_matching_policy",
+      "expected_phase": "REJECTED",
+      "expected_reason": "NoMatchingPolicyFailClosed"
+    },
+    {
+      "type": "direct_gitops_write",
+      "expected_phase": "REJECTED",
+      "expected_reason": "PromotionCommitSignatureRequired"
+    },
+    {
+      "type": "live_cluster_missing",
+      "expected_phase": "SKIPPED",
+      "expected_reason": "NoKubernetesContextProvided"
+    }
+  ]
+}

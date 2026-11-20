@@ -1,0 +1,51 @@
+import hashlib
+import json
+import random
+from collections import Counter
+
+SAMPLES = [
+    {"id": f"math-{i}", "domain": "math", "capability": "reason", "tokens": 80 + i * 3, "quality": 0.7 + i / 100}
+    for i in range(12)
+] + [
+    {"id": f"code-{i}", "domain": "code", "capability": "tool", "tokens": 100 + i * 5, "quality": 0.75 + i / 120}
+    for i in range(10)
+] + [
+    {"id": f"general-{i}", "domain": "general", "capability": "chat", "tokens": 60 + i * 2, "quality": 0.65 + i / 150}
+    for i in range(15)
+]
+
+def priority(sample, recipe_id, seed):
+    raw = f"{recipe_id}:{seed}:{sample['id']}".encode()
+    return int(hashlib.sha256(raw).hexdigest(), 16)
+
+def materialize(samples, domain_tokens, recipe_id, seed=7):
+    selected = []
+    for domain, budget in domain_tokens.items():
+        pool = [x for x in samples if x["domain"] == domain and x["quality"] >= 0.7]
+        pool.sort(key=lambda x: priority(x, recipe_id, seed))
+        used = 0
+        for item in pool:
+            if used + item["tokens"] > budget and selected:
+                continue
+            selected.append(item)
+            used += item["tokens"]
+            if used >= budget:
+                break
+    return selected
+
+recipes = {
+    "balanced": {"math": 500, "code": 500, "general": 500},
+    "domain_heavy": {"math": 700, "code": 650, "general": 150},
+    "anchor_heavy": {"math": 400, "code": 400, "general": 700},
+}
+report = {}
+for name, budget in recipes.items():
+    data = materialize(SAMPLES, budget, name)
+    report[name] = {
+        "tokens": sum(x["tokens"] for x in data),
+        "domains": Counter(x["domain"] for x in data),
+        "capabilities": Counter(x["capability"] for x in data),
+        "manifest": hashlib.sha256("\n".join(sorted(x["id"] for x in data)).encode()).hexdigest(),
+    }
+assert materialize(SAMPLES, recipes["balanced"], "balanced") == materialize(list(reversed(SAMPLES)), recipes["balanced"], "balanced")
+print(json.dumps(report, ensure_ascii=False, indent=2, default=dict))

@@ -1,0 +1,215 @@
+{
+  "status": "PASS",
+  "products": {
+    "whole-a100-80gb": {
+      "mode": "whole",
+      "memory_gib": 80,
+      "compute_share": 100,
+      "memory_isolation": true,
+      "fault_isolation": true,
+      "performance_isolation": "strong"
+    },
+    "mig-1g-10gb": {
+      "mode": "mig",
+      "profile": "1g.10gb",
+      "memory_gib": 10,
+      "slices": 1,
+      "memory_isolation": true,
+      "fault_isolation": true,
+      "performance_isolation": "hardware-partition"
+    },
+    "mig-3g-40gb": {
+      "mode": "mig",
+      "profile": "3g.40gb",
+      "memory_gib": 40,
+      "slices": 3,
+      "memory_isolation": true,
+      "fault_isolation": true,
+      "performance_isolation": "hardware-partition"
+    },
+    "shared-l40s": {
+      "mode": "time-slicing",
+      "memory_gib": 48,
+      "replicas": 4,
+      "rename_by_default": true,
+      "fail_requests_greater_than_one": true,
+      "memory_isolation": false,
+      "fault_isolation": false,
+      "performance_isolation": "best-effort"
+    },
+    "mps-a100": {
+      "mode": "mps",
+      "memory_gib": 80,
+      "max_clients": 4,
+      "active_thread_percentage": 25,
+      "memory_limit_gib_per_client": 18,
+      "memory_isolation": "limit-enforced",
+      "fault_isolation": false,
+      "performance_isolation": "managed-concurrency"
+    },
+    "vgpu-a40-8q": {
+      "mode": "vgpu",
+      "memory_gib": 8,
+      "vm_boundary": true,
+      "license_required": true,
+      "memory_isolation": true,
+      "fault_isolation": "hypervisor-managed",
+      "performance_isolation": "profile-dependent"
+    }
+  },
+  "allocations": [
+    {
+      "name": "eight-card-training",
+      "product": "whole-a100-80gb",
+      "passed": true,
+      "phase": "Allocated",
+      "reason": "ProductContractSatisfied",
+      "node": "whole-node-a",
+      "mode": "whole",
+      "units": 4,
+      "memory_isolation": true,
+      "fault_isolation": true,
+      "performance_isolation": "strong"
+    },
+    {
+      "name": "secure-small-inference",
+      "product": "mig-1g-10gb",
+      "passed": true,
+      "phase": "Allocated",
+      "reason": "ProductContractSatisfied",
+      "node": "mig-node-a",
+      "mode": "mig",
+      "units": 1,
+      "memory_isolation": true,
+      "fault_isolation": true,
+      "performance_isolation": "hardware-partition"
+    },
+    {
+      "name": "interactive-notebook",
+      "product": "shared-l40s",
+      "passed": true,
+      "phase": "Allocated",
+      "reason": "ProductContractSatisfied",
+      "node": "shared-node-a",
+      "mode": "time-slicing",
+      "units": 1,
+      "memory_isolation": false,
+      "fault_isolation": false,
+      "performance_isolation": "best-effort"
+    },
+    {
+      "name": "trusted-micro-inference",
+      "product": "mps-a100",
+      "passed": true,
+      "phase": "Allocated",
+      "reason": "ProductContractSatisfied",
+      "node": "mps-node-a",
+      "mode": "mps",
+      "units": 1,
+      "memory_isolation": "limit-enforced",
+      "fault_isolation": false,
+      "performance_isolation": "managed-concurrency"
+    },
+    {
+      "name": "isolated-vm-workload",
+      "product": "vgpu-a40-8q",
+      "passed": true,
+      "phase": "Allocated",
+      "reason": "ProductContractSatisfied",
+      "node": "vgpu-node-a",
+      "mode": "vgpu",
+      "units": 1,
+      "memory_isolation": true,
+      "fault_isolation": "hypervisor-managed",
+      "performance_isolation": "profile-dependent"
+    }
+  ],
+  "fragmentation": {
+    "free_slices": 3,
+    "requested_slices": 3,
+    "free_profiles": [
+      "1g.10gb",
+      "1g.10gb",
+      "1g.10gb"
+    ],
+    "requested_profile": "3g.40gb",
+    "raw_capacity_sufficient": true,
+    "shape_satisfiable": false,
+    "conclusion": "MIGShapeFragmented"
+  },
+  "faults": [
+    {
+      "name": "time-slicing-multi-replica-request",
+      "passed": true,
+      "phase": "AdmissionRejected",
+      "reason": "SharedReplicaRequestGreaterThanOne"
+    },
+    {
+      "name": "time-slicing-memory-overcommit",
+      "passed": true,
+      "phase": "RunningUnsafe",
+      "reason": "NoMemoryIsolation",
+      "declared_total_gib": 58,
+      "physical_memory_gib": 48
+    },
+    {
+      "name": "time-slicing-noisy-neighbor",
+      "passed": true,
+      "phase": "RunningDegraded",
+      "reason": "BestEffortComputeShare"
+    },
+    {
+      "name": "mig-shape-fragmented",
+      "passed": true,
+      "phase": "Pending",
+      "reason": "MIGProfileUnavailable",
+      "free_profiles": [
+        "1g.10gb",
+        "1g.10gb",
+        "1g.10gb"
+      ],
+      "requested_profile": "3g.40gb"
+    },
+    {
+      "name": "mig-config-drift",
+      "passed": true,
+      "phase": "Quarantined",
+      "reason": "MIGGeometryDrift",
+      "desired": [
+        "1g.10gb",
+        "1g.10gb",
+        "2g.20gb",
+        "3g.40gb"
+      ],
+      "observed": [
+        "1g.10gb",
+        "1g.10gb",
+        "1g.10gb",
+        "1g.10gb",
+        "1g.10gb",
+        "1g.10gb",
+        "1g.10gb"
+      ]
+    },
+    {
+      "name": "mig-reconfigure-active-pods",
+      "passed": true,
+      "phase": "ReconfigurationBlocked",
+      "reason": "ActiveGPUPodsMustTerminate",
+      "active_gpu_pods": 2
+    },
+    {
+      "name": "mps-memory-limit",
+      "passed": true,
+      "phase": "ClientRejected",
+      "reason": "MPSPinnedDeviceMemoryLimit",
+      "limit_gib": 18
+    },
+    {
+      "name": "vgpu-license-unavailable",
+      "passed": true,
+      "phase": "ProvisioningBlocked",
+      "reason": "LicenseServiceUnavailable"
+    }
+  ]
+}

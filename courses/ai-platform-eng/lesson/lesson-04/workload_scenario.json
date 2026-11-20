@@ -1,0 +1,211 @@
+{
+  "nodes": [
+    {
+      "name": "control-plane",
+      "labels": {
+        "pool": "system",
+        "zone": "zone-a"
+      },
+      "taints": [
+        {
+          "key": "node-role.kubernetes.io/control-plane",
+          "effect": "NoSchedule"
+        }
+      ],
+      "capacity": {
+        "cpu_m": 4000,
+        "memory_mib": 8192
+      }
+    },
+    {
+      "name": "worker-interactive",
+      "labels": {
+        "pool": "interactive",
+        "zone": "zone-a"
+      },
+      "taints": [],
+      "capacity": {
+        "cpu_m": 2000,
+        "memory_mib": 4096
+      }
+    },
+    {
+      "name": "worker-training",
+      "labels": {
+        "pool": "training",
+        "zone": "zone-a",
+        "accelerator": "simulated-gpu"
+      },
+      "taints": [
+        {
+          "key": "dedicated",
+          "value": "training",
+          "effect": "NoSchedule"
+        }
+      ],
+      "capacity": {
+        "cpu_m": 4000,
+        "memory_mib": 8192
+      }
+    },
+    {
+      "name": "worker-serving",
+      "labels": {
+        "pool": "serving",
+        "zone": "zone-b"
+      },
+      "taints": [],
+      "capacity": {
+        "cpu_m": 2000,
+        "memory_mib": 4096
+      }
+    }
+  ],
+  "namespaces": {
+    "lab-notebook": {
+      "quota": {
+        "cpu_m": 1500,
+        "memory_mib": 3072,
+        "pods": 3
+      }
+    },
+    "lab-training": {
+      "quota": {
+        "cpu_m": 3500,
+        "memory_mib": 7168,
+        "pods": 3
+      }
+    },
+    "lab-serving": {
+      "quota": {
+        "cpu_m": 1500,
+        "memory_mib": 3072,
+        "pods": 4
+      }
+    }
+  },
+  "pvcs": {
+    "lab-training/training-artifacts": {
+      "status": "Bound",
+      "accessMode": "ReadWriteOnce",
+      "storage": "1Gi"
+    }
+  },
+  "workloads": [
+    {
+      "id": "notebook",
+      "kind": "Deployment",
+      "namespace": "lab-notebook",
+      "replicas": 1,
+      "request": {
+        "cpu_m": 500,
+        "memory_mib": 512
+      },
+      "nodeSelector": {
+        "pool": "interactive"
+      },
+      "tolerations": [],
+      "initContainers": [
+        "workspace-init"
+      ],
+      "startupProbe": true,
+      "readinessProbe": true
+    },
+    {
+      "id": "training",
+      "kind": "Job",
+      "namespace": "lab-training",
+      "replicas": 1,
+      "request": {
+        "cpu_m": 2000,
+        "memory_mib": 2048
+      },
+      "nodeSelector": {
+        "pool": "training",
+        "accelerator": "simulated-gpu"
+      },
+      "tolerations": [
+        {
+          "key": "dedicated",
+          "value": "training",
+          "effect": "NoSchedule"
+        }
+      ],
+      "pvc": "training-artifacts",
+      "initContainers": [
+        "data-check"
+      ],
+      "restartPolicy": "Never"
+    },
+    {
+      "id": "inference",
+      "kind": "Deployment",
+      "namespace": "lab-serving",
+      "replicas": 2,
+      "request": {
+        "cpu_m": 500,
+        "memory_mib": 512
+      },
+      "nodeSelector": {
+        "pool": "serving"
+      },
+      "tolerations": [],
+      "startupProbe": true,
+      "readinessProbe": true,
+      "livenessProbe": true
+    }
+  ],
+  "fault_cases": [
+    {
+      "id": "quota-rejected",
+      "base": "training",
+      "override": {
+        "request": {
+          "cpu_m": 4000,
+          "memory_mib": 8192
+        }
+      },
+      "expected": "Rejected",
+      "reason": "QuotaExceeded"
+    },
+    {
+      "id": "taint-untolerated",
+      "base": "training",
+      "override": {
+        "tolerations": []
+      },
+      "expected": "Pending",
+      "reason": "UntoleratedTaint"
+    },
+    {
+      "id": "pvc-unbound",
+      "base": "training",
+      "override": {
+        "pvc": "missing-claim"
+      },
+      "expected": "Pending",
+      "reason": "UnboundPVC"
+    },
+    {
+      "id": "image-pull",
+      "base": "notebook",
+      "inject": "image_pull",
+      "expected": "Waiting",
+      "reason": "ImagePullBackOff"
+    },
+    {
+      "id": "oom-killed",
+      "base": "training",
+      "inject": "oom",
+      "expected": "Failed",
+      "reason": "OOMKilled"
+    },
+    {
+      "id": "readiness-failed",
+      "base": "inference",
+      "inject": "readiness",
+      "expected": "RunningNotReady",
+      "reason": "ReadinessProbeFailed"
+    }
+  ]
+}

@@ -1,0 +1,551 @@
+{
+  "nodes": [
+    {
+      "name": "a100-zone-a-1",
+      "capacity": {
+        "cpu": 96,
+        "memory_gib": 768,
+        "nvidia.com/gpu": 8
+      },
+      "allocated": {
+        "cpu": 48,
+        "memory_gib": 320,
+        "nvidia.com/gpu": 4
+      },
+      "labels": {
+        "accelerator": "a100",
+        "topology.kubernetes.io/zone": "zone-a",
+        "rack": "rack-a1"
+      },
+      "taints": [
+        {
+          "key": "accelerator",
+          "effect": "NoSchedule"
+        }
+      ],
+      "resident_labels": [
+        "training"
+      ],
+      "used_host_ports": [
+        29500
+      ]
+    },
+    {
+      "name": "a100-zone-a-2",
+      "capacity": {
+        "cpu": 96,
+        "memory_gib": 768,
+        "nvidia.com/gpu": 8
+      },
+      "allocated": {
+        "cpu": 16,
+        "memory_gib": 128,
+        "nvidia.com/gpu": 0
+      },
+      "labels": {
+        "accelerator": "a100",
+        "topology.kubernetes.io/zone": "zone-a",
+        "rack": "rack-a2"
+      },
+      "taints": [
+        {
+          "key": "accelerator",
+          "effect": "NoSchedule"
+        }
+      ],
+      "resident_labels": [],
+      "used_host_ports": []
+    },
+    {
+      "name": "a100-zone-b-1",
+      "capacity": {
+        "cpu": 96,
+        "memory_gib": 768,
+        "nvidia.com/gpu": 8
+      },
+      "allocated": {
+        "cpu": 48,
+        "memory_gib": 320,
+        "nvidia.com/gpu": 4
+      },
+      "labels": {
+        "accelerator": "a100",
+        "topology.kubernetes.io/zone": "zone-b",
+        "rack": "rack-b1"
+      },
+      "taints": [
+        {
+          "key": "accelerator",
+          "effect": "NoSchedule"
+        }
+      ],
+      "resident_labels": [
+        "training"
+      ],
+      "used_host_ports": []
+    },
+    {
+      "name": "a100-zone-b-2",
+      "capacity": {
+        "cpu": 96,
+        "memory_gib": 768,
+        "nvidia.com/gpu": 8
+      },
+      "allocated": {
+        "cpu": 16,
+        "memory_gib": 128,
+        "nvidia.com/gpu": 0
+      },
+      "labels": {
+        "accelerator": "a100",
+        "topology.kubernetes.io/zone": "zone-b",
+        "rack": "rack-b2"
+      },
+      "taints": [
+        {
+          "key": "accelerator",
+          "effect": "NoSchedule"
+        }
+      ],
+      "resident_labels": [],
+      "used_host_ports": []
+    },
+    {
+      "name": "mig-zone-a-1",
+      "capacity": {
+        "cpu": 64,
+        "memory_gib": 512,
+        "nvidia.com/mig-1g.10gb": 4,
+        "nvidia.com/mig-3g.40gb": 1
+      },
+      "allocated": {
+        "cpu": 8,
+        "memory_gib": 64,
+        "nvidia.com/mig-1g.10gb": 2,
+        "nvidia.com/mig-3g.40gb": 1
+      },
+      "labels": {
+        "accelerator": "a100-mig",
+        "topology.kubernetes.io/zone": "zone-a",
+        "rack": "rack-a3"
+      },
+      "taints": [
+        {
+          "key": "accelerator",
+          "effect": "NoSchedule"
+        }
+      ],
+      "resident_labels": [],
+      "used_host_ports": []
+    }
+  ],
+  "workload_stream": [
+    {
+      "name": "small-a",
+      "requests": {
+        "cpu": 8,
+        "memory_gib": 64,
+        "nvidia.com/gpu": 1
+      },
+      "node_selector": {
+        "accelerator": "a100"
+      },
+      "tolerations": [
+        "accelerator"
+      ],
+      "labels": [
+        "batch-small"
+      ]
+    },
+    {
+      "name": "small-b",
+      "requests": {
+        "cpu": 8,
+        "memory_gib": 64,
+        "nvidia.com/gpu": 1
+      },
+      "node_selector": {
+        "accelerator": "a100"
+      },
+      "tolerations": [
+        "accelerator"
+      ],
+      "labels": [
+        "batch-small"
+      ]
+    },
+    {
+      "name": "small-c",
+      "requests": {
+        "cpu": 8,
+        "memory_gib": 64,
+        "nvidia.com/gpu": 1
+      },
+      "node_selector": {
+        "accelerator": "a100"
+      },
+      "tolerations": [
+        "accelerator"
+      ],
+      "labels": [
+        "batch-small"
+      ]
+    },
+    {
+      "name": "small-d",
+      "requests": {
+        "cpu": 8,
+        "memory_gib": 64,
+        "nvidia.com/gpu": 1
+      },
+      "node_selector": {
+        "accelerator": "a100"
+      },
+      "tolerations": [
+        "accelerator"
+      ],
+      "labels": [
+        "batch-small"
+      ]
+    }
+  ],
+  "future_jobs": [
+    {
+      "name": "future-eight-gpu",
+      "requests": {
+        "cpu": 64,
+        "memory_gib": 512,
+        "nvidia.com/gpu": 8
+      },
+      "node_selector": {
+        "accelerator": "a100"
+      },
+      "tolerations": [
+        "accelerator"
+      ]
+    },
+    {
+      "name": "future-mig-3g",
+      "requests": {
+        "cpu": 8,
+        "memory_gib": 48,
+        "nvidia.com/mig-3g.40gb": 1
+      },
+      "node_selector": {
+        "accelerator": "a100-mig"
+      },
+      "tolerations": [
+        "accelerator"
+      ]
+    }
+  ],
+  "queue_demo": {
+    "nodes": [
+      {
+        "name": "queue-node-a",
+        "capacity": {
+          "cpu": 32,
+          "memory_gib": 256,
+          "nvidia.com/gpu": 4
+        },
+        "allocated": {
+          "cpu": 8,
+          "memory_gib": 64,
+          "nvidia.com/gpu": 2
+        },
+        "labels": {
+          "accelerator": "a100",
+          "topology.kubernetes.io/zone": "zone-a"
+        },
+        "taints": [],
+        "resident_labels": [],
+        "used_host_ports": []
+      },
+      {
+        "name": "queue-node-b",
+        "capacity": {
+          "cpu": 32,
+          "memory_gib": 256,
+          "nvidia.com/gpu": 4
+        },
+        "allocated": {
+          "cpu": 8,
+          "memory_gib": 64,
+          "nvidia.com/gpu": 2
+        },
+        "labels": {
+          "accelerator": "a100",
+          "topology.kubernetes.io/zone": "zone-b"
+        },
+        "taints": [],
+        "resident_labels": [],
+        "used_host_ports": []
+      }
+    ],
+    "queue": [
+      {
+        "name": "head-four-gpu",
+        "requests": {
+          "cpu": 16,
+          "memory_gib": 128,
+          "nvidia.com/gpu": 4
+        },
+        "node_selector": {
+          "accelerator": "a100"
+        }
+      },
+      {
+        "name": "backfill-one-gpu",
+        "requests": {
+          "cpu": 4,
+          "memory_gib": 32,
+          "nvidia.com/gpu": 1
+        },
+        "node_selector": {
+          "accelerator": "a100"
+        }
+      }
+    ]
+  },
+  "fault_nodes": [
+    {
+      "name": "fault-a",
+      "capacity": {
+        "cpu": 32,
+        "memory_gib": 128,
+        "nvidia.com/gpu": 2,
+        "nvidia.com/mig-1g.10gb": 2
+      },
+      "allocated": {
+        "cpu": 24,
+        "memory_gib": 96,
+        "nvidia.com/gpu": 1
+      },
+      "labels": {
+        "accelerator": "a100",
+        "topology.kubernetes.io/zone": "zone-a"
+      },
+      "taints": [
+        {
+          "key": "dedicated",
+          "effect": "NoSchedule"
+        }
+      ],
+      "resident_labels": [
+        "database",
+        "spread-demo",
+        "spread-demo"
+      ],
+      "used_host_ports": [
+        29500
+      ]
+    },
+    {
+      "name": "fault-b",
+      "capacity": {
+        "cpu": 32,
+        "memory_gib": 128,
+        "nvidia.com/gpu": 2,
+        "nvidia.com/mig-1g.10gb": 2
+      },
+      "allocated": {
+        "cpu": 24,
+        "memory_gib": 96,
+        "nvidia.com/gpu": 1
+      },
+      "labels": {
+        "accelerator": "a100",
+        "topology.kubernetes.io/zone": "zone-b"
+      },
+      "taints": [
+        {
+          "key": "dedicated",
+          "effect": "NoSchedule"
+        }
+      ],
+      "resident_labels": [],
+      "used_host_ports": [
+        29500
+      ]
+    }
+  ],
+  "faults": [
+    {
+      "name": "cpu-scalar-exhausted",
+      "type": "scalar",
+      "pod": {
+        "name": "fault-scalar",
+        "requests": {
+          "cpu": 16,
+          "memory_gib": 8
+        },
+        "tolerations": [
+          "dedicated"
+        ]
+      },
+      "expected_phase": "PENDING",
+      "expected_reason": "NodeResourcesFit"
+    },
+    {
+      "name": "whole-gpu-fragmented",
+      "type": "fragmentation",
+      "pod": {
+        "name": "fault-fragment",
+        "requests": {
+          "cpu": 4,
+          "memory_gib": 8,
+          "nvidia.com/gpu": 2
+        },
+        "tolerations": [
+          "dedicated"
+        ]
+      },
+      "expected_phase": "PENDING",
+      "expected_reason": "NodeResourcesFitFragmentation"
+    },
+    {
+      "name": "selector-mismatch",
+      "type": "selector",
+      "pod": {
+        "name": "fault-selector",
+        "requests": {
+          "cpu": 1,
+          "memory_gib": 1
+        },
+        "node_selector": {
+          "accelerator": "h100"
+        },
+        "tolerations": [
+          "dedicated"
+        ]
+      },
+      "expected_phase": "PENDING",
+      "expected_reason": "NodeAffinity"
+    },
+    {
+      "name": "untolerated-dedicated-taint",
+      "type": "taint",
+      "pod": {
+        "name": "fault-taint",
+        "requests": {
+          "cpu": 1,
+          "memory_gib": 1
+        }
+      },
+      "expected_phase": "PENDING",
+      "expected_reason": "TaintToleration"
+    },
+    {
+      "name": "volume-zone-conflict",
+      "type": "volume",
+      "pod": {
+        "name": "fault-volume",
+        "requests": {
+          "cpu": 1,
+          "memory_gib": 1
+        },
+        "node_selector": {
+          "topology.kubernetes.io/zone": "zone-b"
+        },
+        "volume_zone": "zone-a",
+        "tolerations": [
+          "dedicated"
+        ]
+      },
+      "expected_phase": "PENDING",
+      "expected_reason": "VolumeBinding"
+    },
+    {
+      "name": "host-port-conflict",
+      "type": "host_port",
+      "pod": {
+        "name": "fault-port",
+        "requests": {
+          "cpu": 1,
+          "memory_gib": 1
+        },
+        "host_port": 29500,
+        "tolerations": [
+          "dedicated"
+        ]
+      },
+      "expected_phase": "PENDING",
+      "expected_reason": "NodePorts"
+    },
+    {
+      "name": "required-peer-absent",
+      "type": "affinity",
+      "pod": {
+        "name": "fault-affinity",
+        "requests": {
+          "cpu": 1,
+          "memory_gib": 1
+        },
+        "required_peer_label": "parameter-server",
+        "tolerations": [
+          "dedicated"
+        ]
+      },
+      "expected_phase": "PENDING",
+      "expected_reason": "InterPodAffinity"
+    },
+    {
+      "name": "topology-max-skew",
+      "type": "topology_spread",
+      "pod": {
+        "name": "fault-spread",
+        "requests": {
+          "cpu": 1,
+          "memory_gib": 1
+        },
+        "node_selector": {
+          "topology.kubernetes.io/zone": "zone-a"
+        },
+        "tolerations": [
+          "dedicated"
+        ],
+        "topology_spread": {
+          "topology_key": "topology.kubernetes.io/zone",
+          "pod_label": "spread-demo",
+          "max_skew": 1,
+          "when_unsatisfiable": "DoNotSchedule"
+        }
+      },
+      "expected_phase": "PENDING",
+      "expected_reason": "PodTopologySpread"
+    },
+    {
+      "name": "mig-profile-shape-missing",
+      "type": "mig_shape",
+      "pod": {
+        "name": "fault-mig",
+        "requests": {
+          "cpu": 1,
+          "memory_gib": 1,
+          "nvidia.com/mig-3g.40gb": 1
+        },
+        "tolerations": [
+          "dedicated"
+        ]
+      },
+      "expected_phase": "PENDING",
+      "expected_reason": "NodeResourcesFitMIGShape"
+    },
+    {
+      "name": "victim-grace-period-gap",
+      "type": "preemption_gap",
+      "expected_phase": "NOMINATED",
+      "expected_reason": "VictimsTerminating"
+    },
+    {
+      "name": "score-plugin-internal-error",
+      "type": "plugin_error",
+      "expected_phase": "ERROR",
+      "expected_reason": "ScorePluginFailed"
+    }
+  ],
+  "expected": {
+    "strict_fifo_bound": 0,
+    "backfill_bound": 1
+  }
+}

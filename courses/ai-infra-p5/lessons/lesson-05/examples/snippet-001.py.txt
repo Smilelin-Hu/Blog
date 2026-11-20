@@ -1,0 +1,399 @@
+from __future__ import annotations
+
+import ast
+import hashlib
+import html
+import json
+import re
+from dataclasses import asdict, dataclass, field
+from html.parser import HTMLParser
+from typing import Any
+
+
+RECIPE_ID = "parser-contract-v1"
+MAX_BYTES = 64 * 1024
+MAX_UNITS = 1000
+
+
+def digest_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def stable_id(*parts: str) -> str:
+    body = "\x1f".join(parts).encode("utf-8")
+    return hashlib.sha256(body).hexdigest()[:24]
+
+
+@dataclass
+class Diagnostic:
+    stage: str
+    code: str
+    severity: str
+    safe_details: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class Unit:
+    unit_id: str
+    unit_type: str
+    order_key: str
+    text: str
+    source_span: dict[str, Any]
+    attributes: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class Document:
+    document_id: str
+    raw_object_id: str
+    detected_format: str
+    recipe_id: str
+    status: str
+    units: list[Unit]
+    diagnostics: list[Diagnostic]
+
+    def canonical_digest(self) -> str:
+        payload = asdict(self)
+        encoded = json.dumps(
+            payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")
+        return digest_bytes(encoded)
+
+
+class StructuralHTMLParser(HTMLParser):
+    BLOCKS = {"title", "h1", "h2", "h3", "p", "li", "pre", "code", "blockquote"}
+    DROP = {"script", "style", "noscript", "template"}
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.stack: list[tuple[str, int]] = []
+        self.drop_depth = 0
+        self.current: list[str] = []
+        self.current_tag: str | None = None
+        self.units: list[tuple[str, str, tuple[int, int]]] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        line, col = self.getpos()
+        self.stack.append((tag, line))
+        if tag in self.DROP:
+            self.drop_depth += 1
+        if tag in self.BLOCKS and self.drop_depth == 0:
+            self._flush()
+            self.current_tag = tag
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in self.BLOCKS and self.drop_depth == 0:
+            self._flush()
+        if tag in self.DROP and self.drop_depth:
+            self.drop_depth -= 1
+        for index in range(len(self.stack) - 1, -1, -1):
+            if self.stack[index][0] == tag:
+                del self.stack[index:]
+                break
+
+    def handle_data(self, data: str) -> None:
+        if self.drop_depth == 0 and self.current_tag is not None:
+            self.current.append(data)
+
+    def close(self) -> None:
+        super().close()
+        self._flush()
+
+    def _flush(self) -> None:
+        text = re.sub(r"\s+", " ", html.unescape("".join(self.current))).strip()
+        if text:
+            line, col = self.getpos()
+            self.units.append((self.current_tag or "text", text, (line, col)))
+        self.current = []
+        self.current_tag = None
+
+
+def detect_format(name: str, payload: bytes) -> str:
+    prefix = payload[:16]
+    if prefix.startswith(b"WARC/"):
+        return "warc"
+    if prefix.startswith(b"%PDF-"):
+        return "pdf"
+    if name.endswith(".json"):
+        return "chat"
+    if name.endswith(".py"):
+        return "python"
+    if b"<html" in payload[:1024].lower() or name.endswith((".html", ".htm")):
+        return "html"
+    return "unknown"
+
+
+def decode_text(payload: bytes, diagnostics: list[Diagnostic]) -> str:
+    try:
+        return payload.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        diagnostics.append(
+            Diagnostic("decode", "encoding.utf8_replacement", "warning", {"offset": exc.start})
+        )
+        return payload.decode("utf-8", errors="replace")
+
+
+def parse_warc_response(payload: bytes) -> tuple[bytes, list[Diagnostic]]:
+    diagnostics: list[Diagnostic] = []
+    head_end = payload.find(b"\r\n\r\n")
+    if head_end < 0:
+        raise ValueError("warc.invalid_header_boundary")
+    warc_header = payload[:head_end].decode("ascii", errors="replace")
+    length_match = re.search(r"(?im)^Content-Length:\s*(\d+)\s*$", warc_header)
+    if not length_match:
+        raise ValueError("warc.missing_content_length")
+    content_length = int(length_match.group(1))
+    block = payload[head_end + 4 : head_end + 4 + content_length]
+    if len(block) != content_length:
+        raise ValueError("warc.truncated_content_block")
+    http_end = block.find(b"\r\n\r\n")
+    if http_end < 0:
+        raise ValueError("http.invalid_header_boundary")
+    status_line = block[: block.find(b"\r\n")].decode("ascii", errors="replace")
+    if " 200 " not in status_line:
+        diagnostics.append(
+            Diagnostic("http", "http.non_success", "warning", {"status_line": status_line[:80]})
+        )
+    return block[http_end + 4 :], diagnostics
+
+
+def html_units(object_id: str, payload: bytes) -> tuple[list[Unit], list[Diagnostic]]:
+    diagnostics: list[Diagnostic] = []
+    text = decode_text(payload, diagnostics)
+    parser = StructuralHTMLParser()
+    parser.feed(text)
+    parser.close()
+    units: list[Unit] = []
+    for index, (tag, value, pos) in enumerate(parser.units):
+        units.append(
+            Unit(
+                unit_id=stable_id(object_id, RECIPE_ID, str(index), tag, value),
+                unit_type={"pre": "code", "code": "code"}.get(tag, tag),
+                order_key=f"{index:08d}",
+                text=value,
+                source_span={"kind": "html_position", "line": pos[0], "column": pos[1]},
+                attributes={"tag": tag},
+            )
+        )
+    if not units:
+        diagnostics.append(Diagnostic("html", "html.no_content_units", "error"))
+    return units, diagnostics
+
+
+def python_units(object_id: str, payload: bytes) -> tuple[list[Unit], list[Diagnostic]]:
+    diagnostics: list[Diagnostic] = []
+    text = decode_text(payload, diagnostics)
+    units: list[Unit] = []
+    try:
+        tree = ast.parse(text)
+        for index, node in enumerate(ast.walk(tree)):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                segment = ast.get_source_segment(text, node) or ""
+                units.append(
+                    Unit(
+                        stable_id(object_id, RECIPE_ID, node.__class__.__name__, node.name),
+                        "code_symbol",
+                        f"{getattr(node, 'lineno', 0):08d}-{index:06d}",
+                        segment,
+                        {
+                            "kind": "line_range",
+                            "start": getattr(node, "lineno", None),
+                            "end": getattr(node, "end_lineno", None),
+                        },
+                        {"symbol_kind": node.__class__.__name__, "name": node.name},
+                    )
+                )
+    except SyntaxError as exc:
+        diagnostics.append(
+            Diagnostic(
+                "code",
+                "code.syntax_error",
+                "warning",
+                {"line": exc.lineno, "offset": exc.offset},
+            )
+        )
+    if not units:
+        units.append(
+            Unit(
+                stable_id(object_id, RECIPE_ID, "file"),
+                "code_file",
+                "00000000",
+                text,
+                {"kind": "byte_range", "start": 0, "end": len(payload)},
+                {"fallback": True},
+            )
+        )
+    return units, diagnostics
+
+
+def chat_units(object_id: str, payload: bytes) -> tuple[list[Unit], list[Diagnostic]]:
+    diagnostics: list[Diagnostic] = []
+    value = json.loads(decode_text(payload, diagnostics))
+    messages = value.get("messages", [])
+    by_id = {message.get("id"): message for message in messages}
+    units: list[Unit] = []
+    call_ids: set[str] = set()
+    result_ids: set[str] = set()
+    for index, message in enumerate(messages):
+        message_id = str(message.get("id", f"missing-{index}"))
+        parent_id = message.get("parent_id")
+        if parent_id is not None and parent_id not in by_id:
+            diagnostics.append(
+                Diagnostic("chat", "chat.orphan_parent", "warning", {"message_id": message_id})
+            )
+        role = str(message.get("role", "unknown"))
+        content = message.get("content", "")
+        if not isinstance(content, str):
+            content = json.dumps(content, ensure_ascii=False, sort_keys=True)
+        if message.get("tool_call_id"):
+            if role == "assistant":
+                call_ids.add(str(message["tool_call_id"]))
+            elif role == "tool":
+                result_ids.add(str(message["tool_call_id"]))
+        units.append(
+            Unit(
+                stable_id(object_id, RECIPE_ID, "message", message_id),
+                "chat_message",
+                f"{index:08d}-{message_id}",
+                content,
+                {"kind": "message", "message_id": message_id},
+                {"role": role, "parent_id": parent_id},
+            )
+        )
+    for orphan in sorted(result_ids - call_ids):
+        diagnostics.append(
+            Diagnostic("chat", "chat.orphan_tool_result", "warning", {"call_id": orphan})
+        )
+    return units, diagnostics
+
+
+def parse_object(name: str, payload: bytes) -> Document:
+    raw_object_id = digest_bytes(payload)
+    document_id = stable_id(raw_object_id, name, RECIPE_ID)
+    detected = detect_format(name, payload)
+    diagnostics: list[Diagnostic] = []
+    units: list[Unit] = []
+    status = "success"
+    if len(payload) > MAX_BYTES:
+        return Document(
+            document_id,
+            raw_object_id,
+            detected,
+            RECIPE_ID,
+            "quarantined",
+            [],
+            [Diagnostic("input", "resource.max_bytes", "error", {"bytes": len(payload)})],
+        )
+    try:
+        entity = payload
+        if detected == "warc":
+            entity, warc_diagnostics = parse_warc_response(payload)
+            diagnostics.extend(warc_diagnostics)
+            detected = "warc/html"
+            units, more = html_units(raw_object_id, entity)
+            diagnostics.extend(more)
+        elif detected == "html":
+            units, more = html_units(raw_object_id, entity)
+            diagnostics.extend(more)
+        elif detected == "python":
+            units, more = python_units(raw_object_id, entity)
+            diagnostics.extend(more)
+        elif detected == "chat":
+            units, more = chat_units(raw_object_id, entity)
+            diagnostics.extend(more)
+        elif detected == "pdf":
+            status = "skipped"
+            diagnostics.append(
+                Diagnostic("route", "pdf.library_not_installed", "info", {"required": "PDF parser"})
+            )
+        else:
+            status = "skipped"
+            diagnostics.append(Diagnostic("route", "format.unsupported", "info"))
+    except (ValueError, json.JSONDecodeError) as exc:
+        status = "failed"
+        diagnostics.append(
+            Diagnostic("parse", str(exc).split(":", 1)[0], "error", {"type": type(exc).__name__})
+        )
+    if len(units) > MAX_UNITS:
+        units = units[:MAX_UNITS]
+        status = "partial"
+        diagnostics.append(Diagnostic("assemble", "resource.max_units", "warning"))
+    elif diagnostics and status == "success":
+        status = "partial"
+    units.sort(key=lambda unit: (unit.order_key, unit.unit_id))
+    return Document(document_id, raw_object_id, detected, RECIPE_ID, status, units, diagnostics)
+
+
+def make_warc(html_body: bytes) -> bytes:
+    http = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Type: text/html; charset=utf-8\r\n"
+        + f"Content-Length: {len(html_body)}\r\n\r\n".encode("ascii")
+        + html_body
+    )
+    header = (
+        b"WARC/1.1\r\n"
+        b"WARC-Type: response\r\n"
+        b"WARC-Record-ID: <urn:uuid:00000000-0000-0000-0000-000000000001>\r\n"
+        b"WARC-Target-URI: https://example.invalid/article\r\n"
+        b"Content-Type: application/http; msgtype=response\r\n"
+        + f"Content-Length: {len(http)}\r\n\r\n".encode("ascii")
+    )
+    return header + http + b"\r\n\r\n"
+
+
+def main() -> None:
+    html_body = (
+        "<html><head><title>解析实验</title><script>secret()</script></head>"
+        "<body><nav>导航</nav><article><h1>结构保真</h1>"
+        "<p>正文必须保留来源位置。</p><pre>print('ok')</pre></article></body></html>"
+    ).encode("utf-8")
+    chat = {
+        "messages": [
+            {"id": "m1", "parent_id": None, "role": "user", "content": "计算 2+3"},
+            {
+                "id": "m2",
+                "parent_id": "m1",
+                "role": "assistant",
+                "content": '{"x":2,"y":3}',
+                "tool_call_id": "call-1",
+            },
+            {
+                "id": "m3",
+                "parent_id": "m2",
+                "role": "tool",
+                "content": "5",
+                "tool_call_id": "call-1",
+            },
+        ]
+    }
+    objects = {
+        "sample.warc": make_warc(html_body),
+        "page.html": html_body,
+        "module.py": b"def add(a, b):\n    return a + b\n",
+        "chat.json": json.dumps(chat, ensure_ascii=False).encode("utf-8"),
+        "scan.pdf": b"%PDF-1.7\nmechanism-only-placeholder",
+        "unknown.bin": b"\x00\x01\x02",
+    }
+    first = [parse_object(name, value) for name, value in sorted(objects.items())]
+    second = [parse_object(name, value) for name, value in sorted(objects.items())]
+    assert [item.canonical_digest() for item in first] == [
+        item.canonical_digest() for item in second
+    ]
+    counts: dict[str, int] = {}
+    for document in first:
+        counts[document.status] = counts.get(document.status, 0) + 1
+        print(json.dumps(asdict(document), ensure_ascii=False, sort_keys=True))
+    assert sum(counts.values()) == len(objects)
+    report = {
+        "recipe_id": RECIPE_ID,
+        "inputs": len(objects),
+        "status_counts": dict(sorted(counts.items())),
+        "deterministic": True,
+        "document_digests": [item.canonical_digest() for item in first],
+    }
+    print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
+
+
+if __name__ == "__main__":
+    main()

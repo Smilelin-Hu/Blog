@@ -1,0 +1,25 @@
+{
+  "requested_purpose": "model-training",
+  "sources": [
+    {
+      "source_id": "docs",
+      "license": "approved",
+      "purpose": [
+        "model-training"
+      ],
+      "owner": "data-governance",
+      "withdrawal_contact": "registry-owner",
+      "status": "active"
+    },
+    {
+      "source_id": "expired",
+      "license": "expired",
+      "purpose": [
+        "evaluation"
+      ],
+      "owner": "data-governance",
+      "withdrawal_contact": "registry-owner",
+      "status": "blocked"
+    }
+  ]
+}

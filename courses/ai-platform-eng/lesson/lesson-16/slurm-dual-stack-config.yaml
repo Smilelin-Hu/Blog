@@ -1,0 +1,38 @@
+apiVersion: platform.example/v1alpha1
+kind: UnifiedAIRun
+metadata:
+  name: mpi-training
+spec:
+  runID: run-001
+  project: foundation-model
+  workloadClass: tightly-coupled-batch
+  resources:
+    nodes: 4
+    gpuPerNode: 8
+    gpuType: a100
+  topology:
+    maxLeafSwitches: 1
+    wait: 20m
+  policy:
+    qos: research
+    timeLimit: 4h
+  artifacts:
+    imageDigest: registry.example/training@sha256:replace-with-approved-digest
+    checkpointURI: s3://replace-with-project-bucket/run-001/
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: slurm-profile-reference
+data:
+  slurm.conf: |
+    SelectType=select/cons_tres
+    GresTypes=gpu
+    AccountingStorageTRES=gres/gpu,gres/gpu:a100
+    TopologyPlugin=topology/tree
+    NodeName=gpu[001-004] CPUs=96 RealMemory=900000 Gres=gpu:a100:8
+    PartitionName=gpu Nodes=gpu[001-004] Default=YES MaxTime=1-00:00:00 State=UP
+  gres.conf: |
+    AutoDetect=nvml
+  topology.conf: |
+    SwitchName=leaf-a Nodes=gpu[001-004]

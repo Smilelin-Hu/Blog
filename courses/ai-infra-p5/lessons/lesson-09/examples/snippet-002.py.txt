@@ -1,0 +1,80 @@
+from __future__ import annotations
+
+import json
+import os
+import sys
+
+import torch
+import torch.distributed as dist
+
+
+def skipped(reason: str) -> None:
+    print(json.dumps({"status": "skipped", "reason": reason}, ensure_ascii=False))
+
+
+def encode_batch(texts: list[str], max_bytes: int, device: torch.device):
+    rows = [list(t.encode("utf-8")[:max_bytes]) for t in texts]
+    lengths = torch.tensor([len(r) for r in rows], device=device)
+    batch = torch.zeros((len(rows), max_bytes), dtype=torch.long, device=device)
+    for i, row in enumerate(rows):
+        if row:
+            batch[i, : len(row)] = torch.tensor(row, device=device)
+    mask = torch.arange(max_bytes, device=device)[None, :] < lengths[:, None]
+    return batch, mask, lengths
+
+
+def features(batch: torch.Tensor, mask: torch.Tensor, lengths: torch.Tensor):
+    denom = lengths.clamp_min(1).float()
+    printable = ((batch >= 32) & (batch <= 126) & mask).sum(1) / denom
+    digits = ((batch >= ord("0")) & (batch <= ord("9")) & mask).sum(1) / denom
+    pair_mask = mask[:, 1:] & mask[:, :-1]
+    adjacent_repeat = ((batch[:, 1:] == batch[:, :-1]) & pair_mask).sum(1) / (lengths - 1).clamp_min(1)
+    return torch.stack([printable, digits, adjacent_repeat], dim=1)
+
+
+def main() -> None:
+    if not torch.cuda.is_available() or torch.cuda.device_count() < 1:
+        skipped("requires at least one CUDA GPU for the real DDP path")
+        return
+    if "RANK" not in os.environ or "WORLD_SIZE" not in os.environ:
+        skipped("launch with torchrun --standalone --nproc_per_node=1")
+        return
+    dist.init_process_group("nccl")
+    rank = dist.get_rank()
+    world = dist.get_world_size()
+    if world < 1:
+        if rank == 0:
+            skipped(f"expected world_size>=1, got {world}")
+        dist.destroy_process_group()
+        return
+    torch.cuda.set_device(rank)
+    device = torch.device("cuda", rank)
+    corpus = [
+        "可解释的数据画像让阈值有证据。",
+        "BUY NOW!!!!! BUY NOW!!!!!",
+        "1234567890 111111111111111111",
+        "def square(x): return x*x",
+        "质量不是单一客观分数。",
+        ".................",
+    ]
+    local = corpus[rank::world]
+    batch, mask, lengths = encode_batch(local, 128, device)
+    out = features(batch, mask, lengths)
+    payload = [{"rank": rank, "text": t, "features": row.tolist()}
+               for t, row in zip(local, out.cpu())]
+    gathered: list[list[dict] | None] = [None for _ in range(world)] if rank == 0 else []
+    dist.gather_object(payload, gathered if rank == 0 else None, dst=0)
+    if rank == 0:
+        print(json.dumps({"status": "passed", "world_size": world,
+                          "device": torch.cuda.get_device_name(0),
+                          "results": [x for part in gathered for x in (part or [])]},
+                         ensure_ascii=False, indent=2))
+    dist.destroy_process_group()
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as exc:
+        print(json.dumps({"status": "failed", "error": repr(exc)}, ensure_ascii=False))
+        sys.exit(1)
