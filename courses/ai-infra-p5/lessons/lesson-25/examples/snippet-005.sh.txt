@@ -1,0 +1,7 @@
+python3 grpo_local_gpu.py \
+  --model-path /absolute/path/to/local-model \
+  --prompt-count 4 \
+  --group-size 4 \
+  --updates 3 \
+  --max-new-tokens 96 \
+  --temperature 0.9 > grpo_gpu_result.json

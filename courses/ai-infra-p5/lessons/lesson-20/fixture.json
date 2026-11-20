@@ -1,0 +1,26 @@
+{
+  "duplicate_threshold": 0.85,
+  "records": [
+    {
+      "id": "syn-a",
+      "generator": "teacher-a",
+      "verifier": "rule-v2",
+      "verified": true,
+      "duplicate_score": 0.2
+    },
+    {
+      "id": "syn-b",
+      "generator": "teacher-a",
+      "verifier": "teacher-a",
+      "verified": true,
+      "duplicate_score": 0.1
+    },
+    {
+      "id": "syn-c",
+      "generator": "teacher-b",
+      "verifier": "rule-v2",
+      "verified": false,
+      "duplicate_score": 0.15
+    }
+  ]
+}

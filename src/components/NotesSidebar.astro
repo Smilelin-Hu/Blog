@@ -1,0 +1,73 @@
+---
+import NotesSidebar from './NotesSidebar.astro';
+import type { TreeNode } from '../utils/notes';
+import { titleOf, pathOf, stemOf, seriesNum, metaOf } from '../utils/notes';
+import { getPath } from '../utils/paths';
+
+interface Props {
+  nodes: TreeNode[];
+  currentId: string;
+  depth?: number;
+  /** 父级直挂文章数：子目录序号接在文章之后连续编排 */
+  siblingFileCount?: number;
+}
+const { nodes, currentId, depth = 0, siblingFileCount } = Astro.props;
+const under = (path: string) => currentId === path || currentId.startsWith(path + '/');
+---
+
+<ul class:list={['space-y-px', depth > 0 && 'ml-3 border-l border-gray-200 dark:border-white/[0.06] pl-2']}>
+  {nodes.map((node, idx) => {
+    const readme = node.files.find((f) => pathOf(f) === `${node.path}/README`);
+    const open = under(node.path);
+    // 序号规则：系列 "N-"；其余各层一律父目录内平铺 1..N
+    // （直挂文章先计，子目录接续；子目录内文章重新从 1 计）
+    const k = (siblingFileCount ?? 0) + idx + 1;
+    const numPrefix = depth === 0 ? `${seriesNum(node.name)}- ` : `${k} `;
+    const dirLabel = node.name.replace(/^(\d+-)+/, '');
+    return (
+      <li>
+        <details open={open} class="group">
+          <summary class="flex items-center gap-1.5 py-1.5 pr-2 text-[13px] font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none hover:text-[#007aff] dark:hover:text-[#0a84ff] transition-colors list-none [&::-webkit-details-marker]:hidden">
+            <svg class="w-3 h-3 shrink-0 text-gray-400 transition-transform duration-200 group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+            {readme ? (
+              <a href={getPath(`/source/${pathOf(readme)}`)} class="truncate hover:underline">{numPrefix}{dirLabel}</a>
+            ) : (
+              <span class="truncate">{numPrefix}{dirLabel}</span>
+            )}
+            {depth === 0 && metaOf(node.name)?.status === 'wip' && (
+              <span class="shrink-0 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-medium">待完成</span>
+            )}
+          </summary>
+          <div class="pb-1">
+            {node.files.filter((f) => !pathOf(f).endsWith('/README')).length > 0 && (
+              <ul class="ml-3 border-l border-gray-200 dark:border-white/[0.06] pl-2 space-y-px">
+                {node.files.filter((f) => !pathOf(f).endsWith('/README')).map((f, fi) => {
+                  const fileLabel = stemOf(f).replace(/^(\d+-)+/, '');
+                  return (
+                  <li>
+                    <a
+                      href={getPath(`/source/${pathOf(f)}`)}
+                      class:list={[
+                        'block py-1.5 pr-2 text-[13px] leading-snug truncate transition-colors duration-150',
+                        pathOf(f) === currentId
+                          ? 'text-[#007aff] dark:text-[#0a84ff] font-semibold'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200',
+                      ]}
+                      title={titleOf(f)}
+                    >
+                      {fi + 1} {fileLabel}
+                    </a>
+                  </li>
+                  );
+                })}
+              </ul>
+            )}
+            {node.dirs.length > 0 && <NotesSidebar nodes={node.dirs} currentId={currentId} depth={depth + 1} siblingFileCount={node.files.filter((f) => !pathOf(f).endsWith('/README')).length} />}
+          </div>
+        </details>
+      </li>
+    );
+  })}
+</ul>

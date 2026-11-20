@@ -22,6 +22,8 @@ AI 工作负载凭据清单（盘点口径）：对象存储 AK/SK（数据集�
 
 ESO 的代价是「秘密又落回 etcd」——它解决的是来源统一与 GitOps 友好，不是消灭 K8s Secret；对高敏凭据优先 CSI 挂载或 SDK 直取，并开启 etcd 静态加密兜底。
 
+![秘密注入链：外部只存一处，集群内只有投影](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y4_l37_01.png)
+
 ## 3. Vault 核心机制：认证、策略与动态秘密
 
 - **认证**：Kubernetes auth method 用 Pod 的 ServiceAccount JWT 换取 Vault token，把 28 的工作负载身份直接映射为秘密访问身份，无需预分发静态凭据；CI 侧用 JWT/OIDC（keyless 思路同源）。

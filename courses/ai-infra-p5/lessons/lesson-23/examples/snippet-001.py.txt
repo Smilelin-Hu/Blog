@@ -1,0 +1,36 @@
+import json
+import random
+import statistics
+
+
+def sample(rng):
+    quality = rng.gauss(0.0, 1.0)
+    length = max(0.0, rng.gauss(1.0, 0.55))
+    proxy = quality + 0.55 * length + rng.gauss(0.0, 0.35)
+    debiased = quality + rng.gauss(0.0, 0.35)
+    return {"quality": quality, "length": length, "proxy": proxy, "debiased": debiased}
+
+
+def run(n, score_key, trials=4000):
+    rng = random.Random(20260822 + n + len(score_key))
+    chosen = []
+    for _ in range(trials):
+        pool = [sample(rng) for _ in range(n)]
+        chosen.append(max(pool, key=lambda x: x[score_key]))
+    return {
+        "n": n,
+        "selector": score_key,
+        "mean_proxy": statistics.mean(x["proxy"] for x in chosen),
+        "mean_true_quality": statistics.mean(x["quality"] for x in chosen),
+        "mean_length": statistics.mean(x["length"] for x in chosen),
+    }
+
+
+def main():
+    rows = [run(n, key) for key in ["proxy", "debiased"] for n in [1, 2, 4, 8, 16, 32]]
+    print(json.dumps({"status": "passed",
+                      "claim_boundary": "synthetic reward-hacking mechanism only",
+                      "results": rows}, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__": main()

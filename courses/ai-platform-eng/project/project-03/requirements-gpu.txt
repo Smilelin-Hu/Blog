@@ -1,0 +1,2 @@
+# Core simulations use the Python standard library.
+# Install only the official clients required by the selected real environment.

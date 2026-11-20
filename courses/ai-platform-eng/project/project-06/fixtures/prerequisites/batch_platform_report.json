@@ -1,0 +1,199 @@
+{
+  "status": "PASS",
+  "scheduled": {
+    "admissions": [
+      {
+        "job": "train-a",
+        "status": "ADMITTED",
+        "reason": "AtomicQuotaAndTopologyAdmission",
+        "node": "a100-1",
+        "gpus": 8
+      },
+      {
+        "job": "train-b",
+        "status": "ADMITTED",
+        "reason": "AtomicQuotaAndTopologyAdmission",
+        "node": "a100-3",
+        "gpus": 8
+      },
+      {
+        "job": "batch-a",
+        "status": "ADMITTED",
+        "reason": "AtomicQuotaAndTopologyAdmission",
+        "node": "a100-2",
+        "gpus": 4
+      },
+      {
+        "job": "batch-b",
+        "status": "ADMITTED",
+        "reason": "AtomicQuotaAndTopologyAdmission",
+        "node": "a100-2",
+        "gpus": 2
+      }
+    ],
+    "usage": {
+      "team-a": 12,
+      "team-b": 10
+    },
+    "nodes": [
+      {
+        "name": "a100-1",
+        "rack": "r1",
+        "gpu_type": "A100_80GB",
+        "total_gpus": 8,
+        "available_gpus": 0
+      },
+      {
+        "name": "a100-2",
+        "rack": "r1",
+        "gpu_type": "A100_80GB",
+        "total_gpus": 8,
+        "available_gpus": 2
+      },
+      {
+        "name": "a100-3",
+        "rack": "r2",
+        "gpu_type": "A100_80GB",
+        "total_gpus": 8,
+        "available_gpus": 0
+      },
+      {
+        "name": "a100-4",
+        "rack": "r2",
+        "gpu_type": "A100_80GB",
+        "total_gpus": 8,
+        "available_gpus": 8
+      }
+    ],
+    "waits": [
+      20,
+      35,
+      48,
+      60
+    ]
+  },
+  "metrics": {
+    "queue_wait_seconds_p95": 60,
+    "admission_success_rate": 1.0,
+    "fair_share_deviation": 0.125,
+    "gpu_fragmentation_ratio": 0.3125,
+    "whole_free_node_ratio": 0.25,
+    "preemption_recovery_seconds": 55.0
+  },
+  "checks": {
+    "wait": true,
+    "admission": true,
+    "fairness": true,
+    "fragmentation": true,
+    "recovery": true,
+    "cost_identity": true
+  },
+  "faults": [
+    {
+      "type": "partial_gang",
+      "phase": "REJECTED",
+      "reason": "PartialGangAllocationForbidden",
+      "status": "PASS"
+    },
+    {
+      "type": "quota_bypass",
+      "phase": "REJECTED",
+      "reason": "TenantQuotaRequired",
+      "status": "PASS"
+    },
+    {
+      "type": "missing_cost_label",
+      "phase": "INCONCLUSIVE",
+      "reason": "CostIdentityMissing",
+      "status": "PASS"
+    },
+    {
+      "type": "topology_split",
+      "phase": "PENDING",
+      "reason": "GangTopologyUnavailable",
+      "status": "PASS"
+    },
+    {
+      "type": "queue_owner_missing",
+      "phase": "REJECTED",
+      "reason": "QueueOwnerMissing",
+      "status": "PASS"
+    },
+    {
+      "type": "duplicate_workload",
+      "phase": "REJECTED",
+      "reason": "WorkloadIdentityCollision",
+      "status": "PASS"
+    },
+    {
+      "type": "borrowing_unbounded",
+      "phase": "REJECTED",
+      "reason": "BorrowingLimitRequired",
+      "status": "PASS"
+    },
+    {
+      "type": "reclaim_without_priority",
+      "phase": "REJECTED",
+      "reason": "ReclaimPolicyUndefined",
+      "status": "PASS"
+    },
+    {
+      "type": "preemption_without_checkpoint",
+      "phase": "BLOCKED",
+      "reason": "CheckpointRequiredBeforePreemption",
+      "status": "PASS"
+    },
+    {
+      "type": "recovery_slo_missed",
+      "phase": "SLO_VIOLATED",
+      "reason": "PreemptionRecoveryTooSlow",
+      "status": "PASS"
+    },
+    {
+      "type": "fairness_evidence_missing",
+      "phase": "INCONCLUSIVE",
+      "reason": "FairShareEvidenceMissing",
+      "status": "PASS"
+    },
+    {
+      "type": "node_shape_fragmented",
+      "phase": "PENDING",
+      "reason": "ContiguousGPUShapeUnavailable",
+      "status": "PASS"
+    },
+    {
+      "type": "resource_flavor_unknown",
+      "phase": "REJECTED",
+      "reason": "ResourceFlavorUnknown",
+      "status": "PASS"
+    },
+    {
+      "type": "mixed_scheduler",
+      "phase": "REJECTED",
+      "reason": "SchedulerContractConflict",
+      "status": "PASS"
+    },
+    {
+      "type": "spot_without_budget",
+      "phase": "REJECTED",
+      "reason": "InterruptionBudgetRequired",
+      "status": "PASS"
+    },
+    {
+      "type": "slurm_duplicate_submission",
+      "phase": "BLOCKED",
+      "reason": "BackendRunLeaseAlreadyOwned",
+      "status": "PASS"
+    },
+    {
+      "type": "live_cluster_missing",
+      "phase": "SKIPPED",
+      "reason": "NoKubernetesContextProvided",
+      "status": "PASS"
+    }
+  ],
+  "live": {
+    "status": "SKIPPED",
+    "reason": "NoKubernetesContextProvided"
+  }
+}

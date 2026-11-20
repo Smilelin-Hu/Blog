@@ -1,0 +1,322 @@
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from dataclasses import asdict, dataclass
+from datetime import date
+from typing import Dict, List, Optional, Set, Tuple
+
+
+def canonical_json(value: object) -> bytes:
+    return json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+
+
+def stable_id(prefix: str, value: object) -> str:
+    return f"{prefix}:{hashlib.sha256(canonical_json(value)).hexdigest()}"
+
+
+@dataclass(frozen=True)
+class Agreement:
+    agreement_id: str
+    version: int
+    effective_from: str
+    expires_on: Optional[str]
+    allowed_actions: Tuple[str, ...]
+    allowed_purposes: Tuple[str, ...]
+    allowed_regions: Tuple[str, ...]
+    allowed_distributions: Tuple[str, ...]
+    attribution_required: bool
+    evidence_hash: str
+
+
+@dataclass(frozen=True)
+class Source:
+    source_id: str
+    version: int
+    name: str
+    source_type: str
+    provider_id: str
+    status: str
+    agreement_id: str
+    review_required: bool
+    withdrawal_locator: str
+
+
+@dataclass(frozen=True)
+class UseRequest:
+    action: str
+    purpose: str
+    region: str
+    distribution: str
+    requested_on: str
+
+
+@dataclass(frozen=True)
+class Decision:
+    decision_id: str
+    source_id: str
+    source_version: int
+    agreement_id: str
+    agreement_version: int
+    request: Dict[str, str]
+    result: str
+    reasons: Tuple[str, ...]
+    obligations: Tuple[str, ...]
+
+
+class Registry:
+    def __init__(self) -> None:
+        self.sources: Dict[str, Source] = {}
+        self.agreements: Dict[str, Agreement] = {}
+        self.decisions: Dict[str, Decision] = {}
+        self.captures: Dict[str, Dict[str, object]] = {}
+        self.lineage: Dict[str, Set[str]] = {}
+        self.tombstones: Dict[str, Dict[str, str]] = {}
+
+    def add_agreement(self, agreement: Agreement) -> None:
+        if agreement.agreement_id in self.agreements:
+            raise ValueError("agreement already exists")
+        self.agreements[agreement.agreement_id] = agreement
+
+    def add_source(self, source: Source) -> None:
+        if source.agreement_id not in self.agreements:
+            raise ValueError("unknown agreement")
+        if source.source_id in self.sources:
+            raise ValueError("source already exists")
+        self.sources[source.source_id] = source
+
+    def decide(self, source_id: str, request: UseRequest) -> Decision:
+        source = self.sources[source_id]
+        agreement = self.agreements[source.agreement_id]
+        reasons: List[str] = []
+        obligations: List[str] = []
+
+        if source.status in {"withdrawn", "quarantined", "retiring"}:
+            reasons.append(f"source_status:{source.status}")
+        if source.status in {"proposed", "sampling", "reviewing", "paused"}:
+            reasons.append(f"source_not_active:{source.status}")
+        if source.review_required:
+            reasons.append("source_requires_human_review")
+        if request.requested_on < agreement.effective_from:
+            reasons.append("agreement_not_yet_effective")
+        if agreement.expires_on and request.requested_on > agreement.expires_on:
+            reasons.append("agreement_expired")
+        if request.action not in agreement.allowed_actions:
+            reasons.append(f"action_not_allowed:{request.action}")
+        if request.purpose not in agreement.allowed_purposes:
+            reasons.append(f"purpose_not_allowed:{request.purpose}")
+        if request.region not in agreement.allowed_regions:
+            reasons.append(f"region_not_allowed:{request.region}")
+        if request.distribution not in agreement.allowed_distributions:
+            reasons.append(f"distribution_not_allowed:{request.distribution}")
+        if agreement.attribution_required:
+            obligations.append("preserve_attribution_evidence")
+
+        hard_denials = [
+            reason for reason in reasons
+            if reason.startswith((
+                "source_status:",
+                "agreement_expired",
+                "agreement_not_yet_effective",
+                "action_not_allowed:",
+                "purpose_not_allowed:",
+                "region_not_allowed:",
+                "distribution_not_allowed:",
+            ))
+        ]
+        if hard_denials:
+            result = "deny"
+        elif reasons:
+            result = "review"
+        else:
+            result = "allow"
+
+        payload = {
+            "source_id": source.source_id,
+            "source_version": source.version,
+            "agreement_id": agreement.agreement_id,
+            "agreement_version": agreement.version,
+            "request": asdict(request),
+            "result": result,
+            "reasons": reasons,
+            "obligations": obligations,
+        }
+        decision = Decision(
+            decision_id=stable_id("decision", payload),
+            source_id=source.source_id,
+            source_version=source.version,
+            agreement_id=agreement.agreement_id,
+            agreement_version=agreement.version,
+            request=asdict(request),
+            result=result,
+            reasons=tuple(reasons),
+            obligations=tuple(obligations),
+        )
+        self.decisions[decision.decision_id] = decision
+        return decision
+
+    def capture(
+        self,
+        source_id: str,
+        decision_id: str,
+        objects: List[Dict[str, object]],
+        captured_on: str,
+    ) -> str:
+        decision = self.decisions[decision_id]
+        if decision.result != "allow":
+            raise PermissionError(f"capture requires allow, got {decision.result}")
+        if decision.source_id != source_id:
+            raise ValueError("decision source mismatch")
+        manifest = {
+            "source_id": source_id,
+            "source_version": decision.source_version,
+            "decision_id": decision_id,
+            "captured_on": captured_on,
+            "objects": sorted(objects, key=lambda item: str(item["object_id"])),
+        }
+        capture_id = stable_id("capture", manifest)
+        manifest["capture_id"] = capture_id
+        self.captures[capture_id] = manifest
+        self.lineage.setdefault(source_id, set()).add(capture_id)
+        for item in objects:
+            self.lineage.setdefault(capture_id, set()).add(str(item["object_id"]))
+        return capture_id
+
+    def add_derivation(self, parent_id: str, child_id: str) -> None:
+        self.lineage.setdefault(parent_id, set()).add(child_id)
+
+    def withdraw(self, source_id: str, reason: str, requested_on: str) -> None:
+        source = self.sources[source_id]
+        self.sources[source_id] = Source(
+            **{**asdict(source), "version": source.version + 1, "status": "withdrawn"}
+        )
+        self.tombstones[source_id] = {
+            "reason": reason,
+            "requested_on": requested_on,
+            "scope": "source",
+        }
+
+    def downstream(self, start_id: str) -> List[str]:
+        queue = [start_id]
+        visited = {start_id}
+        ordered: List[str] = []
+        while queue:
+            current = queue.pop(0)
+            for child in sorted(self.lineage.get(current, set())):
+                if child not in visited:
+                    visited.add(child)
+                    ordered.append(child)
+                    queue.append(child)
+        return ordered
+
+
+def build_registry() -> Registry:
+    registry = Registry()
+    agreements = [
+        Agreement(
+            agreement_id="agreement-tech-docs-v1",
+            version=1,
+            effective_from="2026-01-01",
+            expires_on="2027-12-31",
+            allowed_actions=("capture", "train", "evaluate"),
+            allowed_purposes=("internal_research", "internal_product"),
+            allowed_regions=("us", "jp"),
+            allowed_distributions=("internal_only",),
+            attribution_required=True,
+            evidence_hash="sha256:demo-tech-evidence",
+        ),
+        Agreement(
+            agreement_id="agreement-community-eval-v1",
+            version=1,
+            effective_from="2026-01-01",
+            expires_on=None,
+            allowed_actions=("capture", "evaluate"),
+            allowed_purposes=("internal_research",),
+            allowed_regions=("us",),
+            allowed_distributions=("internal_only",),
+            attribution_required=False,
+            evidence_hash="sha256:demo-community-evidence",
+        ),
+        Agreement(
+            agreement_id="agreement-feedback-review-v1",
+            version=1,
+            effective_from="2026-01-01",
+            expires_on="2026-12-31",
+            allowed_actions=("capture", "train"),
+            allowed_purposes=("internal_product",),
+            allowed_regions=("us",),
+            allowed_distributions=("internal_only",),
+            attribution_required=False,
+            evidence_hash="sha256:demo-feedback-evidence",
+        ),
+    ]
+    for agreement in agreements:
+        registry.add_agreement(agreement)
+    for source in (
+        Source("source-tech-docs", 1, "技术文档", "documentation", "provider-a", "active", "agreement-tech-docs-v1", False, "url_or_object_id"),
+        Source("source-community", 1, "社区样本", "community", "provider-b", "active", "agreement-community-eval-v1", False, "url_or_account"),
+        Source("source-feedback", 1, "产品反馈", "product_feedback", "provider-internal", "reviewing", "agreement-feedback-review-v1", True, "account_and_event"),
+    ):
+        registry.add_source(source)
+    return registry
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--region", default="us")
+    args = parser.parse_args()
+    registry = build_registry()
+    train_request = UseRequest(
+        action="train",
+        purpose="internal_product",
+        region=args.region,
+        distribution="internal_only",
+        requested_on="2026-08-21",
+    )
+    decisions = {
+        source_id: registry.decide(source_id, train_request)
+        for source_id in sorted(registry.sources)
+    }
+
+    capture_request = UseRequest(
+        action="capture",
+        purpose="internal_product",
+        region="us",
+        distribution="internal_only",
+        requested_on="2026-08-21",
+    )
+    capture_decision = registry.decide("source-tech-docs", capture_request)
+    capture_id = registry.capture(
+        "source-tech-docs",
+        capture_decision.decision_id,
+        [
+            {"object_id": "object-doc-001", "sha256": "sha256:object-001"},
+            {"object_id": "object-doc-002", "sha256": "sha256:object-002"},
+        ],
+        "2026-08-21",
+    )
+    registry.add_derivation("object-doc-001", "dataset-gold-001")
+    registry.add_derivation("dataset-gold-001", "checkpoint-001")
+    before = registry.downstream("source-tech-docs")
+    registry.withdraw("source-tech-docs", "provider_exit_demo", "2026-08-22")
+    after = registry.downstream("source-tech-docs")
+    post_withdrawal = registry.decide("source-tech-docs", train_request)
+
+    report = {
+        "status": "completed",
+        "decisions": {key: asdict(value) for key, value in decisions.items()},
+        "capture_id": capture_id,
+        "impact_before_withdrawal": before,
+        "impact_after_withdrawal": after,
+        "post_withdrawal_decision": asdict(post_withdrawal),
+        "tombstone": registry.tombstones["source-tech-docs"],
+        "proof_limit": "mechanical policy simulation; no real legal conclusion",
+    }
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

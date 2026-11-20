@@ -1,0 +1,262 @@
+from __future__ import annotations
+
+import argparse
+import contextlib
+import json
+import math
+import os
+import random
+import re
+import statistics
+import time
+from pathlib import Path
+
+try:
+    import torch
+    from peft import LoraConfig, get_peft_model
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+except Exception as exc:
+    print(json.dumps({"status": "skipped", "reason": f"dependency import failed: {exc}"}))
+    raise SystemExit(0)
+
+
+def skip(reason: str) -> None:
+    print(json.dumps({"status": "skipped", "reason": reason}, ensure_ascii=False))
+    raise SystemExit(0)
+
+
+def make_prompts(count: int, seed: int) -> list[dict]:
+    rng = random.Random(seed)
+    prompts = []
+    for index in range(count):
+        left = rng.randint(3, 30)
+        right = rng.randint(3, 30)
+        operation = rng.choice(("+", "-", "*"))
+        answer = {"+": left + right, "-": left - right, "*": left * right}[operation]
+        prompts.append({
+            "id": f"math-{index:04d}",
+            "question": (
+                f"Compute {left} {operation} {right}. Explain briefly and put exactly one "
+                "final line in the form FINAL: integer."
+            ),
+            "answer": answer,
+        })
+    return prompts
+
+
+FINAL_PATTERN = re.compile(r"(?m)^FINAL:\s*(-?\d+)\s*$")
+
+
+def verify(text: str, expected: int) -> tuple[float, str]:
+    matches = FINAL_PATTERN.findall(text)
+    if len(matches) != 1:
+        return 0.0, "format_error"
+    return (1.0, "correct") if int(matches[0]) == expected else (0.0, "wrong")
+
+
+def format_prompt(tokenizer, question: str) -> str:
+    messages = [
+        {"role": "system", "content": "You solve arithmetic and follow the final-line format."},
+        {"role": "user", "content": question},
+    ]
+    return tokenizer.apply_chat_template(
+        messages, tokenize=False, add_generation_prompt=True
+    )
+
+
+def response_logprobs(model, input_ids: torch.Tensor, prompt_lengths: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    outputs = model(input_ids=input_ids, attention_mask=input_ids.ne(model.config.pad_token_id), use_cache=False)
+    logits = outputs.logits[:, :-1]
+    targets = input_ids[:, 1:]
+    token_logprobs = torch.log_softmax(logits.float(), dim=-1).gather(
+        -1, targets.unsqueeze(-1)
+    ).squeeze(-1)
+    positions = torch.arange(targets.shape[1], device=targets.device).unsqueeze(0)
+    mask = positions >= (prompt_lengths.unsqueeze(1) - 1)
+    mask &= targets.ne(model.config.pad_token_id)
+    return token_logprobs, mask
+
+
+def group_advantages(group_ids: list[str], rewards: torch.Tensor, minimum_std: float) -> tuple[torch.Tensor, list[int], dict]:
+    advantages = torch.zeros_like(rewards)
+    accepted = []
+    stats = {}
+    for group_id in sorted(set(group_ids)):
+        indices = [i for i, value in enumerate(group_ids) if value == group_id]
+        values = rewards[indices]
+        mean = values.mean()
+        std = values.std(unbiased=False)
+        informative = float(std) >= minimum_std
+        stats[group_id] = {"mean": float(mean), "std": float(std), "informative": informative}
+        if informative:
+            advantages[indices] = (values - mean) / std.clamp_min(minimum_std)
+            accepted.extend(indices)
+    return advantages, accepted, stats
+
+
+def generate_batch(model, tokenizer, prompts: list[dict], group_size: int, max_new_tokens: int, temperature: float):
+    texts, group_ids, expected, prompt_token_lengths = [], [], [], []
+    for prompt in prompts:
+        text = format_prompt(tokenizer, prompt["question"])
+        encoded = tokenizer(text, return_tensors="pt", add_special_tokens=False).to("cuda")
+        with torch.no_grad():
+            generated = model.generate(
+                **encoded,
+                do_sample=True,
+                temperature=temperature,
+                top_p=0.95,
+                num_return_sequences=group_size,
+                max_new_tokens=max_new_tokens,
+                pad_token_id=tokenizer.pad_token_id,
+                eos_token_id=tokenizer.eos_token_id,
+            )
+        for row in generated:
+            texts.append(row.cpu())
+            group_ids.append(prompt["id"])
+            expected.append(prompt["answer"])
+            prompt_token_lengths.append(encoded.input_ids.shape[1])
+    max_length = max(row.numel() for row in texts)
+    padded = torch.full((len(texts), max_length), tokenizer.pad_token_id, dtype=torch.long)
+    for index, row in enumerate(texts):
+        padded[index, :row.numel()] = row
+    return padded.cuda(), torch.tensor(prompt_token_lengths, device="cuda"), group_ids, expected
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model-path", required=True)
+    parser.add_argument("--prompt-count", type=int, default=4)
+    parser.add_argument("--group-size", type=int, default=4)
+    parser.add_argument("--updates", type=int, default=3)
+    parser.add_argument("--max-new-tokens", type=int, default=96)
+    parser.add_argument("--temperature", type=float, default=0.9)
+    parser.add_argument("--learning-rate", type=float, default=1e-5)
+    parser.add_argument("--clip-low", type=float, default=0.20)
+    parser.add_argument("--clip-high", type=float, default=0.28)
+    parser.add_argument("--kl-coef", type=float, default=0.01)
+    parser.add_argument("--minimum-std", type=float, default=1e-6)
+    args = parser.parse_args()
+
+    if not torch.cuda.is_available():
+        skip("CUDA GPU is not available")
+    if not Path(args.model_path).is_dir():
+        skip("model path is not a local directory")
+
+    tokenizer = AutoTokenizer.from_pretrained(args.model_path, local_files_only=True)
+    if not tokenizer.chat_template:
+        skip("tokenizer has no reviewed chat template")
+    if tokenizer.eos_token_id is None:
+        skip("tokenizer has no eos token")
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+    base = AutoModelForCausalLM.from_pretrained(
+        args.model_path, local_files_only=True, torch_dtype=dtype
+    )
+    base.config.pad_token_id = tokenizer.pad_token_id
+    config = LoraConfig(
+        r=8,
+        lora_alpha=16,
+        lora_dropout=0.0,
+        bias="none",
+        task_type="CAUSAL_LM",
+        target_modules="all-linear",
+    )
+    model = get_peft_model(base, config).cuda()
+    model.config.use_cache = False
+    optimizer = torch.optim.AdamW(
+        (parameter for parameter in model.parameters() if parameter.requires_grad),
+        lr=args.learning_rate,
+    )
+    prompts = make_prompts(args.prompt_count, seed=20260821)
+    torch.manual_seed(20260821)
+    torch.cuda.reset_peak_memory_stats()
+    reports = []
+
+    for update in range(args.updates):
+        model.eval()
+        started = time.perf_counter()
+        input_ids, prompt_lengths, group_ids, expected = generate_batch(
+            model, tokenizer, prompts, args.group_size, args.max_new_tokens, args.temperature
+        )
+        response_texts = [
+            tokenizer.decode(row[prompt_lengths[i]:], skip_special_tokens=True)
+            for i, row in enumerate(input_ids)
+        ]
+        verified = [verify(text, expected[i]) for i, text in enumerate(response_texts)]
+        rewards = torch.tensor([item[0] for item in verified], device="cuda")
+        advantages, accepted, group_stats = group_advantages(
+            group_ids, rewards, args.minimum_std
+        )
+        rollout_seconds = time.perf_counter() - started
+        if not accepted:
+            reports.append({
+                "update": update,
+                "status": "no_informative_group",
+                "rollout_seconds": rollout_seconds,
+                "group_stats": group_stats,
+                "verifier_states": [item[1] for item in verified],
+            })
+            continue
+
+        accepted_tensor = torch.tensor(accepted, device="cuda")
+        selected_ids = input_ids.index_select(0, accepted_tensor)
+        selected_lengths = prompt_lengths.index_select(0, accepted_tensor)
+        selected_advantages = advantages.index_select(0, accepted_tensor)
+        with torch.no_grad():
+            old_logprobs, response_mask = response_logprobs(model, selected_ids, selected_lengths)
+            with model.disable_adapter():
+                reference_logprobs, reference_mask = response_logprobs(model, selected_ids, selected_lengths)
+            if not torch.equal(response_mask, reference_mask):
+                raise AssertionError("reference mask differs")
+
+        model.train()
+        optimizer.zero_grad(set_to_none=True)
+        current_logprobs, current_mask = response_logprobs(model, selected_ids, selected_lengths)
+        if not torch.equal(current_mask, response_mask):
+            raise AssertionError("current mask differs")
+        ratio = torch.exp(current_logprobs - old_logprobs)
+        token_advantages = selected_advantages[:, None].expand_as(ratio)
+        unclipped = ratio * token_advantages
+        clipped = torch.clamp(
+            ratio, 1.0 - args.clip_low, 1.0 + args.clip_high
+        ) * token_advantages
+        policy_objective = torch.minimum(unclipped, clipped)
+        policy_loss = -(policy_objective * current_mask).sum() / current_mask.sum()
+        sampled_kl = ((current_logprobs - reference_logprobs) * current_mask).sum() / current_mask.sum()
+        loss = policy_loss + args.kl_coef * sampled_kl
+        loss.backward()
+        grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        optimizer.step()
+        torch.cuda.synchronize()
+        reports.append({
+            "update": update,
+            "status": "updated",
+            "rollout_seconds": rollout_seconds,
+            "accepted_groups": sum(item["informative"] for item in group_stats.values()),
+            "generated_responses": len(group_ids),
+            "accepted_responses": len(accepted),
+            "reward_mean": float(rewards.mean()),
+            "response_tokens": int(response_mask.sum()),
+            "policy_loss": float(policy_loss.detach()),
+            "sampled_kl": float(sampled_kl.detach()),
+            "ratio_p99": float(torch.quantile(ratio[current_mask].detach().float(), 0.99)),
+            "grad_norm": float(grad_norm),
+            "verifier_states": [item[1] for item in verified],
+        })
+
+    print(json.dumps({
+        "status": "succeeded",
+        "device": torch.cuda.get_device_name(0),
+        "model_path": os.path.abspath(args.model_path),
+        "torch": torch.__version__,
+        "configuration": vars(args),
+        "peak_memory_mib": torch.cuda.max_memory_allocated() / 1024**2,
+        "reports": reports,
+        "boundary": "single-process LoRA GRPO mechanism on a local model",
+    }, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

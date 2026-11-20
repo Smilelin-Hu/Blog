@@ -1,0 +1,33 @@
+{
+  "required_components": [
+    "model",
+    "optimizer",
+    "scheduler",
+    "rng",
+    "data_cursor",
+    "committed_ids",
+    "policy_version",
+    "reward_version"
+  ],
+  "checkpoint": {
+    "model": "sha256:model",
+    "optimizer": "sha256:optim",
+    "scheduler": {
+      "step": 40
+    },
+    "rng": 7,
+    "data_cursor": 18,
+    "committed_ids": [
+      "t1",
+      "t2"
+    ],
+    "policy_version": 12,
+    "reward_version": "rm-v5"
+  },
+  "after_resume_ids": [
+    "t3",
+    "t4"
+  ],
+  "gpu_seconds": 144.0,
+  "effective_tokens": 72000
+}

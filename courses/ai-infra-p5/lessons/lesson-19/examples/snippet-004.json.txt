@@ -1,0 +1,3 @@
+{"sample_id":"s1","messages":[{"role":"system","content":"Answer accurately."},{"role":"user","content":"What is two plus three?"},{"role":"assistant","content":"Two plus three is five."}]}
+{"sample_id":"s2","messages":[{"role":"user","content":"Name one property of MinHash."},{"role":"assistant","content":"Its signature agreement estimates Jaccard similarity."}]}
+{"sample_id":"s3","messages":[{"role":"user","content":"Use the calculator for 7 times 8."},{"role":"assistant","content":"I will call the calculator with 7 and 8."},{"role":"tool","content":"56"},{"role":"assistant","content":"Seven times eight is 56."}]}

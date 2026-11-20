@@ -1,0 +1,23 @@
+{
+  "required_reward_version": "rm-v5",
+  "events": [
+    {
+      "trajectory_id": "t1",
+      "policy_version": 10,
+      "reward_version": "rm-v5",
+      "state": "committed"
+    },
+    {
+      "trajectory_id": "t2",
+      "policy_version": 10,
+      "reward_version": "rm-v4",
+      "state": "rejected"
+    },
+    {
+      "trajectory_id": "t3",
+      "policy_version": 11,
+      "reward_version": "rm-v5",
+      "state": "committed"
+    }
+  ]
+}

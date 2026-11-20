@@ -1,0 +1,32 @@
+{
+  "gpu_memory_gb": 80,
+  "plans": [
+    {
+      "name": "separate",
+      "colocated": false,
+      "rollout_gb": 38,
+      "train_gb": 62,
+      "rollout_idle": 4,
+      "train_idle": 4,
+      "sync_gb": 14
+    },
+    {
+      "name": "colocated-sleep",
+      "colocated": true,
+      "rollout_gb": 48,
+      "train_gb": 70,
+      "rollout_idle": 1,
+      "train_idle": 1,
+      "sync_gb": 14
+    },
+    {
+      "name": "oversubscribed",
+      "colocated": true,
+      "rollout_gb": 86,
+      "train_gb": 72,
+      "rollout_idle": 0,
+      "train_idle": 0,
+      "sync_gb": 14
+    }
+  ]
+}

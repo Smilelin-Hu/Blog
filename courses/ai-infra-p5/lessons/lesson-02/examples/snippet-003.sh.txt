@@ -1,0 +1,2 @@
+python measure_corpus_value.py --jaccard-threshold 0.80 --bootstrap 2000
+python measure_corpus_value.py --jaccard-threshold 0.25 --bootstrap 2000

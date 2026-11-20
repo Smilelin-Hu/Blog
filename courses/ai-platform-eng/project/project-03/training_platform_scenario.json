@@ -1,0 +1,186 @@
+{
+  "policy": {
+    "maximum_nodes": 16,
+    "maximum_gpus_per_node": 8,
+    "maximum_attempts": 3,
+    "allowed_queues": [
+      "gpu-training"
+    ]
+  },
+  "thresholds": {
+    "maximum_startup_seconds": 90,
+    "minimum_job_success_rate": 1,
+    "maximum_recovery_seconds": 90,
+    "minimum_lineage_complete_rate": 1
+  },
+  "requests": [
+    {
+      "tenant": "team-a",
+      "owner": "alice",
+      "queue": "gpu-training",
+      "runtime": "torch-distributed",
+      "runtime_revision": "sha256:runtime-v3",
+      "image": "registry.example/train@sha256:1111",
+      "dataset_digest": "sha256:data-v5",
+      "code_revision": "sha256:code-v8",
+      "output_uri": "s3://models/foundation/v1",
+      "nodes": 4,
+      "gpus_per_node": 8,
+      "stage_seconds": {
+        "admission": 12,
+        "initializers": 20,
+        "scheduling": 18,
+        "rendezvous": 15,
+        "checkpoint_restore": 35,
+        "worker_recreate": 20
+      },
+      "lineage_nodes": [
+        "request",
+        "runtime",
+        "image",
+        "dataset",
+        "code",
+        "pipeline_run",
+        "train_job",
+        "metrics",
+        "model_artifact",
+        "model_version"
+      ],
+      "model_digest": "sha256:model-v1",
+      "name": "foundation-run",
+      "project": "foundation",
+      "inject_worker_failure": false,
+      "model_version": "foundation-v1"
+    },
+    {
+      "tenant": "team-a",
+      "owner": "bob",
+      "queue": "gpu-training",
+      "runtime": "torch-distributed",
+      "runtime_revision": "sha256:runtime-v3",
+      "image": "registry.example/train@sha256:1111",
+      "dataset_digest": "sha256:data-vision-v2",
+      "code_revision": "sha256:code-vision-v4",
+      "output_uri": "s3://models/vision/v1",
+      "nodes": 4,
+      "gpus_per_node": 8,
+      "stage_seconds": {
+        "admission": 12,
+        "initializers": 20,
+        "scheduling": 18,
+        "rendezvous": 15,
+        "checkpoint_restore": 35,
+        "worker_recreate": 20
+      },
+      "lineage_nodes": [
+        "request",
+        "runtime",
+        "image",
+        "dataset",
+        "code",
+        "pipeline_run",
+        "train_job",
+        "metrics",
+        "model_artifact",
+        "model_version"
+      ],
+      "model_digest": "sha256:model-vision-v1",
+      "name": "vision-run",
+      "project": "vision",
+      "inject_worker_failure": true,
+      "model_version": "vision-v1"
+    }
+  ],
+  "faults": [
+    {
+      "type": "runtime_missing",
+      "expected_phase": "PENDING",
+      "expected_reason": "RuntimeReferenceNotFound"
+    },
+    {
+      "type": "runtime_mutable",
+      "expected_phase": "REJECTED",
+      "expected_reason": "RuntimeRevisionMustBeImmutable"
+    },
+    {
+      "type": "image_mutable",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ImageDigestRequired"
+    },
+    {
+      "type": "dataset_mutable",
+      "expected_phase": "REJECTED",
+      "expected_reason": "DatasetDigestRequired"
+    },
+    {
+      "type": "queue_bypass",
+      "expected_phase": "REJECTED",
+      "expected_reason": "RequiredQueueMissing"
+    },
+    {
+      "type": "node_limit",
+      "expected_phase": "REJECTED",
+      "expected_reason": "NodeLimitExceeded"
+    },
+    {
+      "type": "gpu_limit",
+      "expected_phase": "REJECTED",
+      "expected_reason": "GPUPerNodeLimitExceeded"
+    },
+    {
+      "type": "role_failure_unknown",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "RoleFailureSemanticsUndefined"
+    },
+    {
+      "type": "rendezvous_timeout",
+      "expected_phase": "FAILED",
+      "expected_reason": "DistributedRendezvousFailed"
+    },
+    {
+      "type": "initializer_failed",
+      "expected_phase": "FAILED",
+      "expected_reason": "DatasetInitializerFailed"
+    },
+    {
+      "type": "checkpoint_missing",
+      "expected_phase": "FAILED",
+      "expected_reason": "RecoveryCheckpointMissing"
+    },
+    {
+      "type": "retry_budget",
+      "expected_phase": "FAILED",
+      "expected_reason": "RetryBudgetExceeded"
+    },
+    {
+      "type": "pipeline_cache_hidden_dependency",
+      "expected_phase": "REJECTED",
+      "expected_reason": "HiddenDependencyNotInCacheKey"
+    },
+    {
+      "type": "artifact_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ModelArtifactMissing"
+    },
+    {
+      "type": "lineage_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "LineageNodeMissing"
+    },
+    {
+      "type": "model_version_mutable",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ImmutableModelVersionRequired"
+    },
+    {
+      "type": "same_run_duplicate",
+      "expected_phase": "BLOCKED",
+      "expected_reason": "RunLeaseAlreadyOwned"
+    },
+    {
+      "type": "live_cluster_missing",
+      "expected_phase": "SKIPPED",
+      "expected_reason": "NoKubernetesContextProvided"
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import re
+import unicodedata
+from collections import Counter
+from dataclasses import asdict, dataclass
+from typing import Optional
+
+RECIPE = "heuristic-quality-v1"
+WORD_RE = re.compile(r"[\w']+", re.UNICODE)
+LIST_RE = re.compile(r"^\s*(?:[-*•]|\d+[.)])\s+")
+TERMINAL = set("。！？.!?")
+
+
+@dataclass(frozen=True)
+class Record:
+    record_id: str
+    unit_type: str
+    language: str
+    text: str
+
+
+@dataclass
+class Result:
+    record_id: str
+    features: dict
+    rule_hits: list[dict]
+    status: str
+    recipe: str
+
+
+def safe_ratio(num: float, den: float) -> Optional[float]:
+    return None if den == 0 else num / den
+
+
+def entropy(counter: Counter[str]) -> Optional[float]:
+    total = sum(counter.values())
+    if not total:
+        return None
+    return -sum((n / total) * math.log2(n / total) for n in counter.values())
+
+
+def normalized_lines(text: str) -> list[str]:
+    return [re.sub(r"\s+", " ", line).strip() for line in text.splitlines() if line.strip()]
+
+
+def extract_features(record: Record) -> dict:
+    text = record.text
+    chars = list(text)
+    lines = normalized_lines(text)
+    words = [w.casefold() for w in WORD_RE.findall(text)]
+    categories = Counter(unicodedata.category(c)[0] for c in chars)
+    line_counts = Counter(lines)
+    word_counts = Counter(words)
+    repeated_line_chars = sum(len(line) * count for line, count in line_counts.items() if count > 1)
+    repeated_word_mass = sum(count for count in word_counts.values() if count > 1)
+    natural_language = record.unit_type in {"paragraph", "article"}
+    terminal_lines = sum(line[-1] in TERMINAL for line in lines) if natural_language else 0
+    list_lines = sum(bool(LIST_RE.match(line)) for line in lines)
+    return {
+        "codepoints": len(chars),
+        "utf8_bytes": len(text.encode("utf-8")),
+        "lines": len(lines),
+        "words": len(words),
+        "letter_ratio": safe_ratio(categories["L"], len(chars)),
+        "digit_ratio": safe_ratio(categories["N"], len(chars)),
+        "punct_symbol_ratio": safe_ratio(categories["P"] + categories["S"], len(chars)),
+        "char_entropy_bits": entropy(Counter(chars)),
+        "unique_word_ratio": safe_ratio(len(word_counts), len(words)),
+        "repeated_word_mass_ratio": safe_ratio(repeated_word_mass, len(words)),
+        "repeated_line_char_ratio": safe_ratio(repeated_line_chars, sum(map(len, lines))),
+        "list_line_ratio": safe_ratio(list_lines, len(lines)),
+        "terminal_line_ratio": safe_ratio(terminal_lines, len(lines)) if natural_language else None,
+        "max_word_length": max(map(len, words), default=0),
+    }
+
+
+def decide(record: Record, f: dict) -> Result:
+    hits: list[dict] = []
+
+    def hit(code: str, action: str, evidence: dict) -> None:
+        hits.append({"code": code, "action": action, "evidence": evidence})
+
+    if f["codepoints"] == 0:
+        hit("EMPTY_TEXT", "reject", {"codepoints": 0})
+    if f["codepoints"] > 0 and (f["letter_ratio"] or 0.0) < 0.05 and record.unit_type != "code":
+        hit("VERY_LOW_LETTER_RATIO", "gray", {"value": f["letter_ratio"]})
+    if (f["repeated_line_char_ratio"] or 0.0) > 0.65:
+        hit("HIGH_REPEATED_LINE_MASS", "reject", {"value": f["repeated_line_char_ratio"]})
+    if (f["list_line_ratio"] or 0.0) > 0.8 and record.unit_type == "article":
+        hit("LIST_LIKE_ARTICLE", "gray", {"value": f["list_line_ratio"]})
+    if f["max_word_length"] > 80 and record.unit_type != "code":
+        hit("EXTREME_WORD_LENGTH", "gray", {"value": f["max_word_length"]})
+
+    actions = {item["action"] for item in hits}
+    status = "rejected" if "reject" in actions else "gray" if "gray" in actions else "accepted"
+    return Result(record.record_id, f, hits, status, RECIPE)
+
+
+def stable_digest(payload: object) -> str:
+    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def main() -> None:
+    records = [
+        Record("good-zh", "article", "zh", "数据质量需要可解释证据。\n阈值必须在目标分布上校准。"),
+        Record("repeat", "article", "zh", "立即购买！！！\n立即购买！！！\n立即购买！！！"),
+        Record("list", "article", "zh", "- 首页\n- 登录\n- 注册\n- 联系我们\n- 更多"),
+        Record("code", "code", "python", "def f(x):\n    return x ** 2\n"),
+        Record("empty", "paragraph", "zh", ""),
+    ]
+    results = [decide(r, extract_features(r)) for r in records]
+    payload = [asdict(r) for r in results]
+    summary = Counter(r.status for r in results)
+    print(json.dumps({"results": payload, "summary": summary, "digest": stable_digest(payload)},
+                     ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

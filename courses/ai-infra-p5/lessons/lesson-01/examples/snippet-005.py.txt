@@ -1,0 +1,65 @@
+from __future__ import annotations
+
+import argparse
+import json
+from collections import defaultdict, deque
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parent
+OUTPUT = ROOT / "outputs"
+
+
+def read_jsonl(path: Path) -> list[dict]:
+    rows = []
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            if line.strip():
+                rows.append(json.loads(line))
+    return rows
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--source-id", required=True)
+    args = parser.parse_args()
+
+    edges = defaultdict(list)
+    for event in read_jsonl(OUTPUT / "lineage.jsonl"):
+        edges[event["input_id"]].append(event["output_id"])
+
+    impacted = []
+    queue = deque([args.source_id])
+    visited = {args.source_id}
+
+    while queue:
+        current = queue.popleft()
+        for child in edges[current]:
+            if child in visited:
+                continue
+            visited.add(child)
+            impacted.append(child)
+            queue.append(child)
+
+    run_manifest = json.loads(
+        (OUTPUT / "run_manifest.json").read_text(encoding="utf-8")
+    )
+    run_objects = set(
+        run_manifest["document_ids"]
+        + run_manifest["sample_ids"]
+        + run_manifest["sequence_ids"]
+    )
+
+    print(json.dumps({
+        "source_id": args.source_id,
+        "impacted_objects": impacted,
+        "impacted_run_ids": (
+            [run_manifest["run_id"]]
+            if run_objects.intersection(impacted)
+            else []
+        ),
+    }, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

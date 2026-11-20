@@ -1,0 +1,161 @@
+{
+  "status": "PASS",
+  "runs": [
+    {
+      "name": "foundation-run",
+      "status": "SUCCEEDED",
+      "reason": "TrainingCompleted",
+      "startup_seconds": 65,
+      "recovery_seconds": 0,
+      "attempts": 1,
+      "model_version": "foundation-v1"
+    },
+    {
+      "name": "vision-run",
+      "status": "SUCCEEDED",
+      "reason": "TrainingCompleted",
+      "startup_seconds": 65,
+      "recovery_seconds": 55,
+      "attempts": 2,
+      "model_version": "vision-v1"
+    }
+  ],
+  "lineage": [
+    {
+      "status": "PASS",
+      "reason": "LineageComplete",
+      "missing": []
+    },
+    {
+      "status": "PASS",
+      "reason": "LineageComplete",
+      "missing": []
+    }
+  ],
+  "metrics": {
+    "maximum_startup_seconds": 65,
+    "job_success_rate": 1.0,
+    "maximum_recovery_seconds": 55,
+    "lineage_complete_rate": 1.0
+  },
+  "checks": {
+    "startup": true,
+    "success": true,
+    "recovery": true,
+    "lineage": true
+  },
+  "faults": [
+    {
+      "type": "runtime_missing",
+      "phase": "PENDING",
+      "reason": "RuntimeReferenceNotFound",
+      "status": "PASS"
+    },
+    {
+      "type": "runtime_mutable",
+      "phase": "REJECTED",
+      "reason": "RuntimeRevisionMustBeImmutable",
+      "status": "PASS"
+    },
+    {
+      "type": "image_mutable",
+      "phase": "REJECTED",
+      "reason": "ImageDigestRequired",
+      "status": "PASS"
+    },
+    {
+      "type": "dataset_mutable",
+      "phase": "REJECTED",
+      "reason": "DatasetDigestRequired",
+      "status": "PASS"
+    },
+    {
+      "type": "queue_bypass",
+      "phase": "REJECTED",
+      "reason": "RequiredQueueMissing",
+      "status": "PASS"
+    },
+    {
+      "type": "node_limit",
+      "phase": "REJECTED",
+      "reason": "NodeLimitExceeded",
+      "status": "PASS"
+    },
+    {
+      "type": "gpu_limit",
+      "phase": "REJECTED",
+      "reason": "GPUPerNodeLimitExceeded",
+      "status": "PASS"
+    },
+    {
+      "type": "role_failure_unknown",
+      "phase": "INCONCLUSIVE",
+      "reason": "RoleFailureSemanticsUndefined",
+      "status": "PASS"
+    },
+    {
+      "type": "rendezvous_timeout",
+      "phase": "FAILED",
+      "reason": "DistributedRendezvousFailed",
+      "status": "PASS"
+    },
+    {
+      "type": "initializer_failed",
+      "phase": "FAILED",
+      "reason": "DatasetInitializerFailed",
+      "status": "PASS"
+    },
+    {
+      "type": "checkpoint_missing",
+      "phase": "FAILED",
+      "reason": "RecoveryCheckpointMissing",
+      "status": "PASS"
+    },
+    {
+      "type": "retry_budget",
+      "phase": "FAILED",
+      "reason": "RetryBudgetExceeded",
+      "status": "PASS"
+    },
+    {
+      "type": "pipeline_cache_hidden_dependency",
+      "phase": "REJECTED",
+      "reason": "HiddenDependencyNotInCacheKey",
+      "status": "PASS"
+    },
+    {
+      "type": "artifact_missing",
+      "phase": "REJECTED",
+      "reason": "ModelArtifactMissing",
+      "status": "PASS"
+    },
+    {
+      "type": "lineage_missing",
+      "phase": "REJECTED",
+      "reason": "LineageNodeMissing",
+      "status": "PASS"
+    },
+    {
+      "type": "model_version_mutable",
+      "phase": "REJECTED",
+      "reason": "ImmutableModelVersionRequired",
+      "status": "PASS"
+    },
+    {
+      "type": "same_run_duplicate",
+      "phase": "BLOCKED",
+      "reason": "RunLeaseAlreadyOwned",
+      "status": "PASS"
+    },
+    {
+      "type": "live_cluster_missing",
+      "phase": "SKIPPED",
+      "reason": "NoKubernetesContextProvided",
+      "status": "PASS"
+    }
+  ],
+  "live": {
+    "status": "SKIPPED",
+    "reason": "NoKubernetesContextProvided"
+  }
+}

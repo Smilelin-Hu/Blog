@@ -1,0 +1,18 @@
+{
+  "status": "passed",
+  "mechanism": "lineage_map",
+  "metrics": {
+    "nodes": 6,
+    "affected": 6,
+    "closure_sha256": "c3a4bfe0ecee2b02903ea660301feadf60331baba308fe69ad5a32e5f8fbfa5e"
+  },
+  "observations": [
+    "withdrawal closure: checkpoint-7, dataset-v2, doc-a, run-7, sample-a, src-a"
+  ],
+  "checks": {
+    "source_included": true,
+    "closure_matches": true
+  },
+  "proof_boundary": "mechanism_simulation_only",
+  "experiment_id": "lesson-01"
+}

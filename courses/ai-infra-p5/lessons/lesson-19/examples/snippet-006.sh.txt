@@ -1,0 +1,7 @@
+python3 sft_mask_gpu.py \
+  --model-path /absolute/path/to/local-model \
+  --data ./data/sft_fixture.jsonl \
+  --steps 20 \
+  --warmup 3 \
+  --max-length 1024 \
+  --gradient-checkpointing > mask_gpu_result.json

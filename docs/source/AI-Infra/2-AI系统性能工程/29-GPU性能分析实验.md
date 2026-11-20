@@ -39,19 +39,7 @@ gpu-profiling-project/
 
 性能工程应按由粗到细的顺序推进：
 
-```text
-业务指标异常
-  ↓
-可复现墙钟基准：问题真的存在吗？
-  ↓
-系统时间线：时间花在 CPU、I/O、通信还是 GPU？
-  ↓
-框架算子：哪个算子或阶段最贵？
-  ↓
-Kernel 指标：为什么这个 Kernel 慢？
-  ↓
-单变量优化 → 正确性检查 → 复测 → 回归门禁
-```
+![ai2-29-L42](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l29_01.png)
 
 Profiler 会增加开销，因此不能用带完整 Profiler 的一次运行替代正常基准。正确做法是：用轻量墙钟基准确认问题与收益；用 Profiler 解释原因；用不带 Profiler 的重复实验确认最终收益。
 

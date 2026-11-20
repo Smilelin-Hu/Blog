@@ -1,0 +1,26 @@
+{
+  "event": {
+    "object_id": "source-optout",
+    "version": "event-v3"
+  },
+  "edges": [
+    [
+      "source-optout",
+      "doc-8"
+    ],
+    [
+      "doc-8",
+      "dataset-4"
+    ],
+    [
+      "dataset-4",
+      "checkpoint-9"
+    ]
+  ],
+  "expected_affected": [
+    "source-optout",
+    "doc-8",
+    "dataset-4",
+    "checkpoint-9"
+  ]
+}

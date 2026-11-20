@@ -1,0 +1,20 @@
+{
+  "budget_tokens": 200000,
+  "runs": {
+    "baseline": {
+      "general": 0.61,
+      "code": 0.45,
+      "safety": 0.79
+    },
+    "plus_verified_code": {
+      "general": 0.6,
+      "code": 0.53,
+      "safety": 0.78
+    },
+    "plus_unfiltered_synthetic": {
+      "general": 0.57,
+      "code": 0.5,
+      "safety": 0.7
+    }
+  }
+}

@@ -1,0 +1,82 @@
+import json
+import random
+from dataclasses import dataclass, asdict
+
+
+@dataclass
+class Candidate:
+    cid: str
+    seed_id: str
+    parent_id: str | None
+    prompt: str
+    response: str
+    stage: str
+    valid: bool = False
+    score: float = 0.0
+    reason: str = "not_checked"
+
+
+def expected(a: int, b: int, op: str) -> int:
+    return a + b if op == "add" else a * b
+
+
+def verify(candidate: Candidate, answer: int) -> Candidate:
+    try:
+        value = int(candidate.response.split("答案=")[-1].strip())
+        candidate.valid = value == answer
+        candidate.reason = "passed" if candidate.valid else "wrong_answer"
+        candidate.score = (1.0 if candidate.valid else 0.0) - 0.001 * len(candidate.response)
+    except Exception:
+        candidate.reason = "parse_error"
+        candidate.score = -1.0
+    return candidate
+
+
+def main() -> None:
+    rng = random.Random(20260822)
+    seeds = []
+    candidates = []
+    for index in range(40):
+        op = "add" if index % 2 == 0 else "mul"
+        a, b = rng.randint(2, 30), rng.randint(2, 12)
+        answer = expected(a, b, op)
+        seed_id = f"seed-{index:03d}"
+        seeds.append({"seed_id": seed_id, "op": op, "a": a, "b": b, "answer": answer})
+        generated = []
+        for sample in range(3):
+            wrong = rng.random() < 0.28
+            value = answer + rng.choice([-2, -1, 1, 2]) if wrong else answer
+            text = f"先识别运算{op}，计算后得到答案={value}"
+            item = Candidate(f"{seed_id}-g{sample}", seed_id, None,
+                             f"计算 {a} {op} {b}", text, "generate")
+            generated.append(verify(item, answer))
+        candidates.extend(generated)
+        if not any(item.valid for item in generated):
+            parent = max(generated, key=lambda item: item.score)
+            revised = Candidate(f"{seed_id}-r0", seed_id, parent.cid, parent.prompt,
+                                f"重新执行并校验，答案={answer}", "revise")
+            candidates.append(verify(revised, answer))
+    selected = []
+    for seed in seeds:
+        pool = [item for item in candidates if item.seed_id == seed["seed_id"] and item.valid]
+        if pool:
+            selected.append(max(pool, key=lambda item: item.score))
+    payload = {
+        "status": "passed",
+        "claim_boundary": "deterministic arithmetic synthesis mechanism only",
+        "seed_count": len(seeds),
+        "candidate_count": len(candidates),
+        "valid_candidate_rate": sum(x.valid for x in candidates) / len(candidates),
+        "released_seed_coverage": len(selected) / len(seeds),
+        "revised_count": sum(x.stage == "revise" for x in candidates),
+        "lineage_edges": [
+            {"parent": x.parent_id, "child": x.cid}
+            for x in candidates if x.parent_id is not None
+        ],
+        "sample_release": [asdict(x) for x in selected[:3]],
+    }
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

@@ -36,12 +36,7 @@
 
 Round Robin 假设请求成本相近：
 
-```text
-Req1 → A
-Req2 → B
-Req3 → C
-Req4 → A
-```
+![ai3-17-L39](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l17_01.png)
 
 但 LLM 请求可能是：
 
@@ -65,11 +60,7 @@ C: short
 
 P2C 每次随机选两个 Replica，比较负载后选更轻的一个：
 
-```text
-候选 A load=8
-候选 C load=3
-→ 选 C
-```
+![ai3-17-L68](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l17_02.png)
 
 相比每次扫描全体 Replica，它：
 

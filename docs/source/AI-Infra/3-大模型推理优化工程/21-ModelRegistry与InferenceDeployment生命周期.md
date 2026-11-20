@@ -92,9 +92,7 @@ revision=sha256:abcd...
 
 Alias 负责可变：
 
-```text
-chat-pro → revision A
-```
+![ai3-21-L95](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l21_01.png)
 
 升级时切 Alias，不修改旧 Artifact。
 
@@ -129,21 +127,7 @@ $$RuntimeVersion\ge V_{min}$$
 
 ### 5.7 Deployment 状态机
 
-```text
-REGISTERED
-   ↓
-STAGING
-   ↓
-LOADING
-   ↓
-WARMING
-   ↓
-READY
-   ↓
-DRAINING
-   ↓
-STOPPED / RETIRED
-```
+![ai3-21-L132](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l21_02.png)
 
 ### 5.8 REGISTERED
 

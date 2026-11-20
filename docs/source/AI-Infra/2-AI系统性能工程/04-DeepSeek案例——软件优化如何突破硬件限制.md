@@ -102,13 +102,7 @@ $$
 
 但这不是免费午餐，路由之后还需要：
 
-```text
-hidden states
-  → router/top-k
-  → dispatch 到专家所在 GPU
-  → grouped GEMM / expert computation
-  → combine 返回原 token 顺序
-```
+![ai2-04-L105](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l04_01.png)
 
 因此 MoE 把一部分稠密计算压力转换成不规则内存访问、All-to-All 通信、小矩阵效率和负载均衡问题。
 

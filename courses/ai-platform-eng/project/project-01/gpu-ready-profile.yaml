@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Node
+metadata:
+  name: illustrative-gpu-node
+  labels:
+    ai.training.invalid/gpu-stack-profile: validated-2026q3
+    ai.training.invalid/gpu-product: whole
+    ai.training.invalid/network-profile: roce-gdr-dual-rail
+    ai.training.invalid/storage-profile: artifact-digest-cache
+spec:
+  taints:
+    - key: ai.training.invalid/gpu-ready
+      value: validating
+      effect: NoSchedule
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gpu-ready-version-matrix
+  namespace: ai-platform-system
+data:
+  profile: validated-2026q3
+  policy: >-
+    The validating taint is removed only after GPU, device, sharing,
+    network, storage, artifact, and observability gates pass.

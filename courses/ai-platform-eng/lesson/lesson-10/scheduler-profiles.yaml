@@ -1,0 +1,79 @@
+apiVersion: kubescheduler.config.k8s.io/v1
+kind: KubeSchedulerConfiguration
+profiles:
+  - schedulerName: ai-binpack-scheduler
+    pluginConfig:
+      - name: NodeResourcesFit
+        args:
+          scoringStrategy:
+            type: MostAllocated
+            resources:
+              - name: cpu
+                weight: 1
+              - name: memory
+                weight: 1
+              - name: nvidia.com/gpu
+                weight: 8
+  - schedulerName: ai-shaped-binpack-scheduler
+    pluginConfig:
+      - name: NodeResourcesFit
+        args:
+          scoringStrategy:
+            type: RequestedToCapacityRatio
+            resources:
+              - name: cpu
+                weight: 1
+              - name: memory
+                weight: 1
+              - name: nvidia.com/gpu
+                weight: 8
+            requestedToCapacityRatio:
+              shape:
+                - utilization: 0
+                  score: 0
+                - utilization: 70
+                  score: 7
+                - utilization: 90
+                  score: 10
+                - utilization: 100
+                  score: 6
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: ai-production-high
+value: 100000
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority
+description: Higher priority for approved production AI workloads; admission policy must control use.
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: four-gpu-binpack-demo
+  namespace: ai-scheduling-lab
+  labels:
+    app: four-gpu-binpack-demo
+spec:
+  schedulerName: ai-binpack-scheduler
+  priorityClassName: ai-production-high
+  restartPolicy: Never
+  tolerations:
+    - key: accelerator
+      operator: Exists
+      effect: NoSchedule
+  nodeSelector:
+    accelerator: a100
+  containers:
+    - name: worker
+      image: python:3.12-slim
+      command: ["python", "-c", "import time; time.sleep(3600)"]
+      resources:
+        requests:
+          cpu: "16"
+          memory: 128Gi
+          nvidia.com/gpu: "4"
+        limits:
+          cpu: "16"
+          memory: 128Gi
+          nvidia.com/gpu: "4"

@@ -35,13 +35,27 @@ trigger: always_on
 
 ## 4. 配图与提交
 
-- 图片统一走图床 `https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/<文件名>`；删本地图前校验 `\]\(images/` 与本地 assets 引用计数为 0。
+- 图片统一经 PicGo 上传图床，正文使用其返回的在线链接（当前图床为 gitcode `weixin_42917352/image-host`，链接形如 `https://raw.gitcode.com/weixin_42917352/image-host/blobs/<sha>/images/<文件名>`；历史图片在 GitHub 图床 `https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/<文件名>`，两者并存，不迁移）；删本地图前校验 `\]\(images/` 与本地 assets 引用计数为 0。
 - 每批内容改动校验（无本地图片、无断链、口吻合规）后提交；每解决完一个问题（一项独立改动），无需等待另行指示，直接按功能分组 git 提交，提交信息遵循仓库规范 `<模块>: <祈使句摘要>`；推送仍须用户单独下达指令。
 - 推送代理等本机环境信息一律不写进本规则：本仓库代理已配置为 git repo-local（`git config --local http.proxy`，随 `.git` 目录走，整目录拷贝即恢复）；需要代理端口、直连/强推命令时，从本机 `.env.local` 或 `git config --local -l` 查询，若 `.env.local` 缺失则按下文「换机恢复」重建。
 
-## 5. 换机恢复（环境信息不入库时的自助路径）
+## 5. 绘图规范：单主题图
 
-- 机器无关的信息都在仓库里，clone 即得：内容在 `docs/source/`、图床地址见本规则第 4 节、远程地址见 `git remote -v`。
+- 课件优化优先评估配图：接到课件优化、改写或扩写需求时，先评估内容是否涉及流程说明、机制原理等需辅助理解的场景，优先补齐单主题图便于理解，再打磨文字；已有图若为多主题堆砌大图，顺手拆分为单主题图。
+- 需配图场景：流程说明、架构与组成、机制原理、状态/时序演变、对比关系等辅助理解的内容应配示意图；纯公式推导、表格罗列、代码清单不强制配图。
+- **单主题原则（硬性）**：一张图只表达一个核心概念、一个步骤或一条流程；严禁把整篇内容或多个独立主题堆砌在一张「全景大图」里。文章含多个独立主题时，拆成多张单主题图，分别紧跟各自对应的正文段落。
+- 粒度控制：单条流程节点超过约 7 个、或跨越多个边界清晰的阶段时，按阶段拆分为多张图；每张图脱离其他图也能独立读懂。
+- 图随文走：插图紧跟其解释的段落之后，alt 文本一句话点明图的主题；不在文首集中堆图，不用一张大图替代各节展开。
+- 居中显示：插图单独成段，由 `src/styles/global.css` 全局样式（`.prose p > img:only-child, .prose > img`）统一居中，正文不写对齐标签或居中包装。
+- 绘制与风格：用 `.qoder/excalidraw-diagram/` 下的 excalidraw-diagram skill 绘制，颜色遵循其 `references/color-palette.md`；渲染 PNG 后必须目检文字溢出、箭头错位与元素重叠，修到合格为止。
+- 命名与存放：图片命名 `<系列前缀>_y<主题号>_l<篇号>_<图序>.png`（如 `aiinfra_y1_l05_01.png`）；excalidraw 草稿与渲染产物放 `.tmp/bookfigs/`（不入库），入库的只有正文里的在线链接。
+- 存量 ASCII 流程块：代码块中属于流程说明的 ASCII 示意图，改写时替换为单主题图，不保留 ASCII 块与图重复表达同一内容；日志、命令输出等非流程 text 块不动。
+
+## 6. 站点架构与换机恢复
+
+- 前端为 Astro（脚手架与视觉风格源自 llm-gpu 站点）：配置在仓库根 `astro.config.mjs`（base `/Blog`），组件/布局在 `src/`；内容仍在本目录 `source/`，路由与目录同构（`/source/<原路径>`，README 即目录索引）。
+- 内链由 `src/utils/rehype-blog-links.mjs` 统一加 base 前缀并去 `.md` 后缀；正文继续写 `/source/...` 或相对 `.md` 链接，不手写 base。提示框 `> [!TIP]` 由 `rehype-alerts.mjs` 渲染；mermaid/数学/代码复制/图片放大/暗色/搜索均为站点内置能力。
+- 机器无关的信息都在仓库里，clone 即得：内容在 `docs/source/`、图床地址见本规则第 4 节、远程地址见 `git remote -v`；课程原始工作区归档在仓库根 `courses/`（不入站）。
 - 若使用 GitHub HTTPS 推送且需免密，可将认证嵌入 repo-local 的 remote URL 或改用 SSH remote，二者均不进入跟踪文件；个人访问令牌等凭据只放本机 `.env.local`（已被忽略），严禁写入任何入库文件。
 - `.env.local` 为本机开发备注，缺失时重建，至少记录：代理软件本地 HTTP 端口、`git config --local http(s).proxy` 设置命令、临时直连推送命令（`git -c http.proxy= -c https.proxy= push`）。
-- 本地预览：仓库为 docsify 静态站，内容根为 `docs/`，任选一种静态服务启动（如 `npx docsify-cli serve docs` 或 `python -m http.server -d docs`）。
+- 本地预览：仓库根 `npm install && npm run dev`（入口 http://localhost:4321/Blog）；或 `npm run build && npm run preview` 验证产物（含 pagefind 搜索索引）。部署由 `.github/workflows/deploy.yml` 在 push master 时构建 dist 上 GitHub Pages。

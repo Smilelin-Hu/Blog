@@ -1,0 +1,380 @@
+{
+  "organization": "Example AI Lab",
+  "required_layers": [
+    "product_api",
+    "lifecycle",
+    "scheduling_quota",
+    "device_node",
+    "network_storage",
+    "governance_security",
+    "operations_economics"
+  ],
+  "roles": [
+    {
+      "id": "data_scientist",
+      "name": "数据科学家"
+    },
+    {
+      "id": "training_engineer",
+      "name": "训练工程师"
+    },
+    {
+      "id": "inference_engineer",
+      "name": "推理工程师"
+    },
+    {
+      "id": "platform_engineer",
+      "name": "平台工程师"
+    },
+    {
+      "id": "sre",
+      "name": "平台 SRE"
+    },
+    {
+      "id": "security",
+      "name": "安全工程师"
+    },
+    {
+      "id": "finops",
+      "name": "FinOps 负责人"
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "self_service",
+      "name": "自助提交",
+      "layer": "product_api",
+      "owner": "platform_engineer"
+    },
+    {
+      "id": "workspace",
+      "name": "项目空间",
+      "layer": "product_api",
+      "owner": "platform_engineer"
+    },
+    {
+      "id": "workload_lifecycle",
+      "name": "工作负载生命周期",
+      "layer": "lifecycle",
+      "owner": "platform_engineer"
+    },
+    {
+      "id": "model_lifecycle",
+      "name": "模型版本与晋级",
+      "layer": "lifecycle",
+      "owner": "platform_engineer"
+    },
+    {
+      "id": "queue",
+      "name": "队列与原子准入",
+      "layer": "scheduling_quota",
+      "owner": "platform_engineer"
+    },
+    {
+      "id": "quota",
+      "name": "租户配额",
+      "layer": "scheduling_quota",
+      "owner": "finops"
+    },
+    {
+      "id": "gpu_allocation",
+      "name": "GPU 发现与分配",
+      "layer": "device_node",
+      "owner": "platform_engineer"
+    },
+    {
+      "id": "device_health",
+      "name": "设备健康",
+      "layer": "device_node",
+      "owner": "sre"
+    },
+    {
+      "id": "artifact_store",
+      "name": "数据与模型制品",
+      "layer": "network_storage",
+      "owner": "platform_engineer"
+    },
+    {
+      "id": "tenant_isolation",
+      "name": "租户隔离",
+      "layer": "governance_security",
+      "owner": "security"
+    },
+    {
+      "id": "release_policy",
+      "name": "发布门禁",
+      "layer": "governance_security",
+      "owner": "security"
+    },
+    {
+      "id": "observability",
+      "name": "统一可观测性",
+      "layer": "operations_economics",
+      "owner": "sre"
+    },
+    {
+      "id": "cost_attribution",
+      "name": "成本归属",
+      "layer": "operations_economics",
+      "owner": "finops"
+    },
+    {
+      "id": "incident_response",
+      "name": "事件响应",
+      "layer": "operations_economics",
+      "owner": "sre"
+    }
+  ],
+  "components": [
+    {
+      "id": "portal",
+      "name": "平台门户与 API",
+      "layer": "product_api",
+      "capabilities": [
+        "self_service",
+        "workspace"
+      ],
+      "stateful": true,
+      "state_store": "platform_db",
+      "failure_domain": "management_cluster"
+    },
+    {
+      "id": "workload_controller",
+      "name": "工作负载控制器",
+      "layer": "lifecycle",
+      "capabilities": [
+        "workload_lifecycle"
+      ],
+      "stateful": false,
+      "state_store": null,
+      "failure_domain": "management_cluster"
+    },
+    {
+      "id": "model_registry",
+      "name": "模型注册中心",
+      "layer": "lifecycle",
+      "capabilities": [
+        "model_lifecycle"
+      ],
+      "stateful": true,
+      "state_store": "registry_db_and_object_store",
+      "failure_domain": "shared_services"
+    },
+    {
+      "id": "queue_manager",
+      "name": "队列与配额控制器",
+      "layer": "scheduling_quota",
+      "capabilities": [
+        "queue",
+        "quota"
+      ],
+      "stateful": false,
+      "state_store": null,
+      "failure_domain": "workload_cluster"
+    },
+    {
+      "id": "gpu_operator",
+      "name": "GPU 节点控制器",
+      "layer": "device_node",
+      "capabilities": [
+        "gpu_allocation",
+        "device_health"
+      ],
+      "stateful": false,
+      "state_store": null,
+      "failure_domain": "gpu_node_pool"
+    },
+    {
+      "id": "object_store",
+      "name": "对象存储",
+      "layer": "network_storage",
+      "capabilities": [
+        "artifact_store"
+      ],
+      "stateful": true,
+      "state_store": "distributed_object_data",
+      "failure_domain": "storage_cluster"
+    },
+    {
+      "id": "policy_engine",
+      "name": "策略控制器",
+      "layer": "governance_security",
+      "capabilities": [
+        "tenant_isolation",
+        "release_policy"
+      ],
+      "stateful": false,
+      "state_store": null,
+      "failure_domain": "management_cluster"
+    },
+    {
+      "id": "telemetry",
+      "name": "遥测管线",
+      "layer": "operations_economics",
+      "capabilities": [
+        "observability"
+      ],
+      "stateful": true,
+      "state_store": "telemetry_backend",
+      "failure_domain": "observability_cluster"
+    },
+    {
+      "id": "cost_service",
+      "name": "成本归属服务",
+      "layer": "operations_economics",
+      "capabilities": [
+        "cost_attribution"
+      ],
+      "stateful": true,
+      "state_store": "cost_db",
+      "failure_domain": "shared_services"
+    },
+    {
+      "id": "incident_service",
+      "name": "事件响应系统",
+      "layer": "operations_economics",
+      "capabilities": [
+        "incident_response"
+      ],
+      "stateful": true,
+      "state_store": "incident_db",
+      "failure_domain": "operations_plane"
+    }
+  ],
+  "workloads": [
+    {
+      "id": "notebook",
+      "name": "交互式 Notebook",
+      "tenant": "research",
+      "requirements": [
+        "self_service",
+        "workspace",
+        "quota",
+        "gpu_allocation",
+        "artifact_store",
+        "tenant_isolation",
+        "observability",
+        "cost_attribution"
+      ]
+    },
+    {
+      "id": "training",
+      "name": "分布式训练",
+      "tenant": "foundation_model",
+      "requirements": [
+        "self_service",
+        "workload_lifecycle",
+        "queue",
+        "quota",
+        "gpu_allocation",
+        "device_health",
+        "artifact_store",
+        "tenant_isolation",
+        "observability",
+        "cost_attribution",
+        "incident_response"
+      ]
+    },
+    {
+      "id": "pipeline",
+      "name": "ML Pipeline",
+      "tenant": "recommendation",
+      "requirements": [
+        "self_service",
+        "workload_lifecycle",
+        "queue",
+        "artifact_store",
+        "tenant_isolation",
+        "observability",
+        "cost_attribution"
+      ]
+    },
+    {
+      "id": "inference",
+      "name": "在线模型服务",
+      "tenant": "product",
+      "requirements": [
+        "self_service",
+        "workload_lifecycle",
+        "model_lifecycle",
+        "quota",
+        "gpu_allocation",
+        "device_health",
+        "artifact_store",
+        "tenant_isolation",
+        "release_policy",
+        "observability",
+        "cost_attribution",
+        "incident_response"
+      ]
+    }
+  ],
+  "request_path": [
+    {
+      "order": 1,
+      "name": "用户提交需求",
+      "capability": "self_service",
+      "component": "portal"
+    },
+    {
+      "order": 2,
+      "name": "解析项目空间",
+      "capability": "workspace",
+      "component": "portal"
+    },
+    {
+      "order": 3,
+      "name": "验证隔离和发布策略",
+      "capability": "tenant_isolation",
+      "component": "policy_engine"
+    },
+    {
+      "order": 4,
+      "name": "检查配额",
+      "capability": "quota",
+      "component": "queue_manager"
+    },
+    {
+      "order": 5,
+      "name": "进入队列并获得准入",
+      "capability": "queue",
+      "component": "queue_manager"
+    },
+    {
+      "order": 6,
+      "name": "创建工作负载",
+      "capability": "workload_lifecycle",
+      "component": "workload_controller"
+    },
+    {
+      "order": 7,
+      "name": "分配健康 GPU",
+      "capability": "gpu_allocation",
+      "component": "gpu_operator"
+    },
+    {
+      "order": 8,
+      "name": "准备数据与模型",
+      "capability": "artifact_store",
+      "component": "object_store"
+    },
+    {
+      "order": 9,
+      "name": "采集运行信号",
+      "capability": "observability",
+      "component": "telemetry"
+    },
+    {
+      "order": 10,
+      "name": "归属成本",
+      "capability": "cost_attribution",
+      "component": "cost_service"
+    }
+  ],
+  "boundaries": {
+    "training_data_plane": "一期与训练框架负责并行算法和训练执行；第五期只管理作业生命周期。",
+    "inference_data_plane": "三期负责推理引擎和请求执行；第五期只管理服务控制面和发布治理。",
+    "evaluation_input": "第四期产生评测报告；第五期把报告作为模型晋级和发布门禁输入。",
+    "platform_control_plane": "第五期负责身份、策略、配额、准入、生命周期、观测、成本和审计。"
+  }
+}

@@ -1,0 +1,170 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+from dataclasses import dataclass, asdict
+from pathlib import Path
+from typing import Iterable
+
+
+ROOT = Path(__file__).resolve().parent
+INPUT = ROOT / "data" / "raw_sources.jsonl"
+OUTPUT = ROOT / "outputs"
+RECIPE_ID = "lesson01-clean-v1"
+DATASET_VERSION = "support-sft-2026-08-21"
+
+
+def sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def stable_id(prefix: str, *parts: str) -> str:
+    payload = "\x1f".join(parts)
+    return f"{prefix}-{sha256_text(payload)[:16]}"
+
+
+def read_jsonl(path: Path) -> Iterable[dict]:
+    with path.open("r", encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            row["_line_number"] = line_number
+            yield row
+
+
+def write_jsonl(path: Path, rows: Iterable[dict]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as handle:
+        for row in rows:
+            handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def redact_pii(text: str) -> tuple[str, list[dict]]:
+    findings = []
+    pattern = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+
+    def replace(match: re.Match[str]) -> str:
+        findings.append({
+            "type": "email",
+            "start": match.start(),
+            "end": match.end(),
+            "value_sha256": sha256_text(match.group(0)),
+        })
+        return "<EMAIL_REDACTED>"
+
+    return pattern.sub(replace, text), findings
+
+
+def simple_tokenize(text: str) -> list[str]:
+    return re.findall(r"\w+|[^\w\s]", text, flags=re.UNICODE)
+
+
+def main() -> None:
+    documents = []
+    samples = []
+    sequences = []
+    lineage = []
+
+    for raw in read_jsonl(INPUT):
+        source_id = raw["source_id"]
+        raw_text = raw["text"]
+        document_id = stable_id("doc", source_id, raw_text)
+        cleaned_text, pii_findings = redact_pii(raw_text.strip())
+
+        document = {
+            "document_id": document_id,
+            "source_id": source_id,
+            "source_license": raw["license"],
+            "raw_sha256": sha256_text(raw_text),
+            "text": cleaned_text,
+            "recipe_id": RECIPE_ID,
+            "pii_findings": pii_findings,
+        }
+        documents.append(document)
+        lineage.append({
+            "event": "parsed_and_cleaned",
+            "input_type": "source_capture",
+            "input_id": source_id,
+            "output_type": "document",
+            "output_id": document_id,
+            "recipe_id": RECIPE_ID,
+        })
+
+        sample_id = stable_id("sample", document_id, "sft-v1")
+        sample = {
+            "sample_id": sample_id,
+            "parent_document_id": document_id,
+            "messages": [
+                {"role": "user", "content": "Summarize the support fact."},
+                {"role": "assistant", "content": cleaned_text},
+            ],
+            "dataset_version": DATASET_VERSION,
+        }
+        samples.append(sample)
+        lineage.append({
+            "event": "derived_sft_sample",
+            "input_type": "document",
+            "input_id": document_id,
+            "output_type": "sample",
+            "output_id": sample_id,
+            "recipe_id": "sft-derive-v1",
+        })
+
+        serialized = "<user> Summarize the support fact. <assistant> " + cleaned_text
+        tokens = simple_tokenize(serialized)
+        sequence_id = stable_id("seq", sample_id, "simple-tokenizer-v1")
+        sequence = {
+            "sequence_id": sequence_id,
+            "parent_sample_ids": [sample_id],
+            "tokenizer_version": "simple-tokenizer-v1",
+            "tokens": tokens,
+            "loss_mask": [0 if token != "<" else 0 for token in tokens],
+        }
+        assistant_marker = tokens.index("assistant") if "assistant" in tokens else 0
+        sequence["loss_mask"] = [
+            1 if index > assistant_marker + 1 else 0
+            for index in range(len(tokens))
+        ]
+        sequences.append(sequence)
+        lineage.append({
+            "event": "tokenized",
+            "input_type": "sample",
+            "input_id": sample_id,
+            "output_type": "sequence",
+            "output_id": sequence_id,
+            "recipe_id": "simple-tokenizer-v1",
+        })
+
+    run_manifest = {
+        "run_id": stable_id("run", DATASET_VERSION, RECIPE_ID),
+        "run_type": "mechanism_simulation",
+        "dataset_version": DATASET_VERSION,
+        "recipe_versions": [RECIPE_ID, "sft-derive-v1", "simple-tokenizer-v1"],
+        "document_ids": [row["document_id"] for row in documents],
+        "sample_ids": [row["sample_id"] for row in samples],
+        "sequence_ids": [row["sequence_id"] for row in sequences],
+    }
+
+    write_jsonl(OUTPUT / "documents.jsonl", documents)
+    write_jsonl(OUTPUT / "samples.jsonl", samples)
+    write_jsonl(OUTPUT / "sequences.jsonl", sequences)
+    write_jsonl(OUTPUT / "lineage.jsonl", lineage)
+    (OUTPUT / "run_manifest.json").write_text(
+        json.dumps(run_manifest, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    print(json.dumps({
+        "status": "succeeded",
+        "documents": len(documents),
+        "samples": len(samples),
+        "sequences": len(sequences),
+        "lineage_events": len(lineage),
+        "run_id": run_manifest["run_id"],
+    }, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

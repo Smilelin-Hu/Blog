@@ -1,0 +1,127 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import random
+
+try:
+    import torch
+    import torch.distributed as dist
+    from torch import nn
+except Exception as exc:
+    print(json.dumps({"status": "skipped", "reason": f"torch unavailable: {exc}"}))
+    raise SystemExit(0)
+
+
+def skip(reason: str) -> None:
+    print(json.dumps({"status": "skipped", "reason": reason}))
+    raise SystemExit(0)
+
+
+def make_batch(domain: str, batch: int, length: int, vocab: int, device, seed: int):
+    generator = torch.Generator(device=device)
+    generator.manual_seed(seed)
+    if domain == "target":
+        low, high = vocab // 2, vocab
+    else:
+        low, high = 0, vocab // 2
+    return torch.randint(low, high, (batch, length + 1), generator=generator, device=device)
+
+
+def evaluate(model, domain, device, vocab, length):
+    model.eval()
+    total = torch.zeros(2, dtype=torch.float64, device=device)
+    with torch.no_grad():
+        for index in range(8):
+            tokens = make_batch(domain, 2, length, vocab, device, 90_000 + index)
+            logits = model(tokens[:, :-1])
+            loss = nn.functional.cross_entropy(
+                logits.reshape(-1, vocab), tokens[:, 1:].reshape(-1), reduction="sum"
+            )
+            total[0] += loss.double()
+            total[1] += tokens[:, 1:].numel()
+    dist.all_reduce(total)
+    model.train()
+    return float((total[0] / total[1]).item())
+
+
+def digest(model) -> str:
+    module = model.module if hasattr(model, "module") else model
+    raw = b"".join(
+        value.detach().float().cpu().contiguous().numpy().tobytes()
+        for value in module.parameters()
+    )
+    return hashlib.sha256(raw).hexdigest()
+
+
+def main() -> None:
+    if not torch.cuda.is_available():
+        skip("CUDA unavailable")
+    if torch.cuda.device_count() < 1:
+        skip(f"requires at least one CUDA device, found {torch.cuda.device_count()}")
+    if int(os.environ.get("WORLD_SIZE", "1")) < 1:
+        skip("launch with one or more torchrun ranks")
+    dist.init_process_group("nccl")
+    rank = dist.get_rank()
+    local_rank = int(os.environ["LOCAL_RANK"])
+    torch.cuda.set_device(local_rank)
+    device = torch.device("cuda", local_rank)
+    torch.manual_seed(20260822)
+    vocab, hidden, length = 2048, 256, 256
+    base = nn.Sequential(
+        nn.Embedding(vocab, hidden),
+        nn.LayerNorm(hidden),
+        nn.Linear(hidden, vocab, bias=False),
+    ).to(device)
+    model = nn.parallel.DistributedDataParallel(base, device_ids=[local_rank])
+    optimizer = torch.optim.AdamW(model.parameters(), lr=2e-4)
+    target_ratio = 0.65
+    rng = random.Random(20260822 + rank)
+    consumed = {"target": 0, "replay": 0}
+    try:
+        before = {
+            "target_loss": evaluate(model, "target", device, vocab, length),
+            "general_loss": evaluate(model, "general", device, vocab, length),
+            "digest": digest(model),
+        }
+        for step in range(120):
+            domain = "target" if rng.random() < target_ratio else "replay"
+            source = "target" if domain == "target" else "general"
+            tokens = make_batch(source, 2, length, vocab, device, rank * 100_000 + step)
+            logits = model(tokens[:, :-1])
+            loss = nn.functional.cross_entropy(
+                logits.reshape(-1, vocab), tokens[:, 1:].reshape(-1)
+            )
+            optimizer.zero_grad(set_to_none=True)
+            loss.backward()
+            optimizer.step()
+            consumed[domain] += tokens[:, 1:].numel()
+        tensor = torch.tensor([consumed["target"], consumed["replay"]], device=device)
+        dist.all_reduce(tensor)
+        after = {
+            "target_loss": evaluate(model, "target", device, vocab, length),
+            "general_loss": evaluate(model, "general", device, vocab, length),
+            "digest": digest(model),
+        }
+        if rank == 0:
+            print(json.dumps({
+                "status": "passed",
+                "before": before,
+                "after": after,
+                "consumed_tokens": {"target": int(tensor[0]), "replay": int(tensor[1])},
+                "peak_allocated_bytes": torch.cuda.max_memory_allocated(device),
+                "claim_boundary": "synthetic CPT mechanism only",
+            }))
+    except torch.cuda.OutOfMemoryError as exc:
+        if rank == 0:
+            print(json.dumps({
+                "status": "skipped", "reason": f"CUDA OOM: {exc}",
+                "suggestion": "reduce hidden, length, or micro batch",
+            }))
+    finally:
+        dist.destroy_process_group()
+
+
+if __name__ == "__main__":
+    main()

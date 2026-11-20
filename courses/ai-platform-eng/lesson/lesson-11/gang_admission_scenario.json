@@ -1,0 +1,143 @@
+{
+  "nodes": [
+    {
+      "name": "gpu-node-a",
+      "gpu_capacity": 2,
+      "gpu_allocated": 0,
+      "zone": "zone-a"
+    },
+    {
+      "name": "gpu-node-b",
+      "gpu_capacity": 2,
+      "gpu_allocated": 0,
+      "zone": "zone-a"
+    },
+    {
+      "name": "gpu-node-c",
+      "gpu_capacity": 2,
+      "gpu_allocated": 0,
+      "zone": "zone-b"
+    }
+  ],
+  "jobs": [
+    {
+      "name": "train-a",
+      "members": 4,
+      "created_members": 4,
+      "min_member": 4,
+      "gpu_per_member": 1,
+      "priority": 100
+    },
+    {
+      "name": "train-b",
+      "members": 4,
+      "created_members": 4,
+      "min_member": 4,
+      "gpu_per_member": 1,
+      "priority": 100
+    }
+  ],
+  "interleaving": [
+    "train-a",
+    "train-b",
+    "train-a",
+    "train-b",
+    "train-a",
+    "train-b",
+    "train-a",
+    "train-b"
+  ],
+  "kueue": {
+    "gpu_quota": 6,
+    "pods_ready_timeout_seconds": 120,
+    "recovery_timeout_seconds": 60,
+    "backoff_base_seconds": 30,
+    "block_admission": true
+  },
+  "elastic_job": {
+    "name": "elastic-train",
+    "min_member": 3,
+    "max_member": 5,
+    "gpu_per_member": 1
+  },
+  "faults": [
+    {
+      "name": "podgroup-member-object-missing",
+      "type": "members_missing",
+      "expected_phase": "PRE_ENQUEUE_WAIT",
+      "expected_reason": "MembersBelowMinMember"
+    },
+    {
+      "name": "cluster-only-has-three-free-gpus",
+      "type": "insufficient_group_capacity",
+      "nodes": [
+        {
+          "name": "fault-a",
+          "gpu_capacity": 2,
+          "gpu_allocated": 0
+        },
+        {
+          "name": "fault-b",
+          "gpu_capacity": 1,
+          "gpu_allocated": 0
+        }
+      ],
+      "expected_phase": "UNSCHEDULABLE",
+      "expected_reason": "GangNotFeasible"
+    },
+    {
+      "name": "permit-quorum-timeout",
+      "type": "permit_timeout",
+      "expected_phase": "REJECTED",
+      "expected_reason": "PermitTimeout"
+    },
+    {
+      "name": "one-worker-never-ready",
+      "type": "pods_ready_timeout",
+      "expected_phase": "REQUEUED",
+      "expected_reason": "PodsReadyTimeout"
+    },
+    {
+      "name": "duplicate-admission-event",
+      "type": "duplicate_admission",
+      "expected_phase": "ADMITTED",
+      "expected_reason": "IdempotentExistingReservation"
+    },
+    {
+      "name": "controller-restarts-after-reservation",
+      "type": "controller_restart",
+      "expected_phase": "ADMITTED",
+      "expected_reason": "ReservationReconstructedFromStatus"
+    },
+    {
+      "name": "quota-release-api-timeout",
+      "type": "quota_release_retry",
+      "expected_phase": "RELEASED",
+      "expected_reason": "ReleaseRetriedIdempotently"
+    },
+    {
+      "name": "members-use-different-schedulers",
+      "type": "mixed_scheduler_names",
+      "expected_phase": "REJECTED",
+      "expected_reason": "InconsistentSchedulerName"
+    },
+    {
+      "name": "preempt-whole-low-priority-workload",
+      "type": "group_preemption",
+      "expected_phase": "EVICTED",
+      "expected_reason": "WholeWorkloadPreempted"
+    },
+    {
+      "name": "running-group-loses-one-member",
+      "type": "partial_member_loss",
+      "expected_phase": "RECOVERY_WAIT",
+      "expected_reason": "BelowMinMemberAfterFailure"
+    },
+    {
+      "name": "members-have-different-priorities",
+      "type": "priority_inversion",
+      "expected_phase": "BLOCKED",
+      "expected_reason": "GroupPriorityMustBeConsistent"
+    }
+  ]
+}

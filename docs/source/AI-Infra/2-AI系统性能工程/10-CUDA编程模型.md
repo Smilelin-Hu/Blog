@@ -211,10 +211,7 @@ Barrier 只协调到达与可见性，不能把多个线程的 Read-Modify-Write
 
 Stream 是有序工作队列：同一 Stream 中操作按提交顺序执行，不同 Stream 的独立工作**可能**并发。
 
-```text
-Stream 0: H2D A → Kernel A → D2H A
-Stream 1: H2D B → Kernel B → D2H B
-```
+![ai2-10-L214](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l10_01.png)
 
 实际能否重叠取决于：GPU 是否有相应 Copy Engine；Host Buffer 是否 Page-locked；Kernel 是否占满全部 SM 与 Memory Bandwidth；两项工作是否有真实依赖；默认 Stream 和其他隐式同步；Device Allocation、Page-locked Allocation 等同步行为；消息是否大到足以摊薄 Launch 开销。
 

@@ -141,23 +141,11 @@ $TTFT_A=0.3+2+12+125.6=139.9$ ms，$TTFT_B=200+512+768+1738.4=3218.4$ ms（此�
 
 最差实现：
 
-```text
-CPU 下载
-等待
-CPU 解码
-等待
-GPU Encoder
-等待
-LLM
-```
+![多模态串行管线：每级之间都在等](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l14_03.png)
 
 更合理：
 
-```text
-Req A: Download → Decode → Encoder → LLM
-Req B:          Download → Decode → Encoder → LLM
-Req C:                   Download → Decode → Encoder → LLM
-```
+![ai3-14-L156](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l14_01.png)
 
 目标是用异步 I/O、线程池和独立 GPU/stream，把不同请求阶段重叠。这不是重新讲 CUDA stream，而是把它放到多模态 Serving 的资源编排中。
 
@@ -414,9 +402,7 @@ $$E[TTFT]=T_{prefill}+0.20\,T_{enc}+0.18\,(T_{enc}+T_{prep})+0.12\,(T_{enc}+T_{p
 
 **分池**：
 
-```text
-Media → Encoder Pool → Feature → LLM Pool
-```
+![ai3-14-L417](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l14_02.png)
 
 优点是可独立扩缩容和选择硬件；缺点是需要网络/IPC，增加故障面。是否拆分必须根据 $T_{encoder}$、TrafficMix、FeatureSize、SLO 实测。
 

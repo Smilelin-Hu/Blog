@@ -1,0 +1,88 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Doc:
+    record_id: str
+    text: str
+    language: str
+    quality: float
+
+
+def embed(text: str, dim: int = 128, n: int = 3) -> list[float]:
+    normalized = " ".join(text.casefold().split())
+    vec = [0.0] * dim
+    grams = [normalized[i:i+n] for i in range(max(0, len(normalized)-n+1))]
+    for gram in grams:
+        raw = hashlib.blake2b(gram.encode("utf-8"), digest_size=8).digest()
+        value = int.from_bytes(raw, "big")
+        vec[value % dim] += 1.0 if value & 1 else -1.0
+    norm = math.sqrt(sum(x*x for x in vec))
+    return [x / norm for x in vec] if norm else vec
+
+
+def cosine(a, b):
+    return sum(x*y for x, y in zip(a, b))
+
+
+def components(ids, edges):
+    parent = {x: x for x in ids}
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+    def union(a, b):
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[max(ra, rb)] = min(ra, rb)
+    for a, b, _ in edges:
+        union(a, b)
+    groups = {}
+    for item in ids:
+        groups.setdefault(find(item), []).append(item)
+    return [sorted(v) for v in groups.values()]
+
+
+def main():
+    docs = [
+        Doc("a", "数据去重需要保留多样性。", "zh", 0.90),
+        Doc("b", "做数据去重时必须保护表达多样性。", "zh", 0.85),
+        Doc("c", "语义相似不代表应该删除。", "zh", 0.95),
+        Doc("d", "Semantic similarity is evidence, not deletion truth.", "en", 0.92),
+        Doc("e", "立即购买立即购买立即购买", "zh", 0.10),
+    ]
+    vectors = {d.record_id: embed(d.text) for d in docs}
+    threshold = 0.45
+    edges = []
+    for i, left in enumerate(docs):
+        for right in docs[i+1:]:
+            score = cosine(vectors[left.record_id], vectors[right.record_id])
+            if score >= threshold:
+                edges.append((min(left.record_id, right.record_id),
+                              max(left.record_id, right.record_id), score))
+    groups = components([d.record_id for d in docs], edges)
+    by_id = {d.record_id: d for d in docs}
+    selected = []
+    for group in groups:
+        by_language = {}
+        for rid in group:
+            d = by_id[rid]
+            current = by_language.get(d.language)
+            if current is None or (d.quality, d.record_id) > (current.quality, current.record_id):
+                by_language[d.language] = d
+        selected.extend(sorted(d.record_id for d in by_language.values()))
+    print(json.dumps({"status": "passed", "threshold": threshold,
+                      "edges": edges, "components": groups,
+                      "selected": sorted(selected),
+                      "limitations": "hash n-gram vectors are mechanism-only, not semantic truth"},
+                     ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

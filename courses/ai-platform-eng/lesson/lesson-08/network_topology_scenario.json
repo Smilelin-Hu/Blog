@@ -1,0 +1,345 @@
+{
+  "traffic_planes": [
+    {
+      "name": "management",
+      "network": "primary-cni",
+      "slo": "available",
+      "bandwidth_gbps": 10
+    },
+    {
+      "name": "pod-service",
+      "network": "primary-cni",
+      "slo": "policy-controlled",
+      "bandwidth_gbps": 25
+    },
+    {
+      "name": "storage",
+      "network": "storage-net",
+      "slo": "throughput",
+      "bandwidth_gbps": 100
+    },
+    {
+      "name": "training",
+      "network": "train-roce",
+      "slo": "low-latency",
+      "bandwidth_gbps": 400
+    },
+    {
+      "name": "observability",
+      "network": "primary-cni",
+      "slo": "non-blocking",
+      "bandwidth_gbps": 10
+    }
+  ],
+  "networks": {
+    "primary-cni": {
+      "type": "overlay",
+      "mtu": 1450,
+      "rdma": false,
+      "gpudirect": false
+    },
+    "storage-net": {
+      "type": "macvlan",
+      "mtu": 9000,
+      "rdma": false,
+      "gpudirect": false
+    },
+    "train-roce": {
+      "type": "sriov",
+      "mtu": 9000,
+      "rdma": true,
+      "gpudirect": true,
+      "pfc": true,
+      "ecn": true,
+      "rails": [
+        "rail-a",
+        "rail-b"
+      ]
+    }
+  },
+  "nodes": [
+    {
+      "name": "gpu-a1",
+      "zone": "zone-1",
+      "rack": "rack-a",
+      "gpu_count": 8,
+      "rdma": true,
+      "gpudirect": true,
+      "driver_generation": "validated-2026q3",
+      "networks": [
+        "primary-cni",
+        "storage-net",
+        "train-roce"
+      ],
+      "rails": {
+        "rail-a": "up",
+        "rail-b": "up"
+      },
+      "numa": {
+        "0": {
+          "gpus": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "nics": [
+            "mlx5_0"
+          ]
+        },
+        "1": {
+          "gpus": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "nics": [
+            "mlx5_1"
+          ]
+        }
+      }
+    },
+    {
+      "name": "gpu-a2",
+      "zone": "zone-1",
+      "rack": "rack-a",
+      "gpu_count": 8,
+      "rdma": true,
+      "gpudirect": true,
+      "driver_generation": "validated-2026q3",
+      "networks": [
+        "primary-cni",
+        "storage-net",
+        "train-roce"
+      ],
+      "rails": {
+        "rail-a": "up",
+        "rail-b": "up"
+      },
+      "numa": {
+        "0": {
+          "gpus": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "nics": [
+            "mlx5_0"
+          ]
+        },
+        "1": {
+          "gpus": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "nics": [
+            "mlx5_1"
+          ]
+        }
+      }
+    },
+    {
+      "name": "gpu-b1",
+      "zone": "zone-1",
+      "rack": "rack-b",
+      "gpu_count": 8,
+      "rdma": true,
+      "gpudirect": true,
+      "driver_generation": "validated-2026q3",
+      "networks": [
+        "primary-cni",
+        "storage-net",
+        "train-roce"
+      ],
+      "rails": {
+        "rail-a": "up",
+        "rail-b": "up"
+      },
+      "numa": {
+        "0": {
+          "gpus": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "nics": [
+            "mlx5_0"
+          ]
+        },
+        "1": {
+          "gpus": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "nics": [
+            "mlx5_1"
+          ]
+        }
+      }
+    },
+    {
+      "name": "gpu-b2",
+      "zone": "zone-1",
+      "rack": "rack-b",
+      "gpu_count": 8,
+      "rdma": true,
+      "gpudirect": true,
+      "driver_generation": "validated-2026q3",
+      "networks": [
+        "primary-cni",
+        "storage-net",
+        "train-roce"
+      ],
+      "rails": {
+        "rail-a": "up",
+        "rail-b": "up"
+      },
+      "numa": {
+        "0": {
+          "gpus": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "nics": [
+            "mlx5_0"
+          ]
+        },
+        "1": {
+          "gpus": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "nics": [
+            "mlx5_1"
+          ]
+        }
+      }
+    }
+  ],
+  "workloads": [
+    {
+      "name": "sixteen-gpu-training",
+      "nodes": 2,
+      "gpus_per_node": 8,
+      "network": "train-roce",
+      "requires_rdma": true,
+      "requires_gpudirect": true,
+      "placement": "same-rack",
+      "required_rails": [
+        "rail-a",
+        "rail-b"
+      ],
+      "expected_phase": "Allocated"
+    },
+    {
+      "name": "ha-inference",
+      "nodes": 2,
+      "gpus_per_node": 1,
+      "network": "primary-cni",
+      "requires_rdma": false,
+      "requires_gpudirect": false,
+      "placement": "different-rack",
+      "required_rails": [],
+      "expected_phase": "Allocated"
+    },
+    {
+      "name": "checkpoint-writer",
+      "nodes": 1,
+      "gpus_per_node": 4,
+      "network": "storage-net",
+      "requires_rdma": false,
+      "requires_gpudirect": false,
+      "placement": "any",
+      "required_rails": [],
+      "expected_phase": "Allocated"
+    }
+  ],
+  "faults": [
+    {
+      "name": "secondary-network-missing",
+      "type": "nad_missing",
+      "expected_phase": "SandboxBlocked",
+      "expected_reason": "NetworkAttachmentDefinitionUnavailable"
+    },
+    {
+      "name": "end-to-end-mtu-mismatch",
+      "type": "mtu_mismatch",
+      "path_mtus": [
+        9000,
+        9000,
+        1500,
+        9000
+      ],
+      "payload_bytes": 4096,
+      "expected_phase": "RunningDegraded",
+      "expected_reason": "PathMTUMismatch"
+    },
+    {
+      "name": "roce-congestion-control-disabled",
+      "type": "roce_lossless_misconfigured",
+      "pfc": false,
+      "ecn": false,
+      "expected_phase": "RunningDegraded",
+      "expected_reason": "RoCECongestionControlMissing"
+    },
+    {
+      "name": "rdma-device-not-advertised",
+      "type": "rdma_missing",
+      "expected_phase": "Pending",
+      "expected_reason": "RDMAResourceUnavailable"
+    },
+    {
+      "name": "gpudirect-peer-memory-unavailable",
+      "type": "gpudirect_missing",
+      "expected_phase": "CapabilityBlocked",
+      "expected_reason": "GPUDirectPathUnavailable"
+    },
+    {
+      "name": "gpu-nic-cross-numa",
+      "type": "numa_mismatch",
+      "gpu": 1,
+      "nic": "mlx5_1",
+      "expected_phase": "RunningDegraded",
+      "expected_reason": "GPUNICNUMAMisaligned"
+    },
+    {
+      "name": "second-rail-down",
+      "type": "rail_down",
+      "rail": "rail-b",
+      "expected_phase": "PlacementBlocked",
+      "expected_reason": "RequiredNetworkRailUnavailable"
+    },
+    {
+      "name": "node-driver-generation-skew",
+      "type": "driver_skew",
+      "generations": [
+        "validated-2026q3",
+        "candidate-2026q4"
+      ],
+      "expected_phase": "Quarantined",
+      "expected_reason": "NetworkDriverGenerationSkew"
+    },
+    {
+      "name": "nccl-selects-unroutable-interface",
+      "type": "interface_selection",
+      "interfaces": {
+        "eth0": "routable",
+        "docker0": "unroutable"
+      },
+      "selected": "docker0",
+      "expected_phase": "InitializationBlocked",
+      "expected_reason": "SelectedInterfaceUnroutable"
+    }
+  ]
+}

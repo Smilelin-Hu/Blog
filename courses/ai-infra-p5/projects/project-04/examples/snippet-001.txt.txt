@@ -1,0 +1,18 @@
+feedback_factory/
+  catalogs/tasks.yaml
+  prompts/generator/
+  prompts/judge/
+  schemas/task.json
+  schemas/candidate.json
+  schemas/preference.json
+  schemas/reward_score.json
+  src/generate.py
+  src/verify.py
+  src/annotate.py
+  src/aggregate.py
+  src/train_reward.py
+  src/evaluate_reward.py
+  src/release.py
+  tests/position_bias/
+  tests/reward_hacking/
+  artifacts/cards/

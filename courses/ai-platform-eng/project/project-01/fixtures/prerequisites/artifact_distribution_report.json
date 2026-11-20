@@ -1,0 +1,136 @@
+{
+  "status": "PASS",
+  "artifact_mappings": [
+    {
+      "name": "training-dataset",
+      "access": "read-many-streaming",
+      "mutability": "versioned",
+      "recommended_store": "object"
+    },
+    {
+      "name": "checkpoint",
+      "access": "periodic-write-and-restore",
+      "mutability": "append-version",
+      "recommended_store": "object"
+    },
+    {
+      "name": "model-weights",
+      "access": "immutable-read-many",
+      "mutability": "digest-pinned",
+      "recommended_store": "object-plus-local-cache"
+    },
+    {
+      "name": "container-image",
+      "access": "layered-read-many",
+      "mutability": "digest-pinned",
+      "recommended_store": "oci-registry"
+    },
+    {
+      "name": "pipeline-artifact",
+      "access": "small-object-and-metadata",
+      "mutability": "run-versioned",
+      "recommended_store": "object"
+    }
+  ],
+  "distribution_metrics": [
+    {
+      "name": "remote-cold",
+      "origin_egress_gib": 480,
+      "startup_seconds": 192.0,
+      "consistency": "source-read-at-start",
+      "passed": true
+    },
+    {
+      "name": "warm-node-cache",
+      "origin_egress_gib": 0,
+      "startup_seconds": 38.4,
+      "consistency": "digest-verified-cache-hit",
+      "passed": true
+    },
+    {
+      "name": "prewarmed-cache",
+      "origin_egress_gib": 480,
+      "startup_seconds": 38.4,
+      "consistency": "digest-verified-before-scheduling",
+      "passed": true
+    },
+    {
+      "name": "p2p",
+      "origin_egress_gib": 120,
+      "startup_seconds": 72.0,
+      "consistency": "digest-verified-peer-content",
+      "passed": true
+    }
+  ],
+  "integrity": {
+    "v1_digest": "sha256:5cab1b4e170195646a507ab658eed9c1943c100413d12f7d462414a46c13b304",
+    "v2_digest": "sha256:439745d097c89a49a205c95efe85872e22b3180ab4c736077a17295bb7a81ae2",
+    "initial_cache_hit": false,
+    "post_fetch_verified": true,
+    "mutable_tag_boundary": "tags are resolved before caching; digests identify cache entries"
+  },
+  "faults": [
+    {
+      "name": "pvc-topology-unsatisfied",
+      "passed": true,
+      "phase": "Pending",
+      "reason": "NoCompatibleStorageTopology"
+    },
+    {
+      "name": "volume-secret-missing",
+      "passed": true,
+      "phase": "MountBlocked",
+      "reason": "StorageCredentialUnavailable"
+    },
+    {
+      "name": "rwo-multi-attach",
+      "passed": true,
+      "phase": "MountBlocked",
+      "reason": "ReadWriteOnceMultiAttach"
+    },
+    {
+      "name": "multipart-not-completed",
+      "passed": true,
+      "phase": "NotPublished",
+      "reason": "MultipartUploadIncomplete"
+    },
+    {
+      "name": "checkpoint-pointer-before-manifest",
+      "passed": true,
+      "phase": "RestoreBlocked",
+      "reason": "CheckpointManifestUnavailable"
+    },
+    {
+      "name": "mutable-tag-stale-cache",
+      "passed": true,
+      "phase": "Stale",
+      "reason": "MutableReferenceChanged"
+    },
+    {
+      "name": "cache-digest-corrupted",
+      "passed": true,
+      "phase": "Quarantined",
+      "reason": "DigestVerificationFailed"
+    },
+    {
+      "name": "node-cache-disk-pressure",
+      "passed": true,
+      "phase": "PrewarmBlocked",
+      "reason": "InsufficientEvictableCapacity",
+      "evictable_gib": 40
+    },
+    {
+      "name": "origin-cold-start-storm",
+      "passed": true,
+      "phase": "Throttled",
+      "reason": "OriginConcurrencyExceeded"
+    },
+    {
+      "name": "snapshot-not-crash-consistent",
+      "passed": true,
+      "phase": "SnapshotCreatedUnsafe",
+      "reason": "ApplicationConsistencyNotGuaranteed"
+    }
+  ],
+  "measurement_boundary": "startup times are deterministic capacity-model results, not measured storage performance"
+}

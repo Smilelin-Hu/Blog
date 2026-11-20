@@ -1,0 +1,331 @@
+{
+  "platform": {
+    "cluster": "ai-platform-prod-a",
+    "region": "ap-northeast-1",
+    "policy_version": "sre-2026-08-22",
+    "evidence_window_end": "2026-08-22T04:00:00Z"
+  },
+  "slos": {
+    "online_availability": {
+      "target": 0.999,
+      "minimum_events": 10000,
+      "window": "30d"
+    },
+    "training_admission": {
+      "target": 0.99,
+      "minimum_events": 100,
+      "window": "30d"
+    }
+  },
+  "slo_evidence": {
+    "online_availability": [
+      {
+        "name": "day-1",
+        "good_events": 499800,
+        "total_events": 500000
+      },
+      {
+        "name": "day-2",
+        "good_events": 499750,
+        "total_events": 500000
+      }
+    ],
+    "training_admission": [
+      {
+        "name": "week-1",
+        "good_events": 247,
+        "total_events": 250
+      },
+      {
+        "name": "week-2",
+        "good_events": 249,
+        "total_events": 250
+      }
+    ]
+  },
+  "sli_windows": [
+    {
+      "name": "5m",
+      "good_events": 9950,
+      "total_events": 10000
+    },
+    {
+      "name": "1h",
+      "good_events": 119600,
+      "total_events": 120000
+    },
+    {
+      "name": "30m",
+      "good_events": 59700,
+      "total_events": 60000
+    },
+    {
+      "name": "6h",
+      "good_events": 716900,
+      "total_events": 720000
+    }
+  ],
+  "burn_policy": {
+    "slo": "online_availability",
+    "rules": [
+      {
+        "name": "fast-page",
+        "short_window": "5m",
+        "long_window": "1h",
+        "threshold": 14.4,
+        "minimum_short_events": 1000,
+        "minimum_long_events": 10000
+      },
+      {
+        "name": "slow-ticket",
+        "short_window": "30m",
+        "long_window": "6h",
+        "threshold": 3.0,
+        "minimum_short_events": 5000,
+        "minimum_long_events": 50000
+      }
+    ]
+  },
+  "telemetry": {
+    "completeness_ratio": 0.9995,
+    "freshness_seconds": 18,
+    "unknown_series_ratio": 0.002,
+    "clock_skew_seconds": 1.2
+  },
+  "policy": {
+    "minimum_telemetry_completeness": 0.995,
+    "maximum_telemetry_freshness_seconds": 60,
+    "maximum_unknown_series_ratio": 0.01,
+    "maximum_clock_skew_seconds": 5
+  },
+  "alerts": [
+    {
+      "fingerprint": "fp-cluster-a-node-7",
+      "alertname": "NodeUnavailable",
+      "labels": {
+        "cluster": "ai-platform-prod-a",
+        "service": "node",
+        "severity": "page"
+      },
+      "runbook_url": "runbooks/node-unavailable.md"
+    },
+    {
+      "fingerprint": "fp-cluster-a-pod-latency",
+      "alertname": "InferencePodLatencyHigh",
+      "labels": {
+        "cluster": "ai-platform-prod-a",
+        "service": "assistant-inference",
+        "severity": "page"
+      },
+      "runbook_url": "runbooks/inference-latency.md"
+    },
+    {
+      "fingerprint": "fp-cluster-a-gpu-health",
+      "alertname": "GPUHealthDegraded",
+      "labels": {
+        "cluster": "ai-platform-prod-a",
+        "service": "gpu-node",
+        "severity": "page"
+      },
+      "runbook_url": "runbooks/gpu-health.md"
+    }
+  ],
+  "alert_policy": {
+    "group_by": [
+      "cluster",
+      "service",
+      "severity"
+    ],
+    "inhibit_rules": [
+      {
+        "source_alertname": "NodeUnavailable",
+        "target_alertnames": [
+          "InferencePodLatencyHigh",
+          "GPUHealthDegraded"
+        ],
+        "equal": [
+          "cluster"
+        ]
+      }
+    ]
+  },
+  "chaos_experiment": {
+    "name": "assistant-pod-kill",
+    "kind": "PodChaos",
+    "action": "pod-kill",
+    "mode": "one",
+    "selector": {
+      "namespaces": [
+        "sre-lab"
+      ],
+      "label_selectors": {
+        "app.kubernetes.io/name": "assistant-inference"
+      }
+    },
+    "estimated_targets": 1,
+    "duration_seconds": 60,
+    "abort_signal": "SLOFastBurnOrNoReadyReplica",
+    "production": false,
+    "approval_id": null,
+    "steady_state_verified": true
+  },
+  "chaos_policy": {
+    "protected_namespaces": [
+      "kube-system",
+      "gpu-operator",
+      "monitoring",
+      "production"
+    ],
+    "maximum_chaos_targets": 1,
+    "maximum_chaos_duration_seconds": 120
+  },
+  "remediation_policy": {
+    "minimum_evidence_count": 2,
+    "maximum_attempts_per_hour": 2,
+    "cooldown_seconds": 300,
+    "fault_actions": {
+      "pod_crash_loop": {
+        "name": "restart_single_workload_revision",
+        "risk": "low",
+        "requires_eviction": false,
+        "requires_idle_gpu": false,
+        "verification": "ready_replicas_and_sli_recover_for_10m",
+        "rollback": "restore_previous_revision"
+      },
+      "gpu_xid_fault": {
+        "name": "cordon_node_then_passive_health_check_and_idle_diagnostic",
+        "risk": "containment",
+        "requires_eviction": false,
+        "requires_idle_gpu": true,
+        "verification": "dcgm_health_clean_and_test_workload_passes",
+        "rollback": "keep_node_cordoned_and_escalate_hardware_ticket"
+      }
+    }
+  },
+  "incidents": [
+    {
+      "fault_type": "pod_crash_loop",
+      "evidence_count": 3,
+      "telemetry_status": "PASS",
+      "error_budget_exhausted": false,
+      "attempts_last_hour": 0,
+      "seconds_since_last_action": 900,
+      "pdb_disruptions_allowed": 1,
+      "gpu_idle": false,
+      "recovery_signal": true
+    },
+    {
+      "fault_type": "gpu_xid_fault",
+      "evidence_count": 4,
+      "telemetry_status": "PASS",
+      "error_budget_exhausted": true,
+      "attempts_last_hour": 0,
+      "seconds_since_last_action": 1800,
+      "pdb_disruptions_allowed": 1,
+      "gpu_idle": true,
+      "recovery_signal": true
+    }
+  ],
+  "faults": [
+    {
+      "type": "insufficient_sli_samples",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "InsufficientSLISamples"
+    },
+    {
+      "type": "single_window_spike",
+      "expected_phase": "PASS",
+      "expected_reason": "DualWindowConditionNotMet"
+    },
+    {
+      "type": "telemetry_incomplete",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "TelemetryCompletenessBelowGate"
+    },
+    {
+      "type": "telemetry_stale",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "TelemetryStale"
+    },
+    {
+      "type": "alert_duplicate",
+      "expected_phase": "REJECTED",
+      "expected_reason": "AlertFingerprintDuplicated"
+    },
+    {
+      "type": "runbook_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "RunbookReferenceMissing"
+    },
+    {
+      "type": "chaos_namespace_empty",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ChaosNamespaceRequired"
+    },
+    {
+      "type": "chaos_protected_namespace",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ChaosTargetsProtectedNamespace"
+    },
+    {
+      "type": "chaos_mode_all",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ChaosModeAllForbidden"
+    },
+    {
+      "type": "chaos_selector_empty",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ChaosLabelSelectorRequired"
+    },
+    {
+      "type": "chaos_blast_radius",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ChaosBlastRadiusExceeded"
+    },
+    {
+      "type": "production_approval_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ProductionChaosApprovalMissing"
+    },
+    {
+      "type": "steady_state_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "SteadyStateNotVerified"
+    },
+    {
+      "type": "remediation_evidence_missing",
+      "expected_phase": "ESCALATE",
+      "expected_reason": "RemediationEvidenceInsufficient"
+    },
+    {
+      "type": "remediation_cooldown",
+      "expected_phase": "ESCALATE",
+      "expected_reason": "RemediationCooldownActive"
+    },
+    {
+      "type": "remediation_loop",
+      "expected_phase": "ESCALATE",
+      "expected_reason": "RemediationAttemptBudgetExceeded"
+    },
+    {
+      "type": "pdb_blocks_eviction",
+      "expected_phase": "ESCALATE",
+      "expected_reason": "PodDisruptionBudgetBlocksEviction"
+    },
+    {
+      "type": "gpu_busy_for_active_diag",
+      "expected_phase": "ESCALATE",
+      "expected_reason": "ActiveGPUDiagnosticRequiresIdleNode"
+    },
+    {
+      "type": "recovery_not_verified",
+      "expected_phase": "ROLLED_BACK",
+      "expected_reason": "RecoveryVerificationFailed"
+    },
+    {
+      "type": "live_cluster_missing",
+      "expected_phase": "SKIPPED",
+      "expected_reason": "NoKubernetesContextProvided"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "ngram": 2,
+  "threshold": 0.25,
+  "expected_pair": [
+    "doc-a",
+    "doc-b"
+  ],
+  "documents": [
+    {
+      "id": "doc-a",
+      "text": "deterministic sharding keeps every sample identity stable"
+    },
+    {
+      "id": "doc-b",
+      "text": "deterministic sharding keeps sample identity stable across runs"
+    },
+    {
+      "id": "doc-c",
+      "text": "reward models require adversarial evaluation slices"
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+{
+  "operator_policy": {
+    "driver_management": "operator",
+    "kernel_module_type": "auto",
+    "toolkit_management": "operator",
+    "required_operands": [
+      "driver",
+      "container-toolkit",
+      "device-plugin",
+      "gpu-feature-discovery",
+      "dcgm",
+      "dcgm-exporter",
+      "validator"
+    ],
+    "required_node_labels": [
+      "nvidia.com/gpu.present",
+      "nvidia.com/gpu.product",
+      "nvidia.com/cuda.driver.major"
+    ],
+    "required_allocatable_resource": "nvidia.com/gpu"
+  },
+  "nodes": [
+    {
+      "name": "gpu-worker-a",
+      "gpu": true,
+      "product": "NVIDIA-L40S",
+      "os": "ubuntu-22.04",
+      "kernel": "5.15.0-demo",
+      "secure_boot": false,
+      "nouveau_loaded": false,
+      "kernel_headers": true,
+      "driver_preinstalled": false,
+      "driver_version": null,
+      "container_runtime": "containerd",
+      "nvidia_runtime_configured": true,
+      "gpu_count": 4
+    },
+    {
+      "name": "gpu-worker-b",
+      "gpu": true,
+      "product": "NVIDIA-A100-SXM4-80GB",
+      "os": "ubuntu-22.04",
+      "kernel": "5.15.0-demo",
+      "secure_boot": false,
+      "nouveau_loaded": false,
+      "kernel_headers": true,
+      "driver_preinstalled": false,
+      "driver_version": null,
+      "container_runtime": "containerd",
+      "nvidia_runtime_configured": true,
+      "gpu_count": 8
+    },
+    {
+      "name": "cpu-worker",
+      "gpu": false,
+      "product": null,
+      "os": "ubuntu-22.04",
+      "kernel": "5.15.0-demo",
+      "secure_boot": false,
+      "nouveau_loaded": false,
+      "kernel_headers": true,
+      "driver_preinstalled": false,
+      "driver_version": null,
+      "container_runtime": "containerd",
+      "nvidia_runtime_configured": false,
+      "gpu_count": 0
+    }
+  ],
+  "fault_cases": [
+    {
+      "id": "nouveau-conflict",
+      "node": "gpu-worker-a",
+      "override": {
+        "nouveau_loaded": true
+      },
+      "expected_stage": "DriverBlocked",
+      "expected_reason": "NouveauLoaded"
+    },
+    {
+      "id": "missing-kernel-headers",
+      "node": "gpu-worker-a",
+      "override": {
+        "kernel_headers": false
+      },
+      "expected_stage": "DriverBlocked",
+      "expected_reason": "KernelHeadersMissing"
+    },
+    {
+      "id": "secure-boot-unsigned",
+      "node": "gpu-worker-a",
+      "override": {
+        "secure_boot": true,
+        "signed_module_available": false
+      },
+      "expected_stage": "DriverBlocked",
+      "expected_reason": "ModuleSignatureRejected"
+    },
+    {
+      "id": "runtime-not-configured",
+      "node": "gpu-worker-a",
+      "override": {
+        "nvidia_runtime_configured": false
+      },
+      "expected_stage": "ToolkitBlocked",
+      "expected_reason": "RuntimeNotConfigured"
+    },
+    {
+      "id": "device-plugin-missing",
+      "node": "gpu-worker-a",
+      "inject": "device_plugin_missing",
+      "expected_stage": "ResourceBlocked",
+      "expected_reason": "GPUResourceNotAdvertised"
+    },
+    {
+      "id": "validator-failed",
+      "node": "gpu-worker-a",
+      "inject": "validator_failed",
+      "expected_stage": "ValidationFailed",
+      "expected_reason": "WorkloadValidationFailed"
+    }
+  ]
+}

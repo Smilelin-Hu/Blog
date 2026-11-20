@@ -1,0 +1,119 @@
+from __future__ import annotations
+
+import copy
+import hashlib
+import json
+import os
+import random
+
+try:
+    import torch
+    import torch.distributed as dist
+    from torch import nn
+except Exception as exc:
+    print(json.dumps({"status": "skipped", "reason": f"torch unavailable: {exc}"}))
+    raise SystemExit(0)
+
+
+def skip(reason: str) -> None:
+    print(json.dumps({"status": "skipped", "reason": reason}))
+    raise SystemExit(0)
+
+
+def sequence(rank: int, world: int, count: int, seed: int) -> list[int]:
+    values = list(range(count))
+    random.Random(seed).shuffle(values)
+    return [value for pos, value in enumerate(values) if pos % world == rank]
+
+
+def train_steps(model, optimizer, ids, start, end, device):
+    used = []
+    for pos in range(start, end):
+        sample_id = ids[pos]
+        generator = torch.Generator(device=device)
+        generator.manual_seed(100_000 + sample_id)
+        x = torch.randn(8, 64, generator=generator, device=device)
+        target = torch.sin(x[:, :1] + sample_id * 1e-4)
+        prediction = model(x)
+        loss = nn.functional.mse_loss(prediction, target)
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        optimizer.step()
+        used.append(sample_id)
+    return used
+
+
+def parameter_digest(model) -> str:
+    raw = b"".join(
+        value.detach().float().cpu().contiguous().numpy().tobytes()
+        for value in model.parameters()
+    )
+    return hashlib.sha256(raw).hexdigest()
+
+
+def main() -> None:
+    if not torch.cuda.is_available():
+        skip("CUDA unavailable")
+    if torch.cuda.device_count() < 1:
+        skip(f"requires at least one CUDA device, found {torch.cuda.device_count()}")
+    if int(os.environ.get("WORLD_SIZE", "1")) < 1:
+        skip("launch with one or more torchrun ranks")
+    dist.init_process_group("nccl")
+    rank = dist.get_rank()
+    world = dist.get_world_size()
+    local_rank = int(os.environ["LOCAL_RANK"])
+    torch.cuda.set_device(local_rank)
+    device = torch.device("cuda", local_rank)
+    torch.manual_seed(20260822)
+    ids = sequence(rank, world, count=80, seed=77)
+    split = len(ids) // 2
+    try:
+        base = nn.Sequential(nn.Linear(64, 32), nn.Tanh(), nn.Linear(32, 1)).to(device)
+        initial = copy.deepcopy(base.state_dict())
+
+        full = nn.Sequential(nn.Linear(64, 32), nn.Tanh(), nn.Linear(32, 1)).to(device)
+        full.load_state_dict(initial)
+        full_opt = torch.optim.SGD(full.parameters(), lr=1e-3)
+        expected_ids = train_steps(full, full_opt, ids, 0, len(ids), device)
+
+        resumed = nn.Sequential(nn.Linear(64, 32), nn.Tanh(), nn.Linear(32, 1)).to(device)
+        resumed.load_state_dict(initial)
+        resumed_opt = torch.optim.SGD(resumed.parameters(), lr=1e-3)
+        prefix = train_steps(resumed, resumed_opt, ids, 0, split, device)
+        saved_model = copy.deepcopy(resumed.state_dict())
+        saved_opt = copy.deepcopy(resumed_opt.state_dict())
+        cursor = split
+
+        restored = nn.Sequential(nn.Linear(64, 32), nn.Tanh(), nn.Linear(32, 1)).to(device)
+        restored.load_state_dict(saved_model)
+        restored_opt = torch.optim.SGD(restored.parameters(), lr=1e-3)
+        restored_opt.load_state_dict(saved_opt)
+        suffix = train_steps(restored, restored_opt, ids, cursor, len(ids), device)
+        actual_ids = prefix + suffix
+        assert actual_ids == expected_ids
+        assert parameter_digest(restored) == parameter_digest(full)
+
+        local = {
+            "rank": rank,
+            "sample_digest": hashlib.sha256(str(actual_ids).encode()).hexdigest(),
+            "parameter_digest": parameter_digest(restored),
+            "cursor": len(ids),
+        }
+        gathered = [None] * world if rank == 0 else None
+        dist.gather_object(local, gathered, dst=0)
+        if rank == 0:
+            print(json.dumps({
+                "status": "passed",
+                "world_size": world,
+                "ranks": gathered,
+                "claim_boundary": "fixed-world-size deterministic mechanism",
+            }))
+    except torch.cuda.OutOfMemoryError as exc:
+        if rank == 0:
+            print(json.dumps({"status": "skipped", "reason": f"CUDA OOM: {exc}"}))
+    finally:
+        dist.destroy_process_group()
+
+
+if __name__ == "__main__":
+    main()

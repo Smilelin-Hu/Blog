@@ -1,6 +1,6 @@
 # Serverless 部署与 CI/CD：让网站永久在线
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_mll089oi-6566edafa4114ef0.jpg
+![无服务器部署与 CI/CD 自动化](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_mll089oi-6566edafa4114ef0.jpg)
 
 <p>图 1：无服务器部署与 CI/CD 自动化</p>
 
@@ -42,7 +42,7 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_mll089oi-656
 
 打开 [EdgeOne Pages 控制台](https://console.cloud.tencent.com/edgeone/pages)，微信扫码或腾讯云账号登录（首次需实名认证）。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227003947136.png
+![EdgeOne Pages 控制台](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227003947136.png)
 
 <p>图 2：EdgeOne Pages 控制台</p>
 
@@ -50,13 +50,13 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202602
 
 授权后选择项目，点下一步。也可以直接上传，平台通常会自动识别项目架构。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227005154181.png
+![选择要部署的仓库](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227005154181.png)
 
 <p>图 3：选择要部署的仓库</p>
 
 ### 4.2 配置构建设置
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227005228223.png
+![构建设置页面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227005228223.png)
 
 <p>图 4：构建设置页面</p>
 
@@ -66,7 +66,7 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202602
 - **输出目录** `.next`：Next.js 构建产物位置；
 - **Node 版本**：EdgeOne 通常默认 Node 22，多数项目可直接通过；**只有日志出现 Node 版本不兼容报错时**，再改成和本地一致。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227005254177.png
+![Node 版本设置](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227005254177.png)
 
 <p>图 5：Node 版本设置</p>
 
@@ -74,7 +74,7 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202602
 
 `.env` 没上传 GitHub，所以要在平台手动填。EdgeOne 支持**批量导入**：直接把 `.env` 内容粘贴进去，平台自动解析成键值对。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227005320209.png
+![批量导入环境变量](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227005320209.png)
 
 <p>图 6：批量导入环境变量</p>
 
@@ -95,7 +95,7 @@ BETTER_AUTH_URL="https://你的域名"      # 认证回调地址，先留空，�
 - 选包含「中国大陆」的加速区域 → 需要 ICP 备案（个人可申请，审核约一到两周）；
 - 选「全球（不含中国大陆）」→ 不需要备案，部署后立刻可用。虽然名字这么叫，绑定自定义域名后国内通常也能正常访问。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227005154181.png
+![加速区域选择](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227005154181.png)
 
 <p>图 7：加速区域选择</p>
 
@@ -103,7 +103,7 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202602
 
 正常情况首次部署会直接成功。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302003046402.png
+![部署成功记录](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302003046402.png)
 
 <p>图 8：部署成功记录</p>
 
@@ -117,7 +117,7 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202603
 | `Build failed` 无具体信息 | 构建命令错误 | 确认与本地一致 |
 | `ENOENT: no such file` | 路径错误 | 检查根目录配置 |
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227005254177.png
+![调整 Node 版本后重新部署](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227005254177.png)
 
 <p>图 9：调整 Node 版本后重新部署</p>
 
@@ -127,7 +127,7 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202602
 
 构建成功后平台生成预览链接（如 `xxx.edgeone.dev`）。点开看到「个人豆瓣」和本地一模一样，但这次在公网上——发给朋友，秒开。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302003255608.png
+![部署成功后的访问链接](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302003255608.png)
 
 <p>图 10：部署成功后的访问链接</p>
 
@@ -155,17 +155,17 @@ Next.js 的创造者与官方推荐平台，部署体验最丝滑。
 
 **网页部署**：打开 [vercel.com](https://vercel.com)，用 GitHub 登录 → **Add New → Project** 选择仓库。Vercel 自动识别 Next.js，大部分配置不用改。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302004336073.png
+![Vercel 控制台](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302004336073.png)
 
 <p>图 11：Vercel 控制台</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302004314090.png
+![导入 Git 仓库](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302004314090.png)
 
 <p>图 12：导入 Git 仓库</p>
 
 只需两件事：添加环境变量、点击 Deploy。成功后得到 `xxx.vercel.app` 链接。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302004247091.png
+![部署配置与 Deploy](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302004247091.png)
 
 <p>图 13：部署配置与 Deploy</p>
 
@@ -186,11 +186,11 @@ Vercel 的独特能力：
 - **分析面板**：通常在项目接入 Analytics / Speed Insights 后才有完整数据，按控制台与官方文档操作；
 - **Edge Functions**：把代码复制到全球 CDN 节点，动态逻辑就近执行，不用所有请求都飞到同一台服务器。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302005118317.png
+![PR 的预览部署链接](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302005118317.png)
 
 <p>图 14：PR 的预览部署链接</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302005153216.png
+![Vercel 分析面板](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302005153216.png)
 
 <p>图 15：Vercel 分析面板</p>
 
@@ -202,19 +202,19 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202603
 
 部署已有项目：登录 Cloudflare Dashboard → **Workers & Pages → Create** → 连接 GitHub 选仓库 → 框架预设 Next.js → 添加环境变量 → 部署。步骤与 EdgeOne、Vercel 几乎一模一样。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302005022505.png
+![Cloudflare Workers & Pages](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302005022505.png)
 
 <p>图 16：Cloudflare Workers & Pages</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302005442304.png
+![连接 Git 仓库](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302005442304.png)
 
 <p>图 17：连接 Git 仓库</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302005452914.png
+![构建设置](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302005452914.png)
 
 <p>图 18：构建设置</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302012941453.png
+![部署成功](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302012941453.png)
 
 <p>图 19：部署成功</p>
 
@@ -224,7 +224,7 @@ Cloudflare 还有一整套边缘生态：**Workers**（边缘函数）、**D1**�
 
 阿里云用户的国内选择：登录 ESA Pages 控制台 → 创建 Pages 项目并连接 GitHub → 配置构建与环境变量 → 选择加速区域（国内需备案）→ 部署。与 EdgeOne 定位类似，选哪个主要看更熟悉哪家生态。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302013222049.png
+![阿里云 ESA Pages](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302013222049.png)
 
 <p>图 20：阿里云 ESA Pages</p>
 
@@ -260,7 +260,7 @@ EdgeOne Pages、Vercel、Cloudflare Pages 这类平台已内置 CI/CD，连接 G
 - **推送到 main** → 自动部署到生产环境；
 - **创建 Pull Request** → 自动构建并生成预览链接。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302013311084.png
+![PR 上的自动构建结果](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302013311084.png)
 
 <p>图 21：PR 上的自动构建结果</p>
 
@@ -321,7 +321,7 @@ jobs:
 
 ### 7.2 看懂数据与日志
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302021249583.png
+![部署平台的数据分析面板](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302021249583.png)
 
 <p>图 22：部署平台的数据分析面板</p>
 
@@ -337,7 +337,7 @@ Error: Connection timed out - database not responding
 
 **日志排查套路**：先找红色 ERROR → 看报错时间点前后的上下文 → 看不懂就把关键信息复制给 AI。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302021359067.png
+![部署与运行日志](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302021359067.png)
 
 <p>图 23：部署与运行日志</p>
 

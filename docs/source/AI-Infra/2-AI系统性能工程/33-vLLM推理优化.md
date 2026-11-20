@@ -4,11 +4,7 @@
 
 重点不是把模型「启动起来」，而是把服务推进到「能用 SLO 驱动调优」：搭建 OpenAI 兼容服务，构造固定输入/输出长度的并发负载，测量 TTFT、TPOT、端到端延迟、请求吞吐、输出 Token 吞吐与成功率，然后只改变一个调度或内存参数完成优化闭环。
 
-```text
-容量估算 → 服务冷启动 → 单并发正确性
-→ 并发扫描 → 找到饱和拐点 → 调整 Scheduler/KV/Prefix/并行
-→ 重复 Benchmark → SLO 回归门禁 → 保存配置与原始结果
-```
+![ai2-33-L7](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l33_01.png)
 
 Level 0 使用纯 Python 模拟排队与 Prefill/Decode 竞争，不需要 GPU。Level 1 面向常见 NVIDIA GPU 并自动记录环境。Level 2 才验证 Tensor Parallel、FP8/FP4、NVLink 或架构专属 Kernel；没有对应硬件时不宣称完成这些特性验证。
 

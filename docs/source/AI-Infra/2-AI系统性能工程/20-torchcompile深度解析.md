@@ -19,21 +19,7 @@
 
 PyTorch eager 模式逐个执行算子，灵活、容易调试，但 Python 调度、算子边界、临时 Tensor 与大量小 Kernel 会产生开销。编译器尝试把一段程序视为整体：
 
-```text
-Python/PyTorch 程序
-        │
-        ▼
-TorchDynamo 捕获可编译区域
-        │ FX Graph
-        ▼
-AOTAutograd 生成前向/反向图
-        │
-        ▼
-TorchInductor 做融合、调度和代码生成
-        │
-        ├── GPU：常见为 Triton / CUDA 相关代码
-        └── CPU：常见为 C++ / 向量化代码
-```
+![torch.compile 全链路：捕获 → 图变换 → 融合codegen](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l20_01.png)
 
 这像把一条每天走很多次的土路修成高速公路。修路有成本，通车后每次更快；如果只走一次，修路反而亏。如果输入形状不断变化，编译器还可能不断「重修不同规格的路」。
 
@@ -111,16 +97,11 @@ $$
 
 对两个连续的内存受限算子，eager 可能执行：
 
-```text
-读 x → 算 a → 写临时 t
-读 t → 算 b → 写 y
-```
+![ai2-20-L114](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l20_02.png)
 
 融合后可能成为：
 
-```text
-读 x → 算 a → 算 b → 写 y
-```
+![ai2-20-L121](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l20_03.png)
 
 中间 Tensor 不再往返全局显存，近似字节量从 $4S$ 降到 $2S$，同时 Kernel Launch 数量由 2 降到 1。真实收益还受 Cache、寄存器压力、占用率与算子库实现影响。
 
@@ -187,21 +168,7 @@ python torch_compile_lab.py --device auto --vary-shapes
 
 ### 7.3 快速决策树
 
-```text
-结果错误？ ──是→ 缩小模型；检查随机数、Mutation、Alias、精度和自定义算子
-   │否
-   ▼
-首次很慢但稳态快？ ──是→ 计算 N*；预热、缓存、Regional Compilation
-   │否
-   ▼
-频繁 Recompile？ ──是→ 看 Guard；固定状态、Shape Bucket、评估 dynamic
-   │否
-   ▼
-Graph Break 多？ ──是→ 去掉 .item()/I/O；局部重写或 disable 难编译区域
-   │否
-   ▼
-Kernel 少但仍不快？ ──→ 查 GEMM 占比、数据/通信、寄存器压力和真实端到端瓶颈
-```
+![torch.compile 排障决策：先正确性、再编译开销、再图质量](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l20_04.png)
 
 ## 8. Level 0：无 GPU 的编译收益规划实验
 

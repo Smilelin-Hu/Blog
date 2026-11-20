@@ -20,6 +20,8 @@ lm-evaluation-harness 是事实标准（HELM 是多指标全景框架的对照�
 
 可复现性五要素全部 pin 版本并随结果存档：**数据集版本、prompt 模板与 few-shot 样本、解码参数（temperature/greedy）、harness 版本、judge 模型版本**。同一模型换 harness 版本或模板，分数漂移可达数个点——跨报告比较前先核对这五项。工程上把评测做成 CI 任务：固定种子、固定 batch、结果落盘带完整配置哈希，任何配方变更（数据/超参/合并）触发同一评测集回归。
 
+![评测 Harness：版本锁定到统计验收的可复现链](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y5_l37_01.png)
+
 ## 3. LLM-as-judge：偏置与校准
 
 judge 模型评开放生成是主流做法，但已知偏置必须治理：位置偏置（偏好先出现的答案，用交换顺序双评取一致）、冗长偏置（偏好长答案，AlpacaEval 2 的长度控制回归是标准对策）、自我偏好（judge 偏好同族模型输出，换异族 judge 交叉验证）。

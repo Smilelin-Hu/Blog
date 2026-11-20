@@ -283,12 +283,7 @@ $$\boxed{t_{settle}<\frac{limit}{\lambda\cdot\Delta}}$$
 
 流式响应在结束前不知道最终 output tokens。需要状态：
 
-```text
-REQUEST_ACCEPTED
-→ STREAMING
-→ COMPLETED / CANCELLED / FAILED
-→ FINAL_USAGE
-```
+![ai3-16-L286](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l16_01.png)
 
 用户中途断开时，也要结算已实际生成的 token，不能只有「完整完成」才记录。Usage 记录需要幂等：同一个 `request_id` 重试写入时不能重复扣费。
 
@@ -426,9 +421,7 @@ model=vision
 
 Control Plane 决定 alias 指向：
 
-```text
-chat-fast → qwen3-x-v17
-```
+![ai3-16-L429](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l16_02.png)
 
 这样可以做版本升级、Canary、回滚、区域路由、成本优化。
 
@@ -758,16 +751,7 @@ GET  /v1/models
 
 内部组件：
 
-```text
-Auth
-Tenant Resolver
-Model Alias Resolver
-Quota/Meter
-Replica Router
-Streaming Proxy
-Usage Recorder
-Trace
-```
+![推理 Gateway 请求处理链](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l16_03.png)
 
 先接 Mock backend 验证平台逻辑，再替换真实模型。Mock 阶段需能注入：可控延迟分布、可控失败时机（Prefill 内 / Decode 中途）、可控流式断开、可控 usage 写入失败。
 

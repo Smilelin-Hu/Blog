@@ -4,13 +4,7 @@
 
 从一个「结果正确但性能很差」的 CUDA Reduction Kernel 出发，用 Profile-Driven 方法完成两轮优化：
 
-```text
-Baseline：每个元素执行一次全局 atomicAdd
-    ↓ 消除大部分全局原子争用
-V1：线程局部累加 + Shared Memory Block Reduction + 每 Block 一次 atomicAdd
-    ↓ 减少 Shared Memory 访问与同步
-V2：线程局部累加 + Warp Shuffle + 每 Block 一次 atomicAdd
-```
+![Reduction Kernel 两轮优化：原子争用 → 块内归约 → Warp Shuffle](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l30_01.png)
 
 最终交付的不只是「更快的代码」，而是一套完整证据：相同输入、相同正确性标准、稳定计时、不同规模扫描、Nsight Systems 时间线、Nsight Compute Kernel 指标，以及清楚的结论边界。
 

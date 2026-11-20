@@ -1,0 +1,255 @@
+{
+  "policy": {
+    "tenant_allowed_verbs": [
+      "get",
+      "list",
+      "watch",
+      "create",
+      "update",
+      "patch",
+      "delete"
+    ],
+    "tenant_forbidden_resources": [
+      "secrets",
+      "nodes",
+      "namespaces",
+      "clusterroles",
+      "clusterrolebindings",
+      "customresourcedefinitions",
+      "validatingwebhookconfigurations",
+      "mutatingwebhookconfigurations"
+    ],
+    "required_namespace_labels": {
+      "platform.training.invalid/tenant": "team-a",
+      "pod-security.kubernetes.io/enforce": "restricted"
+    },
+    "pod_security_version": "v1.36",
+    "required_provenance_predicate": "https://slsa.dev/provenance/v1",
+    "required_audit_stages": [
+      "RequestReceived",
+      "ResponseComplete"
+    ],
+    "minimum_audit_retention_days": 90,
+    "minimum_audit_identity_coverage": 0.999,
+    "maximum_audit_delivery_lag_seconds": 60
+  },
+  "tenants": [
+    {
+      "name": "team-a",
+      "cluster_role_binding": false,
+      "can_impersonate": false,
+      "can_bind_or_escalate": false,
+      "pod_security_exempt": false,
+      "namespace_labels": {
+        "platform.training.invalid/tenant": "team-a",
+        "pod-security.kubernetes.io/enforce": "restricted",
+        "pod-security.kubernetes.io/enforce-version": "v1.36",
+        "pod-security.kubernetes.io/audit": "restricted",
+        "pod-security.kubernetes.io/audit-version": "v1.36",
+        "pod-security.kubernetes.io/warn": "restricted",
+        "pod-security.kubernetes.io/warn-version": "v1.36"
+      },
+      "rbac_rules": [
+        {
+          "api_groups": [
+            "batch"
+          ],
+          "resources": [
+            "jobs"
+          ],
+          "verbs": [
+            "get",
+            "list",
+            "watch",
+            "create",
+            "delete"
+          ]
+        },
+        {
+          "api_groups": [
+            ""
+          ],
+          "resources": [
+            "pods",
+            "pods/log"
+          ],
+          "verbs": [
+            "get",
+            "list",
+            "watch"
+          ]
+        }
+      ],
+      "network_policy": {
+        "provider_enforcement_verified": true,
+        "default_deny_ingress": true,
+        "default_deny_egress": true,
+        "dns_egress_scoped": true,
+        "empty_namespace_selector": false,
+        "tenant_identity_selector": true,
+        "metadata_endpoint_allowed": false
+      },
+      "secret_policy": {
+        "list_or_watch_allowed": false,
+        "cross_namespace_mount": false,
+        "encryption_at_rest_verified": true,
+        "short_lived_workload_identity": true,
+        "plaintext_in_git": false
+      },
+      "workloads": [
+        {
+          "name": "trainer",
+          "security_context": {
+            "privileged": false,
+            "allow_privilege_escalation": false,
+            "run_as_non_root": true,
+            "read_only_root_filesystem": true,
+            "capabilities_add": [],
+            "capabilities_drop": [
+              "ALL"
+            ]
+          },
+          "host_network": false,
+          "host_pid": false,
+          "host_ipc": false,
+          "host_path": false,
+          "service_account": "trainer-runtime",
+          "automount_service_account_token": false,
+          "cpu_request": "2",
+          "memory_request": "8Gi",
+          "image_tag_only": false,
+          "image_signed": true,
+          "provenance_predicate": "https://slsa.dev/provenance/v1"
+        }
+      ]
+    }
+  ],
+  "audit": {
+    "stages": [
+      "RequestReceived",
+      "ResponseComplete"
+    ],
+    "retention_days": 180,
+    "write_once_archive": true,
+    "secret_body_omitted": true,
+    "identity_coverage_ratio": 1.0,
+    "delivery_lag_seconds": 12
+  },
+  "faults": [
+    {
+      "type": "rbac_wildcard",
+      "expected_phase": "REJECTED",
+      "expected_reason": "RBACWildcardForbidden"
+    },
+    {
+      "type": "cluster_role_binding",
+      "expected_phase": "REJECTED",
+      "expected_reason": "TenantClusterRoleBindingForbidden"
+    },
+    {
+      "type": "impersonate",
+      "expected_phase": "REJECTED",
+      "expected_reason": "TenantImpersonationForbidden"
+    },
+    {
+      "type": "bind_escalate",
+      "expected_phase": "REJECTED",
+      "expected_reason": "TenantPrivilegeEscalationVerbForbidden"
+    },
+    {
+      "type": "pss_unpinned",
+      "expected_phase": "REJECTED",
+      "expected_reason": "PodSecurityVersionNotPinned"
+    },
+    {
+      "type": "pss_exemption",
+      "expected_phase": "REJECTED",
+      "expected_reason": "TenantPodSecurityExemptionForbidden"
+    },
+    {
+      "type": "privileged_pod",
+      "expected_phase": "REJECTED",
+      "expected_reason": "PrivilegedContainerForbidden"
+    },
+    {
+      "type": "host_namespace",
+      "expected_phase": "REJECTED",
+      "expected_reason": "HostNamespaceForbidden"
+    },
+    {
+      "type": "host_path",
+      "expected_phase": "REJECTED",
+      "expected_reason": "HostPathForbidden"
+    },
+    {
+      "type": "default_service_account",
+      "expected_phase": "REJECTED",
+      "expected_reason": "DefaultServiceAccountForbidden"
+    },
+    {
+      "type": "token_automount",
+      "expected_phase": "REJECTED",
+      "expected_reason": "AutomaticServiceAccountTokenForbidden"
+    },
+    {
+      "type": "unsigned_image",
+      "expected_phase": "REJECTED",
+      "expected_reason": "VerifiedImageSignatureRequired"
+    },
+    {
+      "type": "tag_only_image",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ImageDigestRequired"
+    },
+    {
+      "type": "missing_provenance",
+      "expected_phase": "REJECTED",
+      "expected_reason": "RequiredProvenanceMissing"
+    },
+    {
+      "type": "network_provider_unknown",
+      "expected_phase": "REJECTED",
+      "expected_reason": "NetworkPolicyProviderNotVerified"
+    },
+    {
+      "type": "default_deny_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "DefaultDenyIngressMissing"
+    },
+    {
+      "type": "namespace_selector_all",
+      "expected_phase": "REJECTED",
+      "expected_reason": "UnboundedNamespaceSelectorForbidden"
+    },
+    {
+      "type": "metadata_egress",
+      "expected_phase": "REJECTED",
+      "expected_reason": "CloudMetadataEgressForbidden"
+    },
+    {
+      "type": "secret_list",
+      "expected_phase": "REJECTED",
+      "expected_reason": "SecretListWatchForbidden"
+    },
+    {
+      "type": "plaintext_secret",
+      "expected_phase": "REJECTED",
+      "expected_reason": "PlaintextSecretInGitForbidden"
+    },
+    {
+      "type": "audit_identity_gap",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "AuditIdentityCoverageInsufficient"
+    },
+    {
+      "type": "audit_lag",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "AuditDeliveryLagExceeded"
+    },
+    {
+      "type": "live_cluster_missing",
+      "expected_phase": "SKIPPED",
+      "expected_reason": "NoKubernetesContextProvided"
+    }
+  ]
+}

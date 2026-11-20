@@ -1,6 +1,6 @@
 # 域名与 DNS：给站点一个正式地址
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_mll08c63-bcea35d79958ea70.jpg
+![域名、DNS 与网络接入](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_mll08c63-bcea35d79958ea70.jpg)
 
 <p>图 1：域名、DNS 与网络接入</p>
 
@@ -37,7 +37,7 @@ flowchart LR
 
 **购买流程**（以腾讯云为例）：注册账号 → 进入域名注册 → 搜索 → 选年限（建议先买 1 年）→ 支付。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302021706102.png
+![域名注册页面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302021706102.png)
 
 <p>图 2：域名注册页面</p>
 
@@ -60,7 +60,7 @@ Serverless 部署用 CNAME：平台 IP 可能会变，但域名不会——平�
 
 **第一步：平台添加自定义域名**：项目设置 → 自定义域名 → 输入域名。平台会告诉你需要添加的 DNS 记录，通常是 CNAME（有时还要 TXT 验证）。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302021734337.png
+![添加自定义域名](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302021734337.png)
 
 <p>图 3：添加自定义域名</p>
 
@@ -71,7 +71,7 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202603
 - 目标：平台给的 CNAME 值
 - TTL：自动
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302021925134.png
+![添加 CNAME 记录](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302021925134.png)
 
 <p>图 4：添加 CNAME 记录</p>
 
@@ -90,7 +90,7 @@ ping myapp.com
 
 HTTP 是明信片，路上谁都能看；HTTPS 是密封信，只有收件人能打开。浏览器的小锁就是「密封信」标志——数据传输加密，不会被中间人窃听。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302022236403.png
+![HTTPS 与证书](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302022236403.png)
 
 <p>图 5：HTTPS 与证书</p>
 
@@ -99,15 +99,15 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202603
 - **Vercel / Cloudflare Pages**：绑定域名后自动申请，全自动；
 - **EdgeOne Pages**：需要在域名管理页手动点「申请免费证书」，成功后自动续期。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302022300776.png
+![申请免费证书](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302022300776.png)
 
 <p>图 6：申请免费证书</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302022312982.png
+![证书配置](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302022312982.png)
 
 <p>图 7：证书配置</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302022322990.png
+![HTTPS 生效](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302022322990.png)
 
 <p>图 8：HTTPS 生效</p>
 
@@ -138,7 +138,7 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202603
 
 域名实名认证 → 选择接入商（阿里云/腾讯云）提交 → 填写网站与负责人信息 → 手机 App 人脸核验 → 接入商初审（1-2 天）+ 管局终审（5-20 个工作日）→ 获得 ICP 备案号，网站底部展示。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302022424271.png
+![ICP 备案信息](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302022424271.png)
 
 <p>图 9：ICP 备案信息</p>
 
@@ -166,13 +166,13 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202603
 | 能打开但很慢（国内） | 服务器在海外 | Cloudflare CDN 加速；换国内平台 + 备案；静态资源用国内 CDN |
 | 证书错误 / 不安全 | 证书未签发或域名不匹配 | 等 5-15 分钟；检查 CNAME；Cloudflare 用 Full (strict) 而非 Flexible |
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302022507817.png
+![默认域名的访问限制（401/403）](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302022507817.png)
 
 <p>图 10：默认域名的访问限制（401/403）</p>
 
 > **Cloudflare SSL 模式**：Flexible 模式下 Cloudflare 到源站是明文——信封只封了前半程；Full (strict) 才是全程密封。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302022953265.png
+![Cloudflare SSL/TLS 模式](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302022953265.png)
 
 <p>图 11：Cloudflare SSL/TLS 模式</p>
 

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title>术核AI品牌图形</title>
+  <rect width="28" height="28" x="7" y="7" rx="8" fill="#315cff" transform="rotate(45 21 21)" />
+  <rect width="28" height="28" x="29" y="7" rx="8" fill="#1bd8ff" transform="rotate(45 43 21)" />
+  <rect width="28" height="28" x="18" y="29" rx="8" fill="#f75bff" transform="rotate(45 32 43)" />
+</svg>

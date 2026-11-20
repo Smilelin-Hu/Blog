@@ -23,17 +23,11 @@ out = relu(tmp2)
 
 数学上它只是 $out_i=\max(x_i y_i+bias,\ 0)$，但 Eager 执行中可能形成三个独立 Kernel：
 
-```text
-Kernel 1: 读 x、y → 写 tmp1
-Kernel 2: 读 tmp1 → 写 tmp2
-Kernel 3: 读 tmp2 → 写 out
-```
+![ai2-13-L26](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l13_01.png)
 
 `tmp1` 与 `tmp2` 不是最终结果，却完整走了两次 Store 与两次后续 Load。融合后：
 
-```text
-Fused Kernel: 读 x、y → 在 Register 中乘、加、ReLU → 写 out
-```
+![ai2-13-L34](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l13_02.png)
 
 每个线程加载自己的 $x_i$、$y_i$，中间值停留在 Register，最终只写一次 $out_i$。这就是最典型的 Producer-Consumer Fusion。
 
@@ -77,11 +71,7 @@ Fusion 主要改变三个量：$N_{launch}$ 减少、$Bytes$ 减少、$P_{effect
 
 **Horizontal Fusion（同类小任务融合）**：很多小 Tensor 分别执行相同更新时，打包为一个 Multi-Tensor Kernel：
 
-```text
-参数 1 的 Adam 更新 ┐
-参数 2 的 Adam 更新 ├─→ 一个 Multi-Tensor Apply Kernel
-参数 3 的 Adam 更新 ┘
-```
+![ai2-13-L80](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l13_03.png)
 
 重点减少 Launch 数，也能改善小 Tensor 的并行度，Fused Optimizer 常采用这种思路。
 

@@ -1,0 +1,15 @@
+{
+  "asset_id": "asset-tech-zh-gold",
+  "commit_id": "commit-2026-09-0017",
+  "parent_commit_id": "commit-2026-08-0012",
+  "schema_version": "document-v4",
+  "recipe_id": "recipe-gold-filter-v8",
+  "objects": [
+    {
+      "logical_path": "shards/00000.parquet",
+      "blob_id": "sha256:...",
+      "size_bytes": 734003200,
+      "row_count": 1200000
+    }
+  ]
+}

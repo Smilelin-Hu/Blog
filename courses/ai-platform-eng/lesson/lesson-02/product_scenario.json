@@ -1,0 +1,609 @@
+{
+  "organization": "Example AI Platform Team",
+  "product_principles": {
+    "golden_path": "高频标准请求通过稳定平台 API 自动完成",
+    "escape_hatch": "低频特殊请求进入有所有者、有时限、有审计的例外流程",
+    "api_first": true,
+    "support_policy": "平台负责控制面和承诺能力，工作负载所有者负责代码、数据语义和业务结果"
+  },
+  "personas": [
+    {
+      "id": "data_scientist",
+      "name": "数据科学家",
+      "team": "recommendation",
+      "cost_center": "cc-rec"
+    },
+    {
+      "id": "training_engineer",
+      "name": "训练工程师",
+      "team": "foundation_model",
+      "cost_center": "cc-fm"
+    },
+    {
+      "id": "inference_engineer",
+      "name": "推理工程师",
+      "team": "product_ai",
+      "cost_center": "cc-prod"
+    },
+    {
+      "id": "platform_operator",
+      "name": "平台工程师",
+      "team": "platform",
+      "cost_center": "cc-platform"
+    },
+    {
+      "id": "security_reviewer",
+      "name": "安全审核人员",
+      "team": "security",
+      "cost_center": "cc-security"
+    },
+    {
+      "id": "finops_owner",
+      "name": "FinOps 负责人",
+      "team": "finance",
+      "cost_center": "cc-finance"
+    }
+  ],
+  "metrics": [
+    {
+      "id": "workspace_ready_seconds",
+      "name": "工作空间就绪时间",
+      "unit": "second"
+    },
+    {
+      "id": "validation_seconds",
+      "name": "请求校验时间",
+      "unit": "second"
+    },
+    {
+      "id": "queue_status_age_seconds",
+      "name": "队列状态新鲜度",
+      "unit": "second"
+    },
+    {
+      "id": "first_start_success_rate",
+      "name": "首次启动成功率",
+      "unit": "ratio"
+    },
+    {
+      "id": "release_lead_time_seconds",
+      "name": "模型发布前置时间",
+      "unit": "second"
+    },
+    {
+      "id": "api_availability",
+      "name": "平台 API 可用率",
+      "unit": "ratio"
+    },
+    {
+      "id": "lineage_completeness",
+      "name": "血缘完整率",
+      "unit": "ratio"
+    },
+    {
+      "id": "cost_attribution_rate",
+      "name": "成本归属率",
+      "unit": "ratio"
+    },
+    {
+      "id": "manual_ticket_rate",
+      "name": "人工工单率",
+      "unit": "ratio"
+    },
+    {
+      "id": "policy_decision_seconds",
+      "name": "策略判定时间",
+      "unit": "second"
+    },
+    {
+      "id": "incident_context_completeness",
+      "name": "事故上下文完整率",
+      "unit": "ratio"
+    }
+  ],
+  "slos": [
+    {
+      "id": "slo_workspace_ready",
+      "metric": "workspace_ready_seconds",
+      "operator": "<=",
+      "target": 600,
+      "window": "30d"
+    },
+    {
+      "id": "slo_validation",
+      "metric": "validation_seconds",
+      "operator": "<=",
+      "target": 5,
+      "window": "30d"
+    },
+    {
+      "id": "slo_queue_visibility",
+      "metric": "queue_status_age_seconds",
+      "operator": "<=",
+      "target": 30,
+      "window": "30d"
+    },
+    {
+      "id": "slo_start_success",
+      "metric": "first_start_success_rate",
+      "operator": ">=",
+      "target": 0.95,
+      "window": "30d"
+    },
+    {
+      "id": "slo_release_lead_time",
+      "metric": "release_lead_time_seconds",
+      "operator": "<=",
+      "target": 1800,
+      "window": "30d"
+    },
+    {
+      "id": "slo_api_availability",
+      "metric": "api_availability",
+      "operator": ">=",
+      "target": 0.999,
+      "window": "30d"
+    },
+    {
+      "id": "slo_lineage",
+      "metric": "lineage_completeness",
+      "operator": ">=",
+      "target": 0.99,
+      "window": "30d"
+    },
+    {
+      "id": "slo_cost_attribution",
+      "metric": "cost_attribution_rate",
+      "operator": ">=",
+      "target": 0.98,
+      "window": "30d"
+    },
+    {
+      "id": "slo_policy_decision",
+      "metric": "policy_decision_seconds",
+      "operator": "<=",
+      "target": 10,
+      "window": "30d"
+    },
+    {
+      "id": "slo_incident_context",
+      "metric": "incident_context_completeness",
+      "operator": ">=",
+      "target": 0.95,
+      "window": "30d"
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "project_workspace",
+      "name": "项目空间与交互环境",
+      "owner": "platform_operator",
+      "api": "POST /v1/workspaces",
+      "slos": [
+        "slo_workspace_ready",
+        "slo_api_availability"
+      ],
+      "metrics": [
+        "workspace_ready_seconds",
+        "api_availability"
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "environment_template",
+      "name": "版本化运行环境模板",
+      "owner": "platform_operator",
+      "api": "GET /v1/runtime-templates",
+      "slos": [
+        "slo_start_success"
+      ],
+      "metrics": [
+        "first_start_success_rate"
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "workload_submission",
+      "name": "训练与批处理提交",
+      "owner": "platform_operator",
+      "api": "POST /v1/workloads",
+      "slos": [
+        "slo_validation",
+        "slo_start_success"
+      ],
+      "metrics": [
+        "validation_seconds",
+        "first_start_success_rate"
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "queue_visibility",
+      "name": "队列、配额与等待原因",
+      "owner": "platform_operator",
+      "api": "GET /v1/workloads/{id}/queue-status",
+      "slos": [
+        "slo_queue_visibility"
+      ],
+      "metrics": [
+        "queue_status_age_seconds"
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "data_access",
+      "name": "数据访问与短期身份",
+      "owner": "security_reviewer",
+      "api": "POST /v1/data-access-grants",
+      "slos": [
+        "slo_policy_decision"
+      ],
+      "metrics": [
+        "policy_decision_seconds"
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "artifact_lineage",
+      "name": "制品与运行血缘",
+      "owner": "platform_operator",
+      "api": "GET /v1/runs/{id}/lineage",
+      "slos": [
+        "slo_lineage"
+      ],
+      "metrics": [
+        "lineage_completeness"
+      ],
+      "priority": "P1"
+    },
+    {
+      "id": "model_registry",
+      "name": "模型版本与晋级状态",
+      "owner": "platform_operator",
+      "api": "POST /v1/models/{name}/versions",
+      "slos": [
+        "slo_lineage"
+      ],
+      "metrics": [
+        "lineage_completeness"
+      ],
+      "priority": "P1"
+    },
+    {
+      "id": "release_automation",
+      "name": "声明式模型发布与回滚",
+      "owner": "platform_operator",
+      "api": "POST /v1/model-releases",
+      "slos": [
+        "slo_release_lead_time",
+        "slo_api_availability"
+      ],
+      "metrics": [
+        "release_lead_time_seconds",
+        "api_availability"
+      ],
+      "priority": "P1"
+    },
+    {
+      "id": "policy_gate",
+      "name": "发布与运行策略门禁",
+      "owner": "security_reviewer",
+      "api": "POST /v1/policy-decisions",
+      "slos": [
+        "slo_policy_decision"
+      ],
+      "metrics": [
+        "policy_decision_seconds"
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "observability",
+      "name": "统一状态、日志、指标与追踪",
+      "owner": "platform_operator",
+      "api": "GET /v1/workloads/{id}/diagnostics",
+      "slos": [
+        "slo_incident_context"
+      ],
+      "metrics": [
+        "incident_context_completeness"
+      ],
+      "priority": "P0"
+    },
+    {
+      "id": "cost_attribution",
+      "name": "成本估算与项目归属",
+      "owner": "finops_owner",
+      "api": "GET /v1/projects/{id}/costs",
+      "slos": [
+        "slo_cost_attribution"
+      ],
+      "metrics": [
+        "cost_attribution_rate"
+      ],
+      "priority": "P1"
+    },
+    {
+      "id": "support_and_exception",
+      "name": "支持与例外流程",
+      "owner": "platform_operator",
+      "api": "POST /v1/exceptions",
+      "slos": [
+        "slo_api_availability"
+      ],
+      "metrics": [
+        "manual_ticket_rate",
+        "api_availability"
+      ],
+      "priority": "P1"
+    }
+  ],
+  "quota_products": [
+    {
+      "id": "interactive-small",
+      "workload": "notebook",
+      "gpu": 1,
+      "max_hours": 8,
+      "preemptible": true,
+      "approval": "automatic"
+    },
+    {
+      "id": "training-standard",
+      "workload": "training",
+      "gpu": 8,
+      "max_hours": 72,
+      "preemptible": false,
+      "approval": "quota"
+    },
+    {
+      "id": "training-large",
+      "workload": "training",
+      "gpu": 64,
+      "max_hours": 168,
+      "preemptible": false,
+      "approval": "budget_and_capacity"
+    },
+    {
+      "id": "inference-production",
+      "workload": "inference",
+      "gpu": 4,
+      "max_hours": 720,
+      "preemptible": false,
+      "approval": "release_gate"
+    }
+  ],
+  "journeys": [
+    {
+      "id": "journey-experiment",
+      "name": "从探索到可重复实验",
+      "persona": "data_scientist",
+      "trigger": "获得一个新的推荐问题与受控数据集",
+      "outcome": "形成可重复运行并带血缘的实验结果",
+      "owner": "data_scientist",
+      "steps": [
+        {
+          "order": 1,
+          "action": "申请项目工作空间",
+          "pain": {
+            "id": "pain-workspace-delay",
+            "description": "环境依赖人工创建且等待时间未知",
+            "severity": 4,
+            "frequency": 5
+          },
+          "capabilities": [
+            "project_workspace"
+          ]
+        },
+        {
+          "order": 2,
+          "action": "选择经过验证的运行环境",
+          "pain": {
+            "id": "pain-environment-drift",
+            "description": "个人环境差异导致结果无法复现",
+            "severity": 5,
+            "frequency": 4
+          },
+          "capabilities": [
+            "environment_template"
+          ]
+        },
+        {
+          "order": 3,
+          "action": "申请数据访问",
+          "pain": {
+            "id": "pain-data-ticket",
+            "description": "数据权限依赖聊天审批且无法审计",
+            "severity": 5,
+            "frequency": 3
+          },
+          "capabilities": [
+            "data_access",
+            "policy_gate"
+          ]
+        },
+        {
+          "order": 4,
+          "action": "提交可重复实验",
+          "pain": {
+            "id": "pain-notebook-to-job",
+            "description": "Notebook 内临时代码无法稳定转为作业",
+            "severity": 4,
+            "frequency": 4
+          },
+          "capabilities": [
+            "workload_submission",
+            "artifact_lineage"
+          ]
+        },
+        {
+          "order": 5,
+          "action": "查看结果、成本和责任",
+          "pain": {
+            "id": "pain-no-cost",
+            "description": "实验结果与资源成本无法关联",
+            "severity": 3,
+            "frequency": 4
+          },
+          "capabilities": [
+            "observability",
+            "cost_attribution"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "journey-training",
+      "name": "提交和恢复分布式训练",
+      "persona": "training_engineer",
+      "trigger": "模型配置和数据版本已经冻结",
+      "outcome": "训练成功或以可行动原因结束并登记产物",
+      "owner": "training_engineer",
+      "steps": [
+        {
+          "order": 1,
+          "action": "声明资源、拓扑和恢复要求",
+          "pain": {
+            "id": "pain-raw-yaml",
+            "description": "用户需要复制大量底层 YAML 且字段含义不稳定",
+            "severity": 4,
+            "frequency": 5
+          },
+          "capabilities": [
+            "workload_submission",
+            "environment_template"
+          ]
+        },
+        {
+          "order": 2,
+          "action": "等待配额和资源准入",
+          "pain": {
+            "id": "pain-queue-blackbox",
+            "description": "作业等待原因和预计窗口不可见",
+            "severity": 5,
+            "frequency": 5
+          },
+          "capabilities": [
+            "queue_visibility"
+          ]
+        },
+        {
+          "order": 3,
+          "action": "观察启动与运行",
+          "pain": {
+            "id": "pain-pending-unknown",
+            "description": "所有等待和失败都只显示 Pending 或 Failed",
+            "severity": 5,
+            "frequency": 4
+          },
+          "capabilities": [
+            "observability"
+          ]
+        },
+        {
+          "order": 4,
+          "action": "从检查点恢复",
+          "pain": {
+            "id": "pain-retry-unclear",
+            "description": "自动重试责任和预算不清楚",
+            "severity": 4,
+            "frequency": 3
+          },
+          "capabilities": [
+            "workload_submission",
+            "support_and_exception"
+          ]
+        },
+        {
+          "order": 5,
+          "action": "登记模型和运行血缘",
+          "pain": {
+            "id": "pain-artifact-copy",
+            "description": "模型靠人工复制且无法追溯训练输入",
+            "severity": 5,
+            "frequency": 4
+          },
+          "capabilities": [
+            "artifact_lineage",
+            "model_registry"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "journey-release",
+      "name": "把模型安全发布到生产环境",
+      "persona": "inference_engineer",
+      "trigger": "候选模型版本和评测证明已经产生",
+      "outcome": "以受控流量发布并可快速回滚",
+      "owner": "inference_engineer",
+      "steps": [
+        {
+          "order": 1,
+          "action": "选择不可变模型版本",
+          "pain": {
+            "id": "pain-latest-model",
+            "description": "可变路径导致评测版本和发布版本错配",
+            "severity": 5,
+            "frequency": 3
+          },
+          "capabilities": [
+            "model_registry",
+            "artifact_lineage"
+          ]
+        },
+        {
+          "order": 2,
+          "action": "执行发布策略与评测门禁",
+          "pain": {
+            "id": "pain-manual-gate",
+            "description": "审批结论散落在聊天记录中",
+            "severity": 5,
+            "frequency": 3
+          },
+          "capabilities": [
+            "policy_gate"
+          ]
+        },
+        {
+          "order": 3,
+          "action": "创建新版本并迁移流量",
+          "pain": {
+            "id": "pain-release-script",
+            "description": "发布脚本没有统一状态和回滚语义",
+            "severity": 5,
+            "frequency": 4
+          },
+          "capabilities": [
+            "release_automation"
+          ]
+        },
+        {
+          "order": 4,
+          "action": "观察健康与业务指标",
+          "pain": {
+            "id": "pain-signals-split",
+            "description": "平台状态与业务指标无法关联",
+            "severity": 4,
+            "frequency": 4
+          },
+          "capabilities": [
+            "observability"
+          ]
+        },
+        {
+          "order": 5,
+          "action": "归属长期资源成本",
+          "pain": {
+            "id": "pain-serving-cost",
+            "description": "在线 GPU 保留容量没有项目归属",
+            "severity": 4,
+            "frequency": 4
+          },
+          "capabilities": [
+            "cost_attribution"
+          ]
+        }
+      ]
+    }
+  ]
+}

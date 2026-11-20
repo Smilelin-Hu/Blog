@@ -1,0 +1,13 @@
+import json
+import os
+
+try:
+    import torch
+    count = torch.cuda.device_count()
+    memory = [round(torch.cuda.get_device_properties(i).total_memory / 1024 ** 3, 1) for i in range(count)]
+    checks = {"cuda": torch.cuda.is_available(), "gpu_count": count, "memory_gib": memory, "model_path": bool(os.environ.get("MODEL_PATH"))}
+except Exception as exc:
+    checks = {"cuda": False, "error": type(exc).__name__}
+
+ready = checks.get("cuda") and checks.get("gpu_count", 0) >= 2 and checks.get("model_path")
+print(json.dumps({"status": "ready" if ready else "skipped", "reason": None if ready else "dual_gpu_or_model_unavailable", "checks": checks}))

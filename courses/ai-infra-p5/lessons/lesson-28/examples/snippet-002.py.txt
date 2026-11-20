@@ -1,0 +1,48 @@
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+from pathlib import Path
+
+
+def inventory() -> list[dict[str, object]]:
+    if shutil.which("nvidia-smi") is None:
+        return []
+    cmd = ["nvidia-smi", "--query-gpu=index,name,memory.total", "--format=csv,noheader,nounits"]
+    run = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    if run.returncode != 0:
+        return []
+    rows = []
+    for line in run.stdout.strip().splitlines():
+        idx, name, mem = [item.strip() for item in line.split(",", 2)]
+        rows.append({"index": int(idx), "name": name, "memory_mib": int(mem)})
+    return rows
+
+
+def main() -> None:
+    gpus = inventory()
+    result: dict[str, object] = {
+        "experiment": "lesson-28-weight-sync",
+        "status": "ready",
+        "inventory": gpus,
+    }
+    required = ["MODEL_ID", "OUTPUT_ROOT"]
+    missing = [key for key in required if not os.environ.get(key)]
+    if len(gpus) < 1:
+        result.update(status="skipped", reason="requires_at_least_one_visible_nvidia_gpu")
+    elif missing:
+        result.update(status="skipped", reason="missing_environment:" + ",".join(missing))
+    else:
+        root = Path(os.environ["OUTPUT_ROOT"])
+        root.mkdir(parents=True, exist_ok=True)
+        result["commands"] = [
+            ["python", "train_one_update.py", "--device", "cuda:0", "--model", os.environ["MODEL_ID"], "--output", str(root / "v1")],
+            ["python", "rollout_canary.py", "--device", "cuda:0", "--version", str(root / "v1")],
+        ]
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

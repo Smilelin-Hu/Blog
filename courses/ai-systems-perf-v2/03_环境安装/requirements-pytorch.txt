@@ -1,0 +1,2 @@
+# 安装前请根据NVIDIA驱动和CUDA环境选择PyTorch官方提供的安装源。
+torch>=2.2,<3

@@ -1,0 +1,15 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: assistant-pod-kill
+  namespace: sre-lab
+  labels:
+    platform.training.invalid/experiment: lesson-27
+spec:
+  action: pod-kill
+  mode: one
+  selector:
+    namespaces:
+      - sre-lab
+    labelSelectors:
+      app.kubernetes.io/name: assistant-inference

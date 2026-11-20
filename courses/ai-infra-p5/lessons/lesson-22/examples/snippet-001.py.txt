@@ -1,0 +1,51 @@
+import json
+import random
+
+
+def judge(a_quality, b_quality, a_first, rng):
+    gap = a_quality - b_quality
+    position = 0.16 if a_first else -0.16
+    noisy = gap + position + rng.gauss(0, 0.18)
+    if abs(noisy) < 0.08:
+        return "tie"
+    return "a" if noisy > 0 else "b"
+
+
+def main():
+    rng = random.Random(20260822)
+    single_correct = 0
+    double_correct = 0
+    conflicts = 0
+    usable = 0
+    rows = []
+    for index in range(500):
+        qa, qb = rng.random(), rng.random()
+        truth = "a" if qa > qb else "b"
+        first = judge(qa, qb, True, rng)
+        swapped_raw = judge(qb, qa, True, rng)
+        swapped = "b" if swapped_raw == "a" else "a" if swapped_raw == "b" else "tie"
+        single_correct += first == truth
+        if first == swapped and first != "tie":
+            aggregate = first
+        else:
+            aggregate = "reject"
+            conflicts += 1
+        if aggregate != "reject":
+            usable += 1
+            double_correct += aggregate == truth
+        if index < 5:
+            rows.append({"qa": qa, "qb": qb, "truth": truth,
+                         "ab": first, "ba_normalized": swapped, "aggregate": aggregate})
+    print(json.dumps({
+        "status": "passed",
+        "claim_boundary": "synthetic position-bias aggregation only",
+        "single_accuracy": single_correct / 500,
+        "double_coverage": usable / 500,
+        "double_accuracy_on_accepted": double_correct / max(1, usable),
+        "conflicts_or_ties": conflicts,
+        "examples": rows,
+    }, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

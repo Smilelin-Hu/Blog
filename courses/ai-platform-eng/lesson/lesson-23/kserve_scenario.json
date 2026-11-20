@@ -1,0 +1,161 @@
+{
+  "policy": {
+    "runtime_allowlist": [
+      "vllm-runtime"
+    ],
+    "require_runtime_digest": true,
+    "require_model_digest": true,
+    "max_gpu_per_replica": 4,
+    "max_memory_gib_per_replica": 256,
+    "allowed_deployment_modes": [
+      "Standard",
+      "Knative"
+    ],
+    "require_tls": true,
+    "require_auth": true
+  },
+  "infrastructure": {
+    "storage_secrets": [
+      "model-store-reader"
+    ],
+    "ready_local_models": [
+      "fraud-v1",
+      "fraud-v2"
+    ],
+    "knative_ready": true,
+    "metrics_signal_ready": true,
+    "gateway_ready": true
+  },
+  "runtimes": [
+    {
+      "name": "vllm-runtime",
+      "scope": "namespace",
+      "image": "registry.example/vllm@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "supported_formats": [
+        "safetensors"
+      ]
+    }
+  ],
+  "services": [
+    {
+      "name": "fraud-v1",
+      "runtime": "vllm-runtime",
+      "model_format": "safetensors",
+      "model_uri": "oci://models/fraud@sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "private_model": true,
+      "storage_secret": "model-store-reader",
+      "local_model": "fraud-v1",
+      "deployment_mode": "Standard",
+      "gpu": 1,
+      "memory_gib": 64,
+      "min_replicas": 1,
+      "max_replicas": 4,
+      "autoscaler": "hpa",
+      "startup_seconds": 80,
+      "startup_timeout_seconds": 300,
+      "tls": true,
+      "auth": true
+    },
+    {
+      "name": "fraud-v2",
+      "runtime": "vllm-runtime",
+      "model_format": "safetensors",
+      "model_uri": "oci://models/fraud@sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "private_model": true,
+      "storage_secret": "model-store-reader",
+      "local_model": "fraud-v2",
+      "deployment_mode": "Standard",
+      "gpu": 2,
+      "memory_gib": 128,
+      "min_replicas": 1,
+      "max_replicas": 6,
+      "autoscaler": "hpa",
+      "startup_seconds": 110,
+      "startup_timeout_seconds": 420,
+      "tls": true,
+      "auth": true
+    }
+  ],
+  "faults": [
+    {
+      "type": "mutable_model_uri",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ModelArtifactDigestRequired"
+    },
+    {
+      "type": "mutable_runtime_image",
+      "expected_phase": "REJECTED",
+      "expected_reason": "RuntimeImageDigestRequired"
+    },
+    {
+      "type": "runtime_not_allowed",
+      "expected_phase": "REJECTED",
+      "expected_reason": "RuntimeNotAllowed"
+    },
+    {
+      "type": "runtime_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ServingRuntimeNotFound"
+    },
+    {
+      "type": "format_mismatch",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ModelFormatUnsupported"
+    },
+    {
+      "type": "storage_credential_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "StorageCredentialMissing"
+    },
+    {
+      "type": "local_cache_not_ready",
+      "expected_phase": "REJECTED",
+      "expected_reason": "LocalModelCacheNotReady"
+    },
+    {
+      "type": "resource_limit_exceeded",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ResourcePolicyExceeded"
+    },
+    {
+      "type": "standard_scale_to_zero",
+      "expected_phase": "REJECTED",
+      "expected_reason": "StandardHTTPScaleToZeroUnsupported"
+    },
+    {
+      "type": "knative_dependency_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "KnativeDependencyMissing"
+    },
+    {
+      "type": "keda_wrong_mode",
+      "expected_phase": "REJECTED",
+      "expected_reason": "KEDARequiresStandardMode"
+    },
+    {
+      "type": "gateway_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "IngressNotConfigured"
+    },
+    {
+      "type": "tls_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "TLSRequired"
+    },
+    {
+      "type": "auth_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "AuthenticationRequired"
+    },
+    {
+      "type": "autoscaler_signal_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "AutoscalerMetricSignalMissing"
+    },
+    {
+      "type": "live_cluster_missing",
+      "expected_phase": "SKIPPED",
+      "expected_reason": "NoKubernetesContextProvided"
+    }
+  ]
+}

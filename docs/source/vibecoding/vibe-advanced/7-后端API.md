@@ -1,6 +1,6 @@
 # 后端 API：从 CRUD 到可用的服务接口
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_mll04abe-1f408b85793aaf81.jpg
+![后端 API 开发](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_mll04abe-1f408b85793aaf81.jpg)
 
 <p>图 1：后端 API 开发</p>
 

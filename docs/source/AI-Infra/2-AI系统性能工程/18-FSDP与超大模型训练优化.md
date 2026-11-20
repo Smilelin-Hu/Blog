@@ -19,21 +19,10 @@ PyTorch 官方主线把基于 DTensor、逐参数分片的 `fully_shard` 称为 
 
 四张 GPU、四层模型时，DDP 的做法是每张卡都放完整四层，只给不同数据：
 
-```text
-GPU0: L0 L1 L2 L3 + 全部梯度 + 全部优化器状态
-GPU1: L0 L1 L2 L3 + 全部梯度 + 全部优化器状态
-GPU2: L0 L1 L2 L3 + 全部梯度 + 全部优化器状态
-GPU3: L0 L1 L2 L3 + 全部梯度 + 全部优化器状态
-```
+![每卡常驻状态：DDP 全复制 vs ZeRO-3 分片](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l18_02.png)
 
 FSDP 的静止状态更像仓库分区：
 
-```text
-GPU0: 每个参数的第 0 片 + 对应梯度/优化器状态
-GPU1: 每个参数的第 1 片 + 对应梯度/优化器状态
-GPU2: 每个参数的第 2 片 + 对应梯度/优化器状态
-GPU3: 每个参数的第 3 片 + 对应梯度/优化器状态
-```
 
 计算某个 Block 前，各 rank 通过 All-Gather 临时取得这个 Block 的完整参数；完成计算后释放完整参数，只保留自己的分片。反向得到完整梯度后，再通过 Reduce-Scatter 完成求和并只留下本 rank 的梯度片。**参数是借来的，状态才是自己的。**
 
@@ -70,12 +59,7 @@ $$
 
 以一个 Transformer Block 为一个分片组、`reshard_after_forward=True` 时：
 
-```text
-前向：参数分片 --All-Gather--> 完整 Block 参数 --计算--> 释放完整参数
-反向：参数分片 --All-Gather--> 完整 Block 参数 --计算梯度
-      完整梯度 --Reduce-Scatter--> 本 rank 梯度分片 --释放完整参数
-优化：本 rank 只更新自己的参数分片和优化器状态分片
-```
+![FSDP2 一次迭代：分片常驻、按需 AllGather](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l18_01.png)
 
 ### 4.1 为什么要两次 All-Gather
 
@@ -117,6 +101,7 @@ T_{step} = T_c + T_m - T_h + T_{other}
 $$
 
 优化目标不是让 $T_m$ 消失，而是让 $T_h$ 尽量接近 $T_m$。Nsight Systems 时间线上应看到下一层 All-Gather 与当前层计算重叠、当前层 Reduce-Scatter 与前一层反向计算重叠。
+
 
 ## 5. FSDP1 与 FSDP2
 
@@ -192,19 +177,7 @@ $$
 
 ### 8.2 诊断决策树
 
-```text
-是否 OOM？
-├─ 是
-│  ├─ 模型初始化就 OOM：meta 初始化 / 分片前避免整模落卡
-│  ├─ forward 峰值 OOM：减小分片组、开启 reshard、减 batch
-│  ├─ backward 峰值 OOM：激活重计算、减少预取、查梯度累积
-│  └─ optimizer.step OOM：确认优化器状态已分片，查临时 foreach buffer
-└─ 否
-   ├─ 比 DDP 慢：模型是否本就适合 DDP？检查 AG/RS 暴露时间
-   ├─ GPU 有空洞：分片过大、CPU 发射晚、网络慢或 straggler
-   ├─ reserved 远大于 allocated：碎片/预取/动态 shape
-   └─ loss 异常：检查 reduction dtype、梯度缩放和累积除数
-```
+![FSDP 异常归因：OOM 按峰值阶段，非 OOM 按症状](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l18_03.png)
 
 ### 8.3 最小实验法
 

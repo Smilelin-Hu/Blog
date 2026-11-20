@@ -22,10 +22,7 @@ AI Runtime 是模型与硬件之间的「现场总指挥」：接收工作，管
 
 只把飞机发动机调快，并不能解决登机口拥堵、跑道冲突与乘客错过转机。Runtime 优化要关注请求从进入到完成的整条路径：
 
-```text
-接入 → 排队 → 预处理 → 调度/组批 → H2D → 计算/通信
-    → 后处理 → D2H/流式输出 → 计量与回收
-```
+![ai2-22-L25](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l22_01.png)
 
 任何一段变慢，都会通过队列放大成尾延迟。
 
@@ -33,23 +30,7 @@ AI Runtime 是模型与硬件之间的「现场总指挥」：接收工作，管
 
 ### 3.1 控制面、数据面与执行面
 
-```text
-┌──────────────────────── 控制面 ────────────────────────┐
-│ 模型版本、配置、路由、配额、扩缩容、健康检查、回滚      │
-└────────────────────────────────────────────────────────┘
-                           │
-┌──────────────────────── 数据面 ────────────────────────┐
-│ Gateway → Queue → Admission → Scheduler → Batcher      │
-│                   ↕ 状态/KV/缓存 ↕                      │
-└────────────────────────────────────────────────────────┘
-                           │
-┌──────────────────────── 执行面 ────────────────────────┐
-│ Executor → Compiler/Plan Cache → Memory Pool            │
-│          → CUDA Stream/Graph → Kernel/Library/NCCL      │
-└────────────────────────────────────────────────────────┘
-                           │
-                   GPU / CPU / 网络 / 存储
-```
+![AI Runtime 三面：控制面 / 数据面 / 执行面](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l22_03.png)
 
 控制面变化频率低，负责「应该运行什么」；数据面高频处理请求，负责「何时运行谁」；执行面贴近设备，负责「如何运行得快」。把三者混在一个同步线程中，会让配置、日志或网络抖动进入计算热路径。
 
@@ -146,13 +127,7 @@ $$
 
 一个高效 Runtime 会让 CPU 预处理、H2D、GPU 计算、通信、D2H 与后处理形成流水线：
 
-```text
-时间 →
-CPU :  prep N+1 ─ prep N+2 ─ prep N+3
-H2D :      copy N+1 ─ copy N+2 ─ copy N+3
-GPU : run N ───── run N+1 ───── run N+2
-D2H :          out N ───── out N+1
-```
+![异步流水线：同步只保留真实数据依赖](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l22_02.png)
 
 实现手段包括 Pinned Memory、`non_blocking=True`、CUDA Stream、Event、异步 NCCL 与独立线程/进程。关键不是删除所有同步，而是把同步缩小到真实数据依赖：Producer 完成后 Consumer 才能读取；Buffer 重用前必须确认前一次使用结束；输出返回前必须确认相应请求的设备工作完成；不相关请求不应被全局 `cudaDeviceSynchronize()` 一起阻塞。
 
@@ -221,25 +196,7 @@ $$
 
 ### 12.2 Runtime 诊断顺序
 
-```text
-SLO/Goodput 不达标
-  │
-  ├─ Queue 是否增长？
-  │    ├─ 是：到达率、服务率、Admission、Batch、Worker
-  │    └─ 否
-  │
-  ├─ CPU 是否喂不满 GPU？
-  │    ├─ 是：锁、同步、预处理、Launch、H2D
-  │    └─ 否
-  │
-  ├─ GPU 是否有长空洞或低效 Kernel？
-  │    ├─ 空洞：Graph、Batch、Stream、通信重叠
-  │    └─ 长热点：Fusion、精度、Kernel、并行策略
-  │
-  └─ Memory/Network 是否限制并发？
-       ├─ Memory：Pool、KV、碎片、驱逐
-       └─ Network：拓扑、Payload、重叠、解耦
-```
+![SLO/Goodput 不达标：四层顺序归因](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l22_04.png)
 
 ### 12.3 不要只看平均值
 

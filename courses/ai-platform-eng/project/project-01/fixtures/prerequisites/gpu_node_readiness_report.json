@@ -1,0 +1,247 @@
+{
+  "status": "PASS",
+  "checks": {
+    "all_gpu_nodes_are_ready": true,
+    "cpu_node_is_not_mutated": true,
+    "required_operands_are_present": true,
+    "labels_and_allocatable_are_published": true,
+    "all_faults_stop_at_expected_layer": true
+  },
+  "healthy": {
+    "gpu-worker-a": {
+      "stage": "Ready",
+      "reason": "ValidationPassed",
+      "ready": true,
+      "events": [
+        {
+          "stage": "Discovered",
+          "reason": "GPUDetected"
+        },
+        {
+          "stage": "DriverReady",
+          "reason": "ContainerizedDriverLoaded"
+        },
+        {
+          "stage": "ToolkitReady",
+          "reason": "ContainerRuntimeConfigured"
+        },
+        {
+          "stage": "ResourceAdvertised",
+          "reason": "DevicePluginRegistered"
+        },
+        {
+          "stage": "TelemetryReady",
+          "reason": "LabelsAndMetricsAvailable"
+        },
+        {
+          "stage": "Ready",
+          "reason": "ValidationPassed"
+        }
+      ],
+      "operands": [
+        "driver",
+        "container-toolkit",
+        "device-plugin",
+        "gpu-feature-discovery",
+        "dcgm",
+        "dcgm-exporter",
+        "validator"
+      ],
+      "labels": {
+        "nvidia.com/gpu.present": "true",
+        "nvidia.com/gpu.product": "NVIDIA-L40S",
+        "nvidia.com/cuda.driver.major": "580-simulated"
+      },
+      "allocatable": {
+        "nvidia.com/gpu": 4
+      }
+    },
+    "gpu-worker-b": {
+      "stage": "Ready",
+      "reason": "ValidationPassed",
+      "ready": true,
+      "events": [
+        {
+          "stage": "Discovered",
+          "reason": "GPUDetected"
+        },
+        {
+          "stage": "DriverReady",
+          "reason": "ContainerizedDriverLoaded"
+        },
+        {
+          "stage": "ToolkitReady",
+          "reason": "ContainerRuntimeConfigured"
+        },
+        {
+          "stage": "ResourceAdvertised",
+          "reason": "DevicePluginRegistered"
+        },
+        {
+          "stage": "TelemetryReady",
+          "reason": "LabelsAndMetricsAvailable"
+        },
+        {
+          "stage": "Ready",
+          "reason": "ValidationPassed"
+        }
+      ],
+      "operands": [
+        "driver",
+        "container-toolkit",
+        "device-plugin",
+        "gpu-feature-discovery",
+        "dcgm",
+        "dcgm-exporter",
+        "validator"
+      ],
+      "labels": {
+        "nvidia.com/gpu.present": "true",
+        "nvidia.com/gpu.product": "NVIDIA-A100-SXM4-80GB",
+        "nvidia.com/cuda.driver.major": "580-simulated"
+      },
+      "allocatable": {
+        "nvidia.com/gpu": 8
+      }
+    },
+    "cpu-worker": {
+      "stage": "NotApplicable",
+      "reason": "NoGPUDetected",
+      "ready": true,
+      "events": [],
+      "operands": []
+    }
+  },
+  "faults": {
+    "nouveau-conflict": {
+      "stage": "DriverBlocked",
+      "reason": "NouveauLoaded",
+      "ready": false,
+      "events": [
+        {
+          "stage": "Discovered",
+          "reason": "GPUDetected"
+        }
+      ],
+      "operands": [],
+      "expected_stage": "DriverBlocked",
+      "expected_reason": "NouveauLoaded",
+      "passed": true
+    },
+    "missing-kernel-headers": {
+      "stage": "DriverBlocked",
+      "reason": "KernelHeadersMissing",
+      "ready": false,
+      "events": [
+        {
+          "stage": "Discovered",
+          "reason": "GPUDetected"
+        }
+      ],
+      "operands": [],
+      "expected_stage": "DriverBlocked",
+      "expected_reason": "KernelHeadersMissing",
+      "passed": true
+    },
+    "secure-boot-unsigned": {
+      "stage": "DriverBlocked",
+      "reason": "ModuleSignatureRejected",
+      "ready": false,
+      "events": [
+        {
+          "stage": "Discovered",
+          "reason": "GPUDetected"
+        }
+      ],
+      "operands": [],
+      "expected_stage": "DriverBlocked",
+      "expected_reason": "ModuleSignatureRejected",
+      "passed": true
+    },
+    "runtime-not-configured": {
+      "stage": "ToolkitBlocked",
+      "reason": "RuntimeNotConfigured",
+      "ready": false,
+      "events": [
+        {
+          "stage": "Discovered",
+          "reason": "GPUDetected"
+        },
+        {
+          "stage": "DriverReady",
+          "reason": "ContainerizedDriverLoaded"
+        }
+      ],
+      "operands": [
+        "driver"
+      ],
+      "expected_stage": "ToolkitBlocked",
+      "expected_reason": "RuntimeNotConfigured",
+      "passed": true
+    },
+    "device-plugin-missing": {
+      "stage": "ResourceBlocked",
+      "reason": "GPUResourceNotAdvertised",
+      "ready": false,
+      "events": [
+        {
+          "stage": "Discovered",
+          "reason": "GPUDetected"
+        },
+        {
+          "stage": "DriverReady",
+          "reason": "ContainerizedDriverLoaded"
+        },
+        {
+          "stage": "ToolkitReady",
+          "reason": "ContainerRuntimeConfigured"
+        }
+      ],
+      "operands": [
+        "driver",
+        "container-toolkit"
+      ],
+      "expected_stage": "ResourceBlocked",
+      "expected_reason": "GPUResourceNotAdvertised",
+      "passed": true
+    },
+    "validator-failed": {
+      "stage": "ValidationFailed",
+      "reason": "WorkloadValidationFailed",
+      "ready": false,
+      "events": [
+        {
+          "stage": "Discovered",
+          "reason": "GPUDetected"
+        },
+        {
+          "stage": "DriverReady",
+          "reason": "ContainerizedDriverLoaded"
+        },
+        {
+          "stage": "ToolkitReady",
+          "reason": "ContainerRuntimeConfigured"
+        },
+        {
+          "stage": "ResourceAdvertised",
+          "reason": "DevicePluginRegistered"
+        },
+        {
+          "stage": "TelemetryReady",
+          "reason": "LabelsAndMetricsAvailable"
+        }
+      ],
+      "operands": [
+        "driver",
+        "container-toolkit",
+        "device-plugin",
+        "gpu-feature-discovery",
+        "dcgm",
+        "dcgm-exporter"
+      ],
+      "expected_stage": "ValidationFailed",
+      "expected_reason": "WorkloadValidationFailed",
+      "passed": true
+    }
+  }
+}

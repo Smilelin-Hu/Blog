@@ -18,19 +18,7 @@ GPU 利用率低，不一定是 GPU Kernel 慢。数据可能卡在磁盘、CPU 
 
 ## 2. 核心直觉：GPU 是流水线末端的消费者
 
-```text
-Storage / Network
-        ↓
-Page Cache / Filesystem
-        ↓
-CPU Read → Decode → Tokenize → Collate
-        ↓
-Pinned Host Memory
-        ↓ PCIe / NVLink-C2C
-GPU Memory
-        ↓
-GPU Kernels
-```
+![ai2-09-L21](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l09_01.png)
 
 系统吞吐受最慢阶段限制：
 
@@ -307,24 +295,7 @@ GPU Operator 可管理 Driver、Container Toolkit、Device Plugin、GPU Feature 
 
 ### 7.2 诊断决策树
 
-```text
-GPU 利用率低？
-├─ GPU Timeline 有 Kernel，但间隔大
-│  ├─ DataLoader/Data Time 高 → CPU、I/O、Worker、Pinned Memory
-│  ├─ NCCL 高 → 拓扑与通信
-│  └─ Launch 碎片 → Runtime/Graph/Fusion
-├─ GPU 无进程或初始化慢 → Driver、Runtime、权限、Persistence
-├─ 容器比主机慢
-│  ├─ cpu.stat throttled 增长 → CPU Quota
-│  ├─ memory.events 增长 → Limit/OOM/Pressure
-│  ├─ /dev/shm 满 → SHM 配额
-│  └─ Volume/OverlayFS → 存储路径
-└─ Pod 间性能不稳定
-   ├─ QoS/Cpuset/NUMA 不一致
-   ├─ GPU 共享干扰
-   ├─ 节点型号/时钟/温度不一致
-   └─ 网络/存储邻居噪声
-```
+![GPU 利用率低：按 Timeline 与环境分层归因](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l09_02.png)
 
 ## 8. 只读审计脚本
 

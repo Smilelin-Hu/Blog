@@ -14,6 +14,8 @@
 
 Triton 居于编译器与算子库之间：block 级编程模型，shared memory 与 pipelining 交给编译器；LLM kernel 生态的主战场在 Triton 与 CUTLASS 两端。
 
+![编译器栈分层：图 IR → 调度融合 → kernel 生成](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l38_01.png)
+
 ## 2. MLIR：dialect 基础设施
 
 多级 dialect（tensor/linalg/affine/gpu/nvgpu）渐进 lowering：tensor 语义与硬件层级需要中间表示，直接落 LLVM IR 会丢掉融合与布局信息。生态位：IREE 运行时、Triton 的 MLIR 后端、XLA 的 HLO→LHLO；2026 年 CUTLASS 也推出 compiler stack——CuTe IR dialect 建模布局代数并带 lowering pass（Cutegen），手写级抽象开始进入编译管线。工程价值：自定义算子以 dialect 接入统一管线，而不是黑盒 call 打断融合。

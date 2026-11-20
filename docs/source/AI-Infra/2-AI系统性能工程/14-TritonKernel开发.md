@@ -38,33 +38,13 @@ tl.store(out_ptr + offsets, x + y, mask=mask)
 
 **Program Instance 不等于一个 CUDA Thread**。以 1D 向量为例：
 
-```text
-N = 1000, BLOCK_SIZE = 256
-Grid = ceil(1000 / 256) = 4 个 Program Instance
-
-Program 0 → offsets   0...255
-Program 1 → offsets 256...511
-Program 2 → offsets 512...767
-Program 3 → offsets 768...1023，其中 1000...1023 被 Mask
-```
+![ai2-14-L41](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l14_01.png)
 
 一个 Program Instance 在底层通常对应一个 Thread Block（由 `num_warps` 决定线程数），块内的 lane 分工由编译器安排。
 
 ## 3. 编译与执行链路
 
-```text
-Python Wrapper
-   ↓ 传入 Tensor、Shape、Stride、Meta-parameter
-Triton Frontend / @triton.jit
-   ↓
-Triton IR / GPU-specific Lowering
-   ↓
-LLVM/PTX 或目标后端代码
-   ↓
-Driver 加载并缓存编译产物
-   ↓
-异步 Kernel Launch
-```
+![ai2-14-L55](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l14_02.png)
 
 第一次遇到某个新签名或新 Meta-parameter 组合可能发生 JIT Compile，后续命中缓存才是稳定执行。Benchmark 必须把编译与 Auto-tuning 时间从 Steady-State Kernel Time 中分离。
 

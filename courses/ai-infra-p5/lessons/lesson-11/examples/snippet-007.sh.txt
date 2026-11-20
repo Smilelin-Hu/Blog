@@ -1,0 +1,2 @@
+CUDA_VISIBLE_DEVICES=0 python3 gpu_signature_compare.py --documents 200000 --pairs 2000000 > gpu0.json
+CUDA_VISIBLE_DEVICES=1 python3 gpu_signature_compare.py --documents 200000 --pairs 2000000 > gpu1.json

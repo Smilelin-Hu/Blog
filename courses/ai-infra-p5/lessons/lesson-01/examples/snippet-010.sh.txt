@@ -1,0 +1,2 @@
+python3 check_gpu.py
+python3 gpu_data_efficiency.py --steps 100 --samples 4096

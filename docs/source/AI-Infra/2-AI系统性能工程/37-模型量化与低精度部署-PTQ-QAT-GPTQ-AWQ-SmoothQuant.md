@@ -39,6 +39,8 @@ QAT 用 straight-through estimator 穿 fake-quant 反向；≤4bit 或端侧/安
 - **回归矩阵**：perplexity + 下游基准 + 长上下文 needle + 生成质量人评抽样；门禁阈值在量化**之前**定好（评测体系见主题五 37）。
 - **性能验收**：decode tokens/s 对照权重字节数带宽模型，prefill TTFT 对照算力模型；理论加速与实测加速差距超过阈值就查 kernel 与调度，而不是接受「量化了就该快」。
 
+![量化管线：校准定标 → 低比特计算 → 精度回归门禁](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y2_l37_01.png)
+
 ## 6. 工程取舍
 
 | 场景 | 推荐 | 理由 |

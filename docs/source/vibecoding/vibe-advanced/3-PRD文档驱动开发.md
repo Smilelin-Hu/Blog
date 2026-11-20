@@ -1,6 +1,6 @@
 # PRD 文档驱动开发：从想法到可执行规格
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_mlkzvdt7-83b23488ee2e4fad.jpg
+![产品思维与文档驱动](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_mlkzvdt7-83b23488ee2e4fad.jpg)
 
 <p>图 1：产品思维与文档驱动</p>
 

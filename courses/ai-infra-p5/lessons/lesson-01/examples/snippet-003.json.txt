@@ -1,0 +1,3 @@
+{"source_id":"src-docs","license":"internal-approved","text":"Widget 2.0 requires Python 3.12. Install it with the package manager."}
+{"source_id":"src-faq","license":"public-docs","text":"How do I install Widget 2.0? Use Python 3.12 and run the package manager."}
+{"source_id":"src-ticket-17","license":"restricted-support","text":"Customer email user@example.invalid reports that Widget 2.0 fails on Python 3.10."}

@@ -1,0 +1,20 @@
+---
+import { getCollection } from 'astro:content';
+import Layout from '../layouts/Layout.astro';
+import NoteContent from '../components/NoteContent.astro';
+import { titleOf, pathOf } from '../utils/notes';
+
+export async function getStaticPaths() {
+  const notes = await getCollection('notes');
+  return notes.map((entry) => ({
+    params: { slug: `source/${pathOf(entry)}` },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+---
+
+<Layout title={`${titleOf(entry)} - 笔记课堂`} description={titleOf(entry)}>
+  <NoteContent entry={entry} />
+</Layout>

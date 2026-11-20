@@ -1,0 +1,142 @@
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import random
+from dataclasses import asdict, dataclass
+
+
+@dataclass
+class Example:
+    good_q: float
+    good_len: float
+    bad_q: float
+    bad_len: float
+    label: int
+
+
+def sigmoid(x: float) -> float:
+    if x >= 0:
+        z = math.exp(-x)
+        return 1.0 / (1.0 + z)
+    z = math.exp(x)
+    return z / (1.0 + z)
+
+
+def make_data(n: int, noise: float, length_bias: float, seed: int) -> list[Example]:
+    rng = random.Random(seed)
+    rows: list[Example] = []
+    for _ in range(n):
+        q_good = rng.gauss(1.0, 0.7)
+        q_bad = rng.gauss(-0.2, 0.7)
+        len_good = rng.gauss(length_bias, 1.0)
+        len_bad = rng.gauss(0.0, 1.0)
+        label = 1 if rng.random() >= noise else -1
+        rows.append(Example(q_good, len_good, q_bad, len_bad, label))
+    return rows
+
+
+def score(wq: float, wl: float, q: float, length: float) -> float:
+    return wq * q + wl * length
+
+
+def train_pair(
+    method: str,
+    rows: list[Example],
+    steps: int,
+    lr: float,
+    beta: float,
+    target: float,
+) -> tuple[float, float]:
+    wq, wl = 0.0, 0.0
+    ref_q, ref_l = 0.15, 0.0
+    rng = random.Random(17)
+    for _ in range(steps):
+        e = rows[rng.randrange(len(rows))]
+        dq = e.label * (e.good_q - e.bad_q)
+        dl = e.label * (e.good_len - e.bad_len)
+        raw = wq * dq + wl * dl
+        ref = ref_q * dq + ref_l * dl
+        if method == "dpo":
+            margin = raw - ref
+            dloss_dm = -beta * sigmoid(-beta * margin)
+        elif method == "ipo":
+            margin = raw - ref
+            dloss_dm = 2.0 * (margin - target)
+        elif method == "simpo":
+            # 这里把长度特征视为平均 Token 分数中的表面线索。
+            margin = raw
+            dloss_dm = -beta * sigmoid(-(beta * margin - target))
+        elif method == "orpo":
+            margin = raw
+            pair_grad = -beta * sigmoid(-beta * margin)
+            # chosen-only 项鼓励绝对质量；这是机制化近似，不是论文完整实现。
+            chosen_q = e.good_q if e.label == 1 else e.bad_q
+            chosen_l = e.good_len if e.label == 1 else e.bad_len
+            p = sigmoid(score(wq, wl, chosen_q, chosen_l))
+            wq -= lr * (pair_grad * dq + 0.2 * (p - 1.0) * chosen_q)
+            wl -= lr * (pair_grad * dl + 0.2 * (p - 1.0) * chosen_l)
+            continue
+        else:
+            raise ValueError(method)
+        wq -= lr * dloss_dm * dq
+        wl -= lr * dloss_dm * dl
+    return wq, wl
+
+
+def train_kto(rows: list[Example], steps: int, lr: float, beta: float) -> tuple[float, float]:
+    # 将 Pair 拆成正负单样本，展示 unpaired 信号；中心固定为零仅用于机制模拟。
+    samples: list[tuple[float, float, int]] = []
+    for e in rows:
+        if e.label == 1:
+            samples.extend([(e.good_q, e.good_len, 1), (e.bad_q, e.bad_len, 0)])
+        else:
+            samples.extend([(e.bad_q, e.bad_len, 1), (e.good_q, e.good_len, 0)])
+    rng = random.Random(23)
+    wq, wl = 0.0, 0.0
+    for _ in range(steps):
+        q, length, desirable = samples[rng.randrange(len(samples))]
+        z = score(wq, wl, q, length) - 0.15 * q
+        p = sigmoid(beta * z)
+        grad = beta * (p - desirable)
+        wq -= lr * grad * q
+        wl -= lr * grad * length
+    return wq, wl
+
+
+def evaluate(wq: float, wl: float, n: int = 5000, seed: int = 99) -> dict[str, float]:
+    # 测试集让长度与真实质量独立，专门检查捷径是否泛化。
+    rows = make_data(n=n, noise=0.0, length_bias=0.0, seed=seed)
+    correct = 0
+    margins = []
+    for e in rows:
+        m = score(wq, wl, e.good_q, e.good_len) - score(wq, wl, e.bad_q, e.bad_len)
+        correct += int(m > 0)
+        margins.append(m)
+    return {
+        "quality_weight": round(wq, 5),
+        "length_weight": round(wl, 5),
+        "true_pair_accuracy": round(correct / n, 5),
+        "mean_margin": round(sum(margins) / n, 5),
+    }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--noise", type=float, default=0.15)
+    parser.add_argument("--length-bias", type=float, default=0.9)
+    parser.add_argument("--steps", type=int, default=15000)
+    parser.add_argument("--seed", type=int, default=7)
+    args = parser.parse_args()
+    rows = make_data(4000, args.noise, args.length_bias, args.seed)
+    output: dict[str, object] = {"config": vars(args), "results": {}}
+    for method in ["dpo", "ipo", "simpo", "orpo"]:
+        wq, wl = train_pair(method, rows, args.steps, 0.002, 1.0, 0.5)
+        output["results"][method] = evaluate(wq, wl)
+    output["results"]["kto"] = evaluate(*train_kto(rows, args.steps, 0.002, 1.0))
+    print(json.dumps(output, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

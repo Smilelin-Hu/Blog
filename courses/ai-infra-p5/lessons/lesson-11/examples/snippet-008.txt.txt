@@ -1,0 +1,13 @@
+11_精确模糊段落与子串去重/
+├── README.md
+├── mechanism/
+│   ├── dedup_mechanism.py
+│   ├── test_dedup_mechanism.py
+│   └── data/
+│       └── fixture.jsonl
+├── gpu/
+│   ├── check_cuda.py
+│   ├── gpu_signature_compare.py
+│   └── results/
+└── reports/
+    └── acceptance.json

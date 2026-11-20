@@ -1,0 +1,172 @@
+from __future__ import annotations
+
+import argparse
+import json
+import math
+from dataclasses import dataclass
+
+import numpy as np
+
+
+@dataclass
+class Batch:
+    group_ids: np.ndarray
+    rewards: np.ndarray
+    old_logprobs: np.ndarray
+    current_logprobs: np.ndarray
+    reference_logprobs: np.ndarray
+    values: np.ndarray
+    token_rewards: np.ndarray
+    mask: np.ndarray
+    lengths: np.ndarray
+
+
+def fixture() -> Batch:
+    group_ids = np.array([0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2])
+    rewards = np.array([1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.5, 0.0, 0.5])
+    max_tokens = 8
+    lengths = np.array([5, 4, 7, 6, 8, 7, 6, 5, 8, 5, 4, 7])
+    mask = np.arange(max_tokens)[None, :] < lengths[:, None]
+    rng = np.random.default_rng(20260821)
+    old = rng.normal(-2.0, 0.2, size=(12, max_tokens))
+    current = old + rng.normal(0.0, 0.08, size=(12, max_tokens))
+    reference = old + rng.normal(-0.02, 0.05, size=(12, max_tokens))
+    values = rng.normal(0.1, 0.05, size=(12, max_tokens))
+    token_rewards = np.zeros((12, max_tokens))
+    for i, length in enumerate(lengths):
+        token_rewards[i, length - 1] = rewards[i]
+    return Batch(group_ids, rewards, old, current, reference, values, token_rewards, mask, lengths)
+
+
+def group_advantages(batch: Batch, normalize: bool, minimum_std: float = 1e-6) -> tuple[np.ndarray, dict]:
+    advantages = np.zeros_like(batch.rewards)
+    stats = {}
+    for group_id in np.unique(batch.group_ids):
+        indices = np.where(batch.group_ids == group_id)[0]
+        values = batch.rewards[indices]
+        mean = float(values.mean())
+        std = float(values.std())
+        centered = values - mean
+        if normalize:
+            advantages[indices] = centered / max(std, minimum_std)
+        else:
+            advantages[indices] = centered
+        stats[str(group_id)] = {
+            "mean": mean,
+            "std": std,
+            "zero_variance": std < minimum_std,
+        }
+    return advantages, stats
+
+
+def rloo_advantages(batch: Batch) -> np.ndarray:
+    result = np.zeros_like(batch.rewards)
+    for group_id in np.unique(batch.group_ids):
+        indices = np.where(batch.group_ids == group_id)[0]
+        if len(indices) < 2:
+            raise ValueError("RLOO requires at least two responses per group")
+        total = batch.rewards[indices].sum()
+        result[indices] = batch.rewards[indices] - (total - batch.rewards[indices]) / (len(indices) - 1)
+    return result
+
+
+def gae(batch: Batch, gamma: float, lam: float) -> tuple[np.ndarray, np.ndarray]:
+    advantages = np.zeros_like(batch.values)
+    for row, length in enumerate(batch.lengths):
+        running = 0.0
+        for token in range(length - 1, -1, -1):
+            next_value = batch.values[row, token + 1] if token + 1 < length else 0.0
+            delta = batch.token_rewards[row, token] + gamma * next_value - batch.values[row, token]
+            running = delta + gamma * lam * running
+            advantages[row, token] = running
+    returns = advantages + batch.values
+    return advantages, returns
+
+
+def clipped_objective(
+    batch: Batch,
+    sequence_advantages: np.ndarray,
+    clip_low: float,
+    clip_high: float,
+    aggregation: str,
+) -> dict:
+    ratio = np.exp(batch.current_logprobs - batch.old_logprobs)
+    token_adv = np.broadcast_to(sequence_advantages[:, None], ratio.shape)
+    unclipped = ratio * token_adv
+    clipped_ratio = np.clip(ratio, 1.0 - clip_low, 1.0 + clip_high)
+    clipped = clipped_ratio * token_adv
+    selected = np.minimum(unclipped, clipped)
+    selected = np.where(batch.mask, selected, 0.0)
+
+    if aggregation == "global_token":
+        objective = selected.sum() / batch.mask.sum()
+    elif aggregation == "sequence_then_batch":
+        objective = np.mean(selected.sum(axis=1) / batch.lengths)
+    else:
+        raise ValueError("unknown aggregation")
+    return {
+        "objective": float(objective),
+        "ratio_p50": float(np.median(ratio[batch.mask])),
+        "ratio_p99": float(np.quantile(ratio[batch.mask], 0.99)),
+        "upper_clip_fraction": float(np.mean((ratio[batch.mask] > 1.0 + clip_high))),
+        "lower_clip_fraction": float(np.mean((ratio[batch.mask] < 1.0 - clip_low))),
+    }
+
+
+def overlong_penalty(length: int, safe: int, maximum: int, maximum_penalty: float) -> float:
+    if length <= safe:
+        return 0.0
+    if length >= maximum:
+        return maximum_penalty
+    fraction = (length - safe) / (maximum - safe)
+    return maximum_penalty * fraction
+
+
+def dynamic_sampling(batch: Batch, minimum_std: float = 1e-6) -> list[int]:
+    accepted = []
+    for group_id in np.unique(batch.group_ids):
+        indices = np.where(batch.group_ids == group_id)[0]
+        if batch.rewards[indices].std() >= minimum_std:
+            accepted.extend(indices.tolist())
+    return accepted
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--clip-low", type=float, default=0.20)
+    parser.add_argument("--clip-high", type=float, default=0.28)
+    args = parser.parse_args()
+    batch = fixture()
+    grpo, group_stats = group_advantages(batch, normalize=True)
+    centered, _ = group_advantages(batch, normalize=False)
+    rloo = rloo_advantages(batch)
+    gae_values, returns = gae(batch, gamma=1.0, lam=0.95)
+    penalties = np.array([
+        overlong_penalty(int(length), safe=6, maximum=8, maximum_penalty=-0.5)
+        for length in batch.lengths
+    ])
+    accepted = dynamic_sampling(batch)
+    report = {
+        "status": "succeeded",
+        "group_stats": group_stats,
+        "grpo_advantages": grpo.tolist(),
+        "centered_advantages": centered.tolist(),
+        "rloo_advantages": rloo.tolist(),
+        "rloo_to_centered_ratio": np.divide(
+            rloo, centered, out=np.zeros_like(rloo), where=np.abs(centered) > 1e-12
+        ).tolist(),
+        "gae_first_response": gae_values[0].tolist(),
+        "returns_first_response": returns[0].tolist(),
+        "overlong_penalties": penalties.tolist(),
+        "accepted_response_indices": accepted,
+        "grpo_symmetric": clipped_objective(batch, grpo, 0.2, 0.2, "sequence_then_batch"),
+        "dapo_like": clipped_objective(batch, grpo, args.clip_low, args.clip_high, "global_token"),
+        "sampled_kl_k1_mean": float(np.mean(
+            (batch.current_logprobs - batch.reference_logprobs)[batch.mask]
+        )),
+    }
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

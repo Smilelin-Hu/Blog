@@ -68,26 +68,11 @@ $$Action = Reconcile(Desired,Observed)$$
 
 一个通用循环：
 
-```text
-Observe
-  ↓
-Decide
-  ↓
-Act
-  ↓
-Wait / Measure
-  └────→ Observe
-```
+![Autoscaling 闭环：Observe → Decide → Act → Wait/Measure](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l24_01.png)
 
 例如 Autoscaling：
 
-```text
-Observe queue/latency/load
-→ Decide replica target
-→ Create/Drain Replica
-→ 等待 Ready
-→ 继续观测
-```
+![ai3-24-L84](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l24_02.png)
 
 核心难点是：**Action 有延迟**。大模型 Cold Start 很慢，控制器不能假设扩容命令发出后容量立刻出现。
 
@@ -162,10 +147,7 @@ Artifact
 
 Replica 状态：
 
-```text
-PENDING → LOADING → WARMING → READY → DRAINING → STOPPED
-                    ↘ FAILED
-```
+![ai3-24-L165](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l24_03.png)
 
 Controller 只做状态决策，不直接承担用户 token 流量。
 

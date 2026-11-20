@@ -1,0 +1,29 @@
+项目 05　vLLM推理优化实验
+
+项目目标
+--------
+模拟 vLLM 调度与连续组批，观察吞吐和时延之间的权衡。
+
+推荐运行
+--------
+1. 在本文件夹打开终端。
+2. 执行：python 运行项目.py
+3. 运行结果保存在“01_项目文件”内部的 reports 等目录中。
+
+目录说明
+--------
+- 运行项目.py：推荐运行入口。
+- 01_项目文件：项目所需的代码、配置、JSON、报告目录和辅助文件。
+
+主要文件
+--------
+- README_运行说明.txt
+- logs/README_输出说明.txt
+- openai_stream_benchmark.py
+- reports/analysis.md
+- run_sweep.sh
+- scheduler_sim.py
+- start_server_example.sh
+
+注意：项目 3 和项目 8 使用 Bash 脚本。Windows 用户建议使用 WSL 或 Git Bash。
+需要 GPU 的实验请先阅读“01_项目文件”内的运行说明。

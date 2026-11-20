@@ -16,18 +16,11 @@
 
 最朴素的 parallel MTP 结构是从同一个 hidden 状态分出多个头：
 
-```text
-当前 hidden ─→ head1 → t+1
-           ├→ head2 → t+2
-           ├→ head3 → t+3
-           └→ head4 → t+4
-```
+![MTP：一个 hidden 状态并行出多个未来 token](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l04_03.png)
 
 问题是 $t+4$ 预测时不知道 $t+1,t+2,t+3$ 最终是什么。而自回归 Drafter 是：
 
-```text
-t+1 → 作为条件 → t+2 → 作为条件 → t+3
-```
+![ai3-04-L28](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l04_02.png)
 
 质量更稳定，但串行。P-EAGLE 类方法真正要解决的不是「并行输出四个 Logits」这么简单，而是：如何在并行计算时，给更深位置足够的条件信息，让它不要完全变成盲猜。
 

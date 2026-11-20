@@ -223,19 +223,7 @@ ExtraWork 包括：
 
 ### 六个项目如何形成完整能力
 
-```text
-Speculator Benchmark
-             ↓
-Workload Platform
-             ↓
-Gateway + Smart Router
-             ↓
-Multi-Model / Multi-LoRA
-             ↓
-GPU Fleet Planner
-             ↓
-Production Inference Platform
-```
+![推理成本优化栈：从基准到生产平台逐层落地](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l30_01.png)
 
 最终应具备的不是记住若干结论，而是：
 

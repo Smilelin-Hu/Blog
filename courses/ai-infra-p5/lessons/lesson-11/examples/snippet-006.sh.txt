@@ -1,0 +1,6 @@
+python3 check_cuda.py
+python3 gpu_signature_compare.py --documents 50000 --pairs 200000 --signature-length 64 --repeat 5
+python3 gpu_signature_compare.py --documents 200000 --pairs 2000000 --signature-length 128 --repeat 5
+python3 gpu_signature_compare.py --documents 200000 --pairs 2000000 --signature-length 256 --repeat 5
+python3 gpu_signature_compare.py --documents 200000 --pairs 2000000 --signature-length 128 --batch-pairs 16384 --repeat 5
+python3 gpu_signature_compare.py --documents 200000 --pairs 2000000 --signature-length 128 --batch-pairs 131072 --repeat 5

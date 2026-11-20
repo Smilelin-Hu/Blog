@@ -84,29 +84,7 @@ object
 
 编译后可形成状态机：
 
-```text
-START
- ↓
-{
- ↓
-"name"
- ↓
-:
- ↓
-STRING
- ↓
-,
- ↓
-"age"
- ↓
-:
- ↓
-INTEGER
- ↓
-}
- ↓
-END
-```
+![ai3-13-L87](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l13_01.png)
 
 这条链共 12 个状态（推导设定）。真实 tokenizer 不是字符级，因此还要把 grammar 允许的字符/字节序列映射为合法 token IDs。**这一步是 Structured Output 性能工程的关键**，也是编译成本的主要来源。
 
@@ -460,9 +438,7 @@ FSM 进入无出边状态后，每步 $A_s=\varnothing$。若实现选择「跳�
 
 Speculator 提出的候选也必须满足 grammar。如果 Drafter 不知道 grammar：
 
-```text
-大量 draft token → grammar 一票否决 → acceptance 下降
-```
+![ai3-13-L463](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l13_02.png)
 
 沿用前几篇口径：$T_V(B)=3+0.25B+0.01B^2$ ms、$T_O=0.3$ ms、$T_{draft}=1.40$ ms、AR 基线 3.56 ms/Token、$s_j=\prod_{i\le j}p_i$、$E[A]=\sum_{j\le B}s_j$、$C=E[A]+1$、$T_{eff}=T_{round}/C$。
 
@@ -503,9 +479,7 @@ Drafter 应用约束后每步增加 19.6 µs 掩码成本，$B=8$ 时 $T_{draft}
 
 Agent 的工具调用通常要求固定 schema，因此 Structured Output 不是单纯「格式美观」，而是 Agent Runtime 的协议边界：
 
-```text
-LLM → JSON args → Tool Executor
-```
+![ai3-13-L506](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l13_03.png)
 
 非法参数会直接变成失败/retry，引发更高总成本。
 

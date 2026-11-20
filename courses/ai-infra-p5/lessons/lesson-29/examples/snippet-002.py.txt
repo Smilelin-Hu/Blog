@@ -1,0 +1,48 @@
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+
+
+def gpu_inventory() -> list[dict[str, object]]:
+    if shutil.which("nvidia-smi") is None:
+        return []
+    cmd = ["nvidia-smi", "--query-gpu=index,name,memory.total", "--format=csv,noheader,nounits"]
+    run = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    if run.returncode != 0:
+        return []
+    rows = []
+    for line in run.stdout.strip().splitlines():
+        idx, name, mem = [part.strip() for part in line.split(",", 2)]
+        rows.append({"index": int(idx), "name": name, "memory_mib": int(mem)})
+    return rows
+
+
+def main() -> None:
+    gpus = gpu_inventory()
+    result: dict[str, object] = {
+        "experiment": "lesson-29-bounded-async",
+        "status": "ready",
+        "inventory": gpus,
+    }
+    missing = [key for key in ["MODEL_ID", "PROMPT_FILE", "OUTPUT_ROOT"] if not os.environ.get(key)]
+    if len(gpus) < 1:
+        result.update(status="skipped", reason="requires_at_least_one_visible_nvidia_gpu")
+    elif missing:
+        result.update(status="skipped", reason="missing_environment:" + ",".join(missing))
+    else:
+        result["command"] = [
+            "torchrun", "--standalone", "--nproc_per_node=1", "bounded_async_lab.py",
+            "--model", os.environ["MODEL_ID"],
+            "--prompts", os.environ["PROMPT_FILE"],
+            "--output", os.environ["OUTPUT_ROOT"],
+            "--max-version-lag", "2",
+            "--partial-tokens", "512",
+        ]
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

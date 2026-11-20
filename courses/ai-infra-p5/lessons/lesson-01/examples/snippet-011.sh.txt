@@ -1,0 +1,2 @@
+CUDA_VISIBLE_DEVICES=0 python3 gpu_data_efficiency.py --steps 200 > result_gpu0.json
+CUDA_VISIBLE_DEVICES=1 python3 gpu_data_efficiency.py --steps 200 > result_gpu1.json

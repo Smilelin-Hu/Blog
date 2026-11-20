@@ -76,11 +76,7 @@ status
 
 GPU/Host 侧可以维护有限容量：
 
-```text
-Hot adapters   → GPU
-Warm adapters  → CPU/local SSD
-Cold adapters  → Object Storage
-```
+![ai3-19-L79](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l19_02.png)
 
 淘汰策略：
 
@@ -108,17 +104,7 @@ $$EvictScore(a)=f(Recency,Frequency,LoadCost,Size)$$
 
 Cache miss 时：
 
-```text
-Request
- ↓
-Route
- ↓
-Adapter not resident
- ↓
-Download / Load / Materialize
- ↓
-Inference
-```
+![ai3-19-L111](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l19_03.png)
 
 TTFT 近似：
 
@@ -151,12 +137,7 @@ Replica C: LoRA 1,6
 
 一个 batch 可能：
 
-```text
-Req A → LoRA1
-Req B → LoRA2
-Req C → LoRA1
-Req D → LoRA3
-```
+![ai3-19-L154](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y3_l19_04.png)
 
 如果 Runtime 每个请求单独执行 adapter GEMM，会产生大量小 kernel。
 

@@ -1,0 +1,38 @@
+import unittest
+
+from dedup_mechanism import (
+    estimated_jaccard,
+    fixture,
+    jaccard,
+    make_hash_family,
+    minhash,
+    normalize,
+    run,
+    word_shingles,
+)
+
+
+class DedupTest(unittest.TestCase):
+    def test_normalization_keeps_semantics(self) -> None:
+        self.assertEqual(normalize("Ａ  B\nC"), "a b c")
+
+    def test_jaccard_identity(self) -> None:
+        values = word_shingles(fixture()[0].text)
+        self.assertEqual(jaccard(values, values), 1.0)
+
+    def test_minhash_identity(self) -> None:
+        values = word_shingles(fixture()[0].text)
+        family = make_hash_family(128, seed=7)
+        signature = minhash(values, family)
+        self.assertEqual(estimated_jaccard(signature, signature), 1.0)
+
+    def test_result_is_deterministic(self) -> None:
+        self.assertEqual(run(32, 4, 0.70), run(32, 4, 0.70))
+
+    def test_candidate_curve_is_monotonic(self) -> None:
+        probabilities = list(run(32, 4, 0.70)["theoretical_candidate_probability"].values())
+        self.assertEqual(probabilities, sorted(probabilities))
+
+
+if __name__ == "__main__":
+    unittest.main()

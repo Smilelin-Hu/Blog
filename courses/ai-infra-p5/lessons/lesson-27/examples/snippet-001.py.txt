@@ -1,0 +1,322 @@
+# sim/ray_control_plane.py
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import random
+import time
+from dataclasses import dataclass, asdict
+from typing import Dict, List, Optional, Tuple
+
+try:
+    import ray
+except ImportError:
+    print(json.dumps({
+        "status": "skipped",
+        "reason": "ray_not_installed",
+        "experiment_kind": "mechanism_simulation"
+    }, ensure_ascii=False))
+    raise SystemExit(0)
+
+
+def stable_hash(obj: object) -> str:
+    raw = json.dumps(obj, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+
+def event(name: str, **fields: object) -> None:
+    row = {"event": name, "ts": round(time.time(), 6), **fields}
+    print(json.dumps(row, ensure_ascii=False, sort_keys=True))
+
+
+@dataclass(frozen=True)
+class MemberPlan:
+    group_id: str
+    member_id: str
+    prompt_id: str
+    prompt_value: int
+    policy_version: int
+    seed: int
+
+
+@dataclass(frozen=True)
+class Trajectory:
+    group_id: str
+    member_id: str
+    prompt_id: str
+    policy_version: int
+    response_token: int
+    reward: float
+    attempt: int
+    content_hash: str
+
+
+@ray.remote(max_restarts=1, max_task_retries=0)
+class RolloutWorker:
+    def __init__(self, worker_id: str) -> None:
+        self.worker_id = worker_id
+
+    def generate(self, plan: Dict[str, object], attempt: int = 0) -> Dict[str, object]:
+        p = MemberPlan(**plan)
+        rng = random.Random(p.seed + 1009 * attempt)
+        # 版本化整数函数仅模拟“行为策略不同”，不是模型质量实验。
+        response = p.prompt_value + p.policy_version + rng.randint(-2, 2)
+        target = p.prompt_value + 3
+        reward = 1.0 if response == target else 0.0
+        base = {
+            "group_id": p.group_id,
+            "member_id": p.member_id,
+            "prompt_id": p.prompt_id,
+            "policy_version": p.policy_version,
+            "response_token": response,
+            "reward": reward,
+            "attempt": attempt,
+        }
+        base["content_hash"] = stable_hash(base)
+        event("rollout_complete", worker_id=self.worker_id, **base)
+        return base
+
+
+@ray.remote
+class GroupAggregator:
+    def __init__(self, expected_size: int) -> None:
+        self.expected_size = expected_size
+        self.groups: Dict[str, Dict[str, Dict[str, object]]] = {}
+        self.closed: Dict[str, str] = {}
+        self.duplicates = 0
+        self.version_rejects = 0
+
+    def add(self, row: Dict[str, object]) -> Dict[str, object]:
+        gid = str(row["group_id"])
+        mid = str(row["member_id"])
+        if gid in self.closed:
+            return {"status": "late", "group_id": gid, "member_id": mid}
+        members = self.groups.setdefault(gid, {})
+        if mid in members:
+            self.duplicates += 1
+            same = members[mid]["content_hash"] == row["content_hash"]
+            return {
+                "status": "duplicate_same" if same else "duplicate_conflict",
+                "group_id": gid,
+                "member_id": mid,
+            }
+        versions = {int(x["policy_version"]) for x in members.values()}
+        if versions and int(row["policy_version"]) not in versions:
+            self.version_rejects += 1
+            return {"status": "version_reject", "group_id": gid, "member_id": mid}
+        members[mid] = row
+        if len(members) < self.expected_size:
+            return {"status": "partial", "group_id": gid, "size": len(members)}
+
+        ordered = [members[k] for k in sorted(members)]
+        rewards = [float(x["reward"]) for x in ordered]
+        mean = sum(rewards) / len(rewards)
+        variance = sum((x - mean) ** 2 for x in rewards) / len(rewards)
+        std = variance ** 0.5
+        advantages = [0.0 if std < 1e-8 else (x - mean) / std for x in rewards]
+        experiences = []
+        for x, advantage in zip(ordered, advantages):
+            experiences.append({**x, "advantage": advantage})
+        group_hash = stable_hash(experiences)
+        self.closed[gid] = group_hash
+        del self.groups[gid]
+        event("group_complete", group_id=gid, group_hash=group_hash)
+        return {
+            "status": "complete",
+            "group_id": gid,
+            "group_hash": group_hash,
+            "policy_version": int(ordered[0]["policy_version"]),
+            "experiences": experiences,
+        }
+
+    def stats(self) -> Dict[str, int]:
+        return {
+            "open_groups": len(self.groups),
+            "closed_groups": len(self.closed),
+            "duplicates": self.duplicates,
+            "version_rejects": self.version_rejects,
+        }
+
+
+@ray.remote
+class CommitLedger:
+    def __init__(self) -> None:
+        self.intents: Dict[str, str] = {}
+        self.commits: Dict[str, Dict[str, object]] = {}
+        self.consumed_members: Dict[str, str] = {}
+
+    def reserve(self, update_id: str, batch_hash: str, member_ids: List[str]) -> Dict[str, object]:
+        if update_id in self.commits:
+            return {"status": "already_committed", **self.commits[update_id]}
+        prior = self.intents.get(update_id)
+        if prior is not None and prior != batch_hash:
+            return {"status": "intent_conflict"}
+        conflicts = [m for m in member_ids if m in self.consumed_members]
+        if conflicts:
+            return {"status": "member_conflict", "members": conflicts}
+        self.intents[update_id] = batch_hash
+        return {"status": "reserved"}
+
+    def commit(
+        self,
+        update_id: str,
+        batch_hash: str,
+        member_ids: List[str],
+        new_policy_version: int,
+    ) -> Dict[str, object]:
+        if update_id in self.commits:
+            return {"status": "already_committed", **self.commits[update_id]}
+        if self.intents.get(update_id) != batch_hash:
+            return {"status": "missing_or_mismatched_intent"}
+        conflicts = [m for m in member_ids if m in self.consumed_members]
+        if conflicts:
+            return {"status": "member_conflict", "members": conflicts}
+        result = {
+            "batch_hash": batch_hash,
+            "new_policy_version": new_policy_version,
+            "member_count": len(member_ids),
+        }
+        self.commits[update_id] = result
+        for member_id in member_ids:
+            self.consumed_members[member_id] = update_id
+        return {"status": "committed", **result}
+
+    def snapshot(self) -> Dict[str, object]:
+        return {
+            "intents": dict(self.intents),
+            "commits": dict(self.commits),
+            "consumed_members": dict(self.consumed_members),
+        }
+
+
+@ray.remote
+class Trainer:
+    def __init__(self, ledger, max_lag: int = 1) -> None:
+        self.ledger = ledger
+        self.policy_version = 0
+        self.max_lag = max_lag
+        self.failed_once: set[str] = set()
+
+    def get_version(self) -> int:
+        return self.policy_version
+
+    def update(
+        self,
+        update_id: str,
+        group: Dict[str, object],
+        inject_failure: bool,
+    ) -> Dict[str, object]:
+        behavior_version = int(group["policy_version"])
+        lag = self.policy_version - behavior_version
+        if lag > self.max_lag:
+            return {"status": "lag_reject", "lag": lag}
+        rows = list(group["experiences"])
+        member_ids = [str(x["member_id"]) for x in rows]
+        batch_hash = stable_hash(rows)
+        reserved = ray.get(self.ledger.reserve.remote(update_id, batch_hash, member_ids))
+        if reserved["status"] == "already_committed":
+            self.policy_version = max(
+                self.policy_version, int(reserved["new_policy_version"])
+            )
+            return reserved
+        if reserved["status"] != "reserved":
+            return reserved
+
+        # 用优势绝对值之和模拟一次确定性“梯度计算”。
+        gradient_signal = sum(abs(float(x["advantage"])) for x in rows)
+        proposed_version = self.policy_version + 1
+        event(
+            "optimizer_computed",
+            update_id=update_id,
+            gradient_signal=gradient_signal,
+            proposed_version=proposed_version,
+        )
+        if inject_failure and update_id not in self.failed_once:
+            self.failed_once.add(update_id)
+            raise RuntimeError("injected_failure_before_commit")
+
+        committed = ray.get(self.ledger.commit.remote(
+            update_id, batch_hash, member_ids, proposed_version
+        ))
+        if committed["status"] in {"committed", "already_committed"}:
+            self.policy_version = max(
+                self.policy_version, int(committed["new_policy_version"])
+            )
+        event("update_result", update_id=update_id, **committed)
+        return committed
+
+
+def build_plans(groups: int, group_size: int, policy_version: int) -> List[MemberPlan]:
+    plans: List[MemberPlan] = []
+    for g in range(groups):
+        gid = f"g-{g:03d}"
+        for m in range(group_size):
+            plans.append(MemberPlan(
+                group_id=gid,
+                member_id=f"{gid}-m-{m:02d}",
+                prompt_id=f"p-{g:03d}",
+                prompt_value=10 + g,
+                policy_version=policy_version,
+                seed=10_000 + g * 100 + m,
+            ))
+    return plans
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--groups", type=int, default=3)
+    parser.add_argument("--group-size", type=int, default=4)
+    parser.add_argument("--ray-address", default=None)
+    args = parser.parse_args()
+    ray.init(address=args.ray_address, ignore_reinit_error=True)
+
+    workers = [RolloutWorker.remote("rollout-0"), RolloutWorker.remote("rollout-1")]
+    aggregator = GroupAggregator.remote(args.group_size)
+    ledger = CommitLedger.remote()
+    trainer = Trainer.remote(ledger, max_lag=1)
+    policy_version = ray.get(trainer.get_version.remote())
+    plans = build_plans(args.groups, args.group_size, policy_version)
+
+    refs: List[Tuple[MemberPlan, object]] = []
+    for i, plan in enumerate(plans):
+        ref = workers[i % len(workers)].generate.remote(asdict(plan), 0)
+        refs.append((plan, ref))
+
+    complete_groups: List[Dict[str, object]] = []
+    for plan, ref in refs:
+        row = ray.get(ref)
+        result = ray.get(aggregator.add.remote(row))
+        # 对第一个成员注入一次完全相同的重复消息。
+        if plan.member_id == "g-000-m-00":
+            duplicate = ray.get(aggregator.add.remote(row))
+            event("duplicate_result", **duplicate)
+        if result["status"] == "complete":
+            complete_groups.append(result)
+
+    for index, group in enumerate(complete_groups):
+        update_id = f"update-{index:03d}"
+        try:
+            result = ray.get(trainer.update.remote(
+                update_id, group, inject_failure=(index == 0)
+            ))
+        except Exception as exc:
+            event("injected_failure_observed", update_id=update_id, error=str(exc))
+            result = ray.get(trainer.update.remote(
+                update_id, group, inject_failure=False
+            ))
+        event("controller_update_complete", update_id=update_id, **result)
+
+    summary = {
+        "status": "ok",
+        "experiment_kind": "mechanism_simulation",
+        "aggregator": ray.get(aggregator.stats.remote()),
+        "ledger": ray.get(ledger.snapshot.remote()),
+        "final_policy_version": ray.get(trainer.get_version.remote()),
+    }
+    print(json.dumps(summary, ensure_ascii=False, sort_keys=True, indent=2))
+    ray.shutdown()
+
+
+if __name__ == "__main__":
+    main()

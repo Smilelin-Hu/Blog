@@ -1,0 +1,176 @@
+{
+  "name": "foundation-train",
+  "replicated_jobs": [
+    {
+      "name": "leader",
+      "replicas": 1,
+      "completions": 1,
+      "gpu_per_pod": 1,
+      "depends_on": [],
+      "topology": "rack"
+    },
+    {
+      "name": "trainer",
+      "replicas": 2,
+      "completions": 4,
+      "gpu_per_pod": 1,
+      "depends_on": [
+        "leader"
+      ],
+      "topology": "block"
+    },
+    {
+      "name": "evaluator",
+      "replicas": 1,
+      "completions": 2,
+      "gpu_per_pod": 1,
+      "depends_on": [
+        "trainer"
+      ],
+      "topology": "none"
+    }
+  ],
+  "expected_total_jobs": 4,
+  "failure_policy": {
+    "max_restarts": 3,
+    "rules": [
+      {
+        "action": "FailJobSet",
+        "reasons": [
+          "PodFailurePolicy"
+        ],
+        "message_contains": "configuration"
+      },
+      {
+        "action": "RestartJobSet",
+        "target_roles": [
+          "leader"
+        ]
+      },
+      {
+        "action": "RestartJob",
+        "target_roles": [
+          "trainer",
+          "evaluator"
+        ],
+        "reasons": [
+          "BackoffLimitExceeded"
+        ]
+      }
+    ]
+  },
+  "restart_count": 1,
+  "success_policy": {
+    "operator": "All",
+    "target_roles": [
+      "trainer"
+    ]
+  },
+  "events": {
+    "leader_failure": {
+      "role": "leader",
+      "reason": "BackoffLimitExceeded",
+      "message": "leader exited"
+    },
+    "worker_failure": {
+      "role": "trainer",
+      "reason": "BackoffLimitExceeded",
+      "message": "worker exited"
+    }
+  },
+  "lws": {
+    "restart_policy": "RecreateGroupOnPodRestart",
+    "group": {
+      "leader": 1,
+      "workers": 3,
+      "pending_pods": 0
+    }
+  },
+  "queue_gpu_quota": 16,
+  "faults": [
+    {
+      "name": "single-job-cannot-express-leader-and-worker-templates",
+      "type": "single_job_multi_role",
+      "expected_phase": "REJECTED",
+      "expected_reason": "SingleJobCannotExpressDifferentPodTemplates"
+    },
+    {
+      "name": "trainer-starts-before-leader-ready",
+      "type": "dependency_not_ready",
+      "expected_phase": "BLOCKED",
+      "expected_reason": "ReplicatedJobDependencyNotReady"
+    },
+    {
+      "name": "leader-failure-needs-whole-jobset",
+      "type": "leader_failed",
+      "expected_phase": "RESTARTING",
+      "expected_reason": "WholeJobSetRestartRequired"
+    },
+    {
+      "name": "worker-failure-is-locally-recoverable",
+      "type": "worker_failed",
+      "expected_phase": "RESTARTING",
+      "expected_reason": "OnlyFailedChildJobRestarted"
+    },
+    {
+      "name": "configuration-error-is-not-retriable",
+      "type": "nonretryable_config",
+      "expected_phase": "FAILED",
+      "expected_reason": "FailurePolicyTerminatedJobSet"
+    },
+    {
+      "name": "restart-budget-is-exhausted",
+      "type": "max_restarts",
+      "expected_phase": "FAILED",
+      "expected_reason": "MaxRestartsExceeded"
+    },
+    {
+      "name": "ignore-max-restarts-without-budget",
+      "type": "ignore_unbounded",
+      "expected_phase": "UNSAFE",
+      "expected_reason": "IgnoredRestartLimitNeedsExternalBudget"
+    },
+    {
+      "name": "success-role-has-not-completed",
+      "type": "success_too_early",
+      "expected_phase": "BLOCKED",
+      "expected_reason": "SuccessPolicyTargetsNotSatisfied"
+    },
+    {
+      "name": "lws-leader-pod-fails",
+      "type": "lws_leader_failed",
+      "expected_phase": "RESTARTING",
+      "expected_reason": "WholeLeaderWorkerGroupRecreated"
+    },
+    {
+      "name": "lws-image-pull-still-pending",
+      "type": "lws_pending_image_pull",
+      "expected_phase": "WAITING",
+      "expected_reason": "WaitForPendingPodsBeforeGroupRecreate"
+    },
+    {
+      "name": "group-network-partition",
+      "type": "network_partition",
+      "expected_phase": "RECOVERY_WAIT",
+      "expected_reason": "FateSharingRequiresGroupCoordination"
+    },
+    {
+      "name": "jobset-controller-restarts",
+      "type": "controller_restart",
+      "expected_phase": "RECOVERED",
+      "expected_reason": "StatusReconstructedFromOwnedChildren"
+    },
+    {
+      "name": "all-podsets-exceed-queue-quota",
+      "type": "kueue_quota",
+      "expected_phase": "PENDING",
+      "expected_reason": "InsufficientQueueGPUQuota"
+    },
+    {
+      "name": "podset-topology-has-no-common-assignment",
+      "type": "topology_intersection",
+      "expected_phase": "PENDING",
+      "expected_reason": "PodSetTopologyAssignmentUnavailable"
+    }
+  ]
+}

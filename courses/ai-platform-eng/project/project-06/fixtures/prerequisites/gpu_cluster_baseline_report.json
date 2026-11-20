@@ -1,0 +1,136 @@
+{
+  "status": "PASS",
+  "version_matrix": {
+    "os_image": "validated-os-2026q3",
+    "kernel": "validated-kernel-2026q3",
+    "container_runtime": "validated-runtime-2026q3",
+    "gpu_driver": "validated-gpu-driver-2026q3",
+    "gpu_operator": "validated-gpu-operator-2026q3",
+    "nic_driver": "validated-nic-driver-2026q3",
+    "network_operator": "validated-network-operator-2026q3",
+    "csi_driver": "validated-csi-2026q3"
+  },
+  "nodes": [
+    {
+      "name": "gpu-ready-a",
+      "phase": "Ready",
+      "checks": {
+        "gpu_stack": true,
+        "device_count": true,
+        "device_health": true,
+        "network_profile": true,
+        "storage_profile": true,
+        "artifact_integrity": true,
+        "health_detection_slo": true,
+        "artifact_ready_slo": true,
+        "version_profile": true
+      },
+      "passed": true
+    },
+    {
+      "name": "gpu-ready-b",
+      "phase": "Ready",
+      "checks": {
+        "gpu_stack": true,
+        "device_count": true,
+        "device_health": true,
+        "network_profile": true,
+        "storage_profile": true,
+        "artifact_integrity": true,
+        "health_detection_slo": true,
+        "artifact_ready_slo": true,
+        "version_profile": true
+      },
+      "passed": true
+    }
+  ],
+  "prerequisites": [
+    {
+      "path": "results/lesson-04/workload_lifecycle_report.json",
+      "status": "PASS",
+      "passed": true
+    },
+    {
+      "path": "results/lesson-05/gpu_node_readiness_report.json",
+      "status": "PASS",
+      "passed": true
+    },
+    {
+      "path": "results/lesson-06/device_allocation_report.json",
+      "status": "PASS",
+      "passed": true
+    },
+    {
+      "path": "results/lesson-07/gpu_sharing_report.json",
+      "status": "PASS",
+      "passed": true
+    },
+    {
+      "path": "results/lesson-08/network_topology_report.json",
+      "status": "PASS",
+      "passed": true
+    },
+    {
+      "path": "results/lesson-09/artifact_distribution_report.json",
+      "status": "PASS",
+      "passed": true
+    }
+  ],
+  "metrics": {
+    "gpu_node_ready_rate": 1.0,
+    "device_discovery_accuracy": 1.0,
+    "maximum_health_detection_seconds": 31,
+    "maximum_cached_artifact_ready_seconds": 42.0
+  },
+  "faults": [
+    {
+      "name": "gpu-driver-profile-drift",
+      "phase": "Quarantined",
+      "reason": "VersionProfileDrift",
+      "passed": true
+    },
+    {
+      "name": "device-count-mismatch",
+      "phase": "Quarantined",
+      "reason": "GPUAllocatableMismatch",
+      "passed": true
+    },
+    {
+      "name": "allocated-device-unhealthy",
+      "phase": "Draining",
+      "reason": "AllocatedDeviceHealthLost",
+      "passed": true
+    },
+    {
+      "name": "mig-geometry-drift",
+      "phase": "Quarantined",
+      "reason": "GPUSharingProfileDrift",
+      "passed": true
+    },
+    {
+      "name": "required-network-rail-down",
+      "phase": "ProfileRemoved",
+      "reason": "RequiredNetworkProfileUnavailable",
+      "passed": true
+    },
+    {
+      "name": "storage-profile-unavailable",
+      "phase": "AdmissionBlocked",
+      "reason": "RequiredStorageProfileUnavailable",
+      "passed": true
+    },
+    {
+      "name": "model-cache-digest-mismatch",
+      "phase": "ArtifactQuarantined",
+      "reason": "ArtifactDigestVerificationFailed",
+      "passed": true
+    },
+    {
+      "name": "health-detection-slo-missed",
+      "phase": "SLOViolated",
+      "reason": "HealthDetectionTooSlow",
+      "passed": true
+    }
+  ],
+  "real_environment_boundary": "simulation proves control and evidence aggregation only; GPU, RDMA, and storage performance require a dedicated cluster"
+}

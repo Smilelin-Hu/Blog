@@ -1,0 +1,223 @@
+{
+  "topologies": {
+    "datacenter": [
+      "topology.kubernetes.io/zone",
+      "infra.training.invalid/rack",
+      "kubernetes.io/hostname"
+    ]
+  },
+  "resource_flavors": {
+    "h100-rdma": {
+      "node_labels": {
+        "accelerator": "h100",
+        "network": "rdma"
+      },
+      "topology": "datacenter"
+    }
+  },
+  "nodes": [
+    {
+      "name": "h100-a1",
+      "free_gpu": 4,
+      "labels": {
+        "accelerator": "h100",
+        "network": "rdma",
+        "topology.kubernetes.io/zone": "z1",
+        "infra.training.invalid/rack": "r1",
+        "kubernetes.io/hostname": "h100-a1"
+      }
+    },
+    {
+      "name": "h100-a2",
+      "free_gpu": 4,
+      "labels": {
+        "accelerator": "h100",
+        "network": "rdma",
+        "topology.kubernetes.io/zone": "z1",
+        "infra.training.invalid/rack": "r1",
+        "kubernetes.io/hostname": "h100-a2"
+      }
+    },
+    {
+      "name": "h100-b1",
+      "free_gpu": 4,
+      "labels": {
+        "accelerator": "h100",
+        "network": "rdma",
+        "topology.kubernetes.io/zone": "z1",
+        "infra.training.invalid/rack": "r2",
+        "kubernetes.io/hostname": "h100-b1"
+      }
+    },
+    {
+      "name": "a100-c1",
+      "free_gpu": 8,
+      "labels": {
+        "accelerator": "a100",
+        "network": "ethernet",
+        "topology.kubernetes.io/zone": "z2",
+        "infra.training.invalid/rack": "r3",
+        "kubernetes.io/hostname": "a100-c1"
+      }
+    }
+  ],
+  "workloads": {
+    "required_rack": {
+      "flavor": "h100-rdma",
+      "pods": 4,
+      "gpu_per_pod": 2,
+      "mode": "required",
+      "topology_level": "infra.training.invalid/rack"
+    },
+    "preferred_node": {
+      "flavor": "h100-rdma",
+      "pods": 1,
+      "gpu_per_pod": 2,
+      "mode": "preferred",
+      "topology_level": "kubernetes.io/hostname"
+    },
+    "unconstrained": {
+      "flavor": "h100-rdma",
+      "pods": 6,
+      "gpu_per_pod": 2,
+      "mode": "unconstrained"
+    }
+  },
+  "device_classes": {
+    "gpu.training.invalid": {
+      "selectors": {
+        "kind": "gpu"
+      }
+    }
+  },
+  "resource_slices": [
+    {
+      "pool": "a-rack-one",
+      "driver_ready": true,
+      "devices": [
+        {
+          "name": "gpu-a1-0",
+          "node": "h100-a1",
+          "healthy": true,
+          "allocated": false,
+          "attributes": {
+            "kind": "gpu",
+            "memory_gib": 80,
+            "fabric": "nvlink"
+          }
+        },
+        {
+          "name": "gpu-a2-0",
+          "node": "h100-a2",
+          "healthy": true,
+          "allocated": false,
+          "attributes": {
+            "kind": "gpu",
+            "memory_gib": 80,
+            "fabric": "nvlink"
+          }
+        }
+      ]
+    },
+    {
+      "pool": "b-rack-two",
+      "driver_ready": true,
+      "devices": [
+        {
+          "name": "gpu-b1-0",
+          "node": "h100-b1",
+          "healthy": true,
+          "allocated": false,
+          "attributes": {
+            "kind": "gpu",
+            "memory_gib": 80,
+            "fabric": "nvlink"
+          }
+        }
+      ]
+    }
+  ],
+  "claims": {
+    "high_memory": {
+      "device_class": "gpu.training.invalid",
+      "count": 2,
+      "selectors": {
+        "memory_gib": 80
+      }
+    }
+  },
+  "faults": [
+    {
+      "name": "node-misses-rack-label",
+      "type": "missing_topology_label",
+      "expected_phase": "PENDING",
+      "expected_reason": "RequiredTopologyLabelMissing"
+    },
+    {
+      "name": "required-rack-has-insufficient-gpu",
+      "type": "required_domain_shortage",
+      "expected_phase": "PENDING",
+      "expected_reason": "RequiredTopologyDomainInsufficient"
+    },
+    {
+      "name": "workload-label-conflicts-with-flavor",
+      "type": "flavor_label_conflict",
+      "expected_phase": "PENDING",
+      "expected_reason": "ResourceFlavorNodeLabelConflict"
+    },
+    {
+      "name": "flavor-taint-not-tolerated",
+      "type": "taint_not_tolerated",
+      "expected_phase": "PENDING",
+      "expected_reason": "ResourceFlavorTaintNotTolerated"
+    },
+    {
+      "name": "claim-references-missing-class",
+      "type": "device_class_missing",
+      "expected_phase": "CLAIM_PENDING",
+      "expected_reason": "DeviceClassNotFound"
+    },
+    {
+      "name": "selector-matches-no-device",
+      "type": "no_matching_device",
+      "expected_phase": "CLAIM_PENDING",
+      "expected_reason": "NoMatchingHealthyDRADevice"
+    },
+    {
+      "name": "driver-resource-slice-unavailable",
+      "type": "dra_driver_unavailable",
+      "expected_phase": "CLAIM_PENDING",
+      "expected_reason": "DRADriverOrResourceSliceUnavailable"
+    },
+    {
+      "name": "allocated-device-outside-topology-domain",
+      "type": "claim_node_conflict",
+      "expected_phase": "PENDING",
+      "expected_reason": "TopologyAndDeviceIntersectionEmpty"
+    },
+    {
+      "name": "high-priority-claim-needs-preemption",
+      "type": "dra_preemption",
+      "expected_phase": "PENDING",
+      "expected_reason": "DRAPreemptionUnsupported"
+    },
+    {
+      "name": "topology-levels-mutated",
+      "type": "topology_mutation",
+      "expected_phase": "REJECTED",
+      "expected_reason": "TopologyLevelsImmutable"
+    },
+    {
+      "name": "tas-flavor-spec-mutated",
+      "type": "flavor_mutation",
+      "expected_phase": "REJECTED",
+      "expected_reason": "TASResourceFlavorSpecImmutable"
+    },
+    {
+      "name": "pod-deleted-and-claim-released",
+      "type": "claim_release",
+      "expected_phase": "RELEASED",
+      "expected_reason": "ClaimAndDeviceReturned"
+    }
+  ]
+}

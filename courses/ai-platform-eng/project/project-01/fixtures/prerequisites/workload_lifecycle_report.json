@@ -1,0 +1,280 @@
+{
+  "status": "PASS",
+  "checks": {
+    "healthy_workloads_reach_expected_terminal_state": true,
+    "workload_types_are_distinct": true,
+    "training_uses_bound_pvc": true,
+    "training_tolerates_dedicated_taint": true,
+    "all_fault_cases_are_explained": true
+  },
+  "healthy": {
+    "notebook": {
+      "state": "Ready",
+      "reason": "ReadinessProbePassed",
+      "events": [
+        {
+          "phase": "Admission",
+          "reason": "Accepted",
+          "message": "workload schema accepted"
+        },
+        {
+          "phase": "Scheduled",
+          "reason": "NodeBound",
+          "message": "bound to worker-interactive"
+        },
+        {
+          "phase": "ImageReady",
+          "reason": "ImagePulled",
+          "message": "container image is available"
+        },
+        {
+          "phase": "Initialized",
+          "reason": "InitContainersCompleted",
+          "message": "all regular init containers completed"
+        },
+        {
+          "phase": "Running",
+          "reason": "ContainersStarted",
+          "message": "application containers started"
+        },
+        {
+          "phase": "Ready",
+          "reason": "ReadinessProbePassed",
+          "message": "desired replicas are available"
+        }
+      ],
+      "node": "worker-interactive"
+    },
+    "training": {
+      "state": "Succeeded",
+      "reason": "Completed",
+      "events": [
+        {
+          "phase": "Admission",
+          "reason": "Accepted",
+          "message": "workload schema accepted"
+        },
+        {
+          "phase": "Scheduled",
+          "reason": "NodeBound",
+          "message": "bound to worker-training"
+        },
+        {
+          "phase": "ImageReady",
+          "reason": "ImagePulled",
+          "message": "container image is available"
+        },
+        {
+          "phase": "Initialized",
+          "reason": "InitContainersCompleted",
+          "message": "all regular init containers completed"
+        },
+        {
+          "phase": "Running",
+          "reason": "ContainersStarted",
+          "message": "application containers started"
+        },
+        {
+          "phase": "Succeeded",
+          "reason": "Completed",
+          "message": "Job reached its completion target"
+        }
+      ],
+      "node": "worker-training"
+    },
+    "inference": {
+      "state": "Ready",
+      "reason": "ReadinessProbePassed",
+      "events": [
+        {
+          "phase": "Admission",
+          "reason": "Accepted",
+          "message": "workload schema accepted"
+        },
+        {
+          "phase": "Scheduled",
+          "reason": "NodeBound",
+          "message": "bound to worker-serving"
+        },
+        {
+          "phase": "ImageReady",
+          "reason": "ImagePulled",
+          "message": "container image is available"
+        },
+        {
+          "phase": "Running",
+          "reason": "ContainersStarted",
+          "message": "application containers started"
+        },
+        {
+          "phase": "Ready",
+          "reason": "ReadinessProbePassed",
+          "message": "desired replicas are available"
+        }
+      ],
+      "node": "worker-serving"
+    }
+  },
+  "faults": {
+    "quota-rejected": {
+      "state": "Rejected",
+      "reason": "QuotaExceeded",
+      "events": [
+        {
+          "phase": "Admission",
+          "reason": "Accepted",
+          "message": "workload schema accepted"
+        },
+        {
+          "phase": "Rejected",
+          "reason": "QuotaExceeded",
+          "message": "aggregate requests exceed namespace quota"
+        }
+      ],
+      "node": null,
+      "expected_state": "Rejected",
+      "expected_reason": "QuotaExceeded",
+      "passed": true
+    },
+    "taint-untolerated": {
+      "state": "Pending",
+      "reason": "UntoleratedTaint",
+      "events": [
+        {
+          "phase": "Admission",
+          "reason": "Accepted",
+          "message": "workload schema accepted"
+        },
+        {
+          "phase": "Pending",
+          "reason": "UntoleratedTaint",
+          "message": "matching nodes repel the workload"
+        }
+      ],
+      "node": null,
+      "expected_state": "Pending",
+      "expected_reason": "UntoleratedTaint",
+      "passed": true
+    },
+    "pvc-unbound": {
+      "state": "Pending",
+      "reason": "UnboundPVC",
+      "events": [
+        {
+          "phase": "Admission",
+          "reason": "Accepted",
+          "message": "workload schema accepted"
+        },
+        {
+          "phase": "Pending",
+          "reason": "UnboundPVC",
+          "message": "PVC missing-claim is not bound"
+        }
+      ],
+      "node": null,
+      "expected_state": "Pending",
+      "expected_reason": "UnboundPVC",
+      "passed": true
+    },
+    "image-pull": {
+      "state": "Waiting",
+      "reason": "ImagePullBackOff",
+      "events": [
+        {
+          "phase": "Admission",
+          "reason": "Accepted",
+          "message": "workload schema accepted"
+        },
+        {
+          "phase": "Scheduled",
+          "reason": "NodeBound",
+          "message": "bound to worker-interactive"
+        },
+        {
+          "phase": "Waiting",
+          "reason": "ImagePullBackOff",
+          "message": "container image cannot be pulled"
+        }
+      ],
+      "node": "worker-interactive",
+      "expected_state": "Waiting",
+      "expected_reason": "ImagePullBackOff",
+      "passed": true
+    },
+    "oom-killed": {
+      "state": "Failed",
+      "reason": "OOMKilled",
+      "events": [
+        {
+          "phase": "Admission",
+          "reason": "Accepted",
+          "message": "workload schema accepted"
+        },
+        {
+          "phase": "Scheduled",
+          "reason": "NodeBound",
+          "message": "bound to worker-training"
+        },
+        {
+          "phase": "ImageReady",
+          "reason": "ImagePulled",
+          "message": "container image is available"
+        },
+        {
+          "phase": "Initialized",
+          "reason": "InitContainersCompleted",
+          "message": "all regular init containers completed"
+        },
+        {
+          "phase": "Running",
+          "reason": "ContainersStarted",
+          "message": "application containers started"
+        },
+        {
+          "phase": "Failed",
+          "reason": "OOMKilled",
+          "message": "container exceeded its memory limit"
+        }
+      ],
+      "node": "worker-training",
+      "expected_state": "Failed",
+      "expected_reason": "OOMKilled",
+      "passed": true
+    },
+    "readiness-failed": {
+      "state": "RunningNotReady",
+      "reason": "ReadinessProbeFailed",
+      "events": [
+        {
+          "phase": "Admission",
+          "reason": "Accepted",
+          "message": "workload schema accepted"
+        },
+        {
+          "phase": "Scheduled",
+          "reason": "NodeBound",
+          "message": "bound to worker-serving"
+        },
+        {
+          "phase": "ImageReady",
+          "reason": "ImagePulled",
+          "message": "container image is available"
+        },
+        {
+          "phase": "Running",
+          "reason": "ContainersStarted",
+          "message": "application containers started"
+        },
+        {
+          "phase": "RunningNotReady",
+          "reason": "ReadinessProbeFailed",
+          "message": "container runs but is removed from service endpoints"
+        }
+      ],
+      "node": "worker-serving",
+      "expected_state": "RunningNotReady",
+      "expected_reason": "ReadinessProbeFailed",
+      "passed": true
+    }
+  }
+}

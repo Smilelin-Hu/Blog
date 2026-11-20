@@ -1,0 +1,70 @@
+from __future__ import annotations
+
+import argparse
+import json
+import random
+from dataclasses import dataclass
+
+
+@dataclass
+class Trial:
+    task_type: str
+    action: str
+    old_reward: int
+    fixed_reward: int
+    real_success: int
+
+
+def rollout(task_type: str, exploit_rate: float, rng: random.Random) -> Trial:
+    exploit = rng.random() < exploit_rate
+    if exploit:
+        # 旧验证器把特殊输出误判为成功，修复后拒绝。
+        return Trial(task_type, "exploit", 1, 0, 0)
+    p = 0.75 if task_type == "easy" else 0.12
+    success = int(rng.random() < p)
+    return Trial(task_type, "solve", success, success, success)
+
+
+def experiment(tasks: int, candidates: int, exploit_rate: float, seed: int) -> dict[str, object]:
+    rng = random.Random(seed)
+    selected: list[Trial] = []
+    attempts = {"easy": 0, "hard": 0}
+    task_success = {"easy": 0, "hard": 0}
+    for task_id in range(tasks):
+        task_type = "easy" if task_id % 2 == 0 else "hard"
+        rows = [rollout(task_type, exploit_rate, rng) for _ in range(candidates)]
+        attempts[task_type] += len(rows)
+        accepted = [row for row in rows if row.old_reward == 1]
+        if accepted:
+            # 固定选择第一条，便于重放；生产系统应保存选择概率。
+            chosen = accepted[0]
+            selected.append(chosen)
+            task_success[task_type] += 1
+    denominator = max(1, len(selected))
+    return {
+        "tasks": tasks,
+        "candidates_per_task": candidates,
+        "selected": len(selected),
+        "task_coverage": {k: task_success[k] / (tasks / 2) for k in task_success},
+        "selected_exploit_rate": sum(x.action == "exploit" for x in selected) / denominator,
+        "old_verifier_pass_rate": sum(x.old_reward for x in selected) / denominator,
+        "fixed_verifier_pass_rate": sum(x.fixed_reward for x in selected) / denominator,
+        "real_success_rate": sum(x.real_success for x in selected) / denominator,
+        "attempts": attempts,
+    }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--tasks", type=int, default=2000)
+    parser.add_argument("--exploit-rate", type=float, default=0.05)
+    parser.add_argument("--seed", type=int, default=7)
+    args = parser.parse_args()
+    results = []
+    for candidates in [1, 2, 4, 8, 16, 32]:
+        results.append(experiment(args.tasks, candidates, args.exploit_rate, args.seed + candidates))
+    print(json.dumps({"config": vars(args), "results": results}, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

@@ -25,6 +25,8 @@
 - 与平台天然集成：claim 是 K8s 资源，直接复用 RBAC（28）、GitOps（24）、配额与审计；连接信息写入 connection secret，与 37 的 ESO/CSI 链路打通。30 的自助门户「申请一个训练环境」按钮，背后就是一个 claim。
 - 代价：provider 覆盖与成熟度参差（部分云资源字段滞后或行为与 CLI 不一致）、调试要读控制器事件链、团队需要 K8s 控制器心智。
 
+![两层声明式对账：plan/apply 周期检查 vs 控制器持续 reconcile](https://raw.gitcode.com/weixin_42917352/image-host/raw/main/images/aiinfra_y4_l38_01.png)
+
 ## 4. 选型判据与混合模式
 
 | 维度 | Terraform | Crossplane |
