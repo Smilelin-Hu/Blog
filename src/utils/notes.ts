@@ -72,6 +72,9 @@ export const SERIES: SeriesMeta[] = [
   { slug: '产品经理', label: '产品经理', icon: '📐', blurb: 'JTBD / Mom Test / 双钻模型与 AI 产品实战' },
   { slug: '论文阅读', label: '论文阅读', icon: '📄', blurb: '论文精读笔记' },
   { slug: '推理优化课程册', label: '推理优化课程册', icon: '📚', blurb: 'llm-inference-opt 课程按课次整理的实验笔记：机制、实验闭环与判读纪律' },
+  { slug: '训练系统课程册', label: '训练系统课程册', icon: '🏋️', blurb: 'ai-infra-p5 数据与后训练课程按课次整理的实验笔记' },
+  { slug: '系统性能课程册', label: '系统性能课程册', icon: '⏱️', blurb: 'ai-systems-perf-v2 性能工程课程按课次整理的实验笔记' },
+  { slug: '平台工程课程册', label: '平台工程课程册', icon: '🛰️', blurb: 'ai-platform-eng 平台工程课程按课次整理的实验笔记' },
 ];
 
 /** 系列序号：按 SERIES 策展顺序 1..N，目录展示统一带序号。 */
