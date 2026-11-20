@@ -7,9 +7,4 @@ const notes = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './docs/source' }),
 });
 
-// 站点独立页（简历等），位于 docs/ 根。
-const site = defineCollection({
-  loader: glob({ pattern: '*.md', base: './docs' }),
-});
-
-export const collections = { notes, site };
+export const collections = { notes };
