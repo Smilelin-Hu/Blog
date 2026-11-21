@@ -2,7 +2,7 @@
 import { type CollectionEntry, render, getCollection } from 'astro:content';
 import NotesSidebar from './NotesSidebar.astro';
 import TableOfContents from './TableOfContents.astro';
-import { buildTree, pagerOf, seriesOf, titleOf, dirOf, pathOf } from '../utils/notes';
+import { buildTree, pagerOf, seriesOf, titleOf, dirOf, pathOf, visibleNotes } from '../utils/notes';
 import { getPath } from '../utils/paths';
 
 interface Props {
@@ -10,7 +10,7 @@ interface Props {
 }
 const { entry } = Astro.props;
 const { Content, headings } = await render(entry);
-const all = await getCollection('notes');
+const all = visibleNotes(await getCollection('notes'));
 const tree = buildTree(all);
 const series = seriesOf(entry);
 const { prev, next, index } = pagerOf(entry, all);

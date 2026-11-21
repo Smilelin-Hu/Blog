@@ -2,10 +2,10 @@
 import Layout from '../layouts/Layout.astro';
 import SeriesCard from '../components/SeriesCard.astro';
 import { getCollection } from 'astro:content';
-import { SERIES, pathOf } from '../utils/notes';
+import { SERIES, pathOf, visibleNotes } from '../utils/notes';
 import { getPath } from '../utils/paths';
 
-const notes = await getCollection('notes');
+const notes = visibleNotes(await getCollection('notes'));
 const counts = new Map<string, number>();
 for (const n of notes) {
   const top = pathOf(n).split('/')[0];

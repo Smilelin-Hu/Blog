@@ -48,6 +48,20 @@ export function stemOf(entry: Note): string {
   return pathOf(entry).split('/').pop() ?? pathOf(entry);
 }
 
+/** 暂不对外展示的笔记（规范路径，不含 .md）：不生成页面，也不进目录、侧边栏与上下篇。 */
+export const HIDDEN: string[] = [
+  '传统CV算法/1-认识边缘',
+];
+
+export function isHidden(entry: Note): boolean {
+  return HIDDEN.includes(pathOf(entry));
+}
+
+/** 对外可见的笔记集合：路由生成、首页统计、目录树与上下篇都应基于它。 */
+export function visibleNotes(entries: Note[]): Note[] {
+  return entries.filter((e) => !isHidden(e));
+}
+
 export interface SeriesMeta {
   slug: string;
   label: string;
@@ -67,7 +81,7 @@ export const SERIES: SeriesMeta[] = [
   { slug: 'vibecoding', label: 'Vibe Coding', icon: '💻', blurb: 'AI 编程入门到规范驱动开发的实践路径' },
   { slug: 'AI工具全景', label: 'AI 工具全景', icon: '🧰', blurb: '模型 API / CLI / MCP / Skills / RAG 框架选型盘点' },
   { slug: '推荐系统', label: '推荐系统', icon: '📊', blurb: '协同过滤到生成式推荐的演进笔记' },
-  { slug: '传统CV算法', label: '传统 CV 算法', icon: '👁️', blurb: '边缘检测与机器学习基础' },
+  { slug: '传统CV算法', label: '传统 CV 算法', icon: '👁️', blurb: '机器学习基础：回归、分类、聚类与强化学习' },
   { slug: '视频结构化', label: '视频结构化', icon: '🎬', blurb: '视频理解与结构化 pipeline' },
   { slug: '产品经理', label: '产品经理', icon: '📐', blurb: 'JTBD / Mom Test / 双钻模型与 AI 产品实战' },
   { slug: '论文阅读', label: '论文阅读', icon: '📄', blurb: '论文精读笔记' },
