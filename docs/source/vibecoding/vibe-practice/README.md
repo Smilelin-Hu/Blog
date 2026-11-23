@@ -6,9 +6,4 @@
 
 ## 目录
 
-<!-- 按来源章节顺序撰写后登记，格式示例：
-- [1-AI画布VibeCoding之旅](/source/vibecoding/vibe-practice/1-AI画布VibeCoding之旅)
-- [2-AI绘本生成器](/source/vibecoding/vibe-practice/2-AI绘本生成器)
-- [3-AI简历SaaS](/source/vibecoding/vibe-practice/3-AI简历SaaS)
-- [4-全栈21天思维习惯游戏](/source/vibecoding/vibe-practice/4-全栈21天思维习惯游戏)
--->
+暂无篇目，四个实战项目的笔记整理完成后按来源章节顺序登记。
