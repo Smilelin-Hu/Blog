@@ -261,4 +261,4 @@ git clone git@github.com:your-username/ner-demo.git
 
 ## 写在最后
 
-本地提交、远程托管都就绪，最后一块拼图是「代码一旦推送就自动部署」——下一篇[Jenkins CI/CD流水线](4-Jenkins-CICD流水线)从安装配置、SSH 凭据到 Jenkinsfile 与 Webhook，把整条流水线真正跑通。
+本地提交、远程托管都就绪，最后一块拼图是「代码一旦推送就自动部署」——下一篇[Jenkins CI/CD流水线](/source/大模型/部署工程篇/4-Jenkins-CICD流水线)从安装配置、SSH 凭据到 Jenkinsfile 与 Webhook，把整条流水线真正跑通。

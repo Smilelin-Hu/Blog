@@ -23,4 +23,4 @@ python project/04-multitenant-lora/run.py --real --endpoint http://mt:8000 --ten
 
 ## 3. 关联
 
-课次基础见本册 [18-LoRA-Adapter](18-LoRA-Adapter：多模型ID交替与切换延迟)、[19-Multi-Model-Pool](19-Multi-Model-Pool：热门突发与冷模型穿插)；主题展开见 [Multi-Tenant, Multi-Model 与 Multi-LoRA Serving](/source/AI-Infra/3-大模型推理优化工程/34-Multi-Tenant-Multi-Model与Multi-LoRAServing)。
+课次基础见本册 [18-LoRA-Adapter](/source/推理优化课程册/18-LoRA-Adapter：多模型ID交替与切换延迟)、[19-Multi-Model-Pool](/source/推理优化课程册/19-Multi-Model-Pool：热门突发与冷模型穿插)；主题展开见 [Multi-Tenant, Multi-Model 与 Multi-LoRA Serving](/source/AI-Infra/3-大模型推理优化工程/34-Multi-Tenant-Multi-Model与Multi-LoRAServing)。

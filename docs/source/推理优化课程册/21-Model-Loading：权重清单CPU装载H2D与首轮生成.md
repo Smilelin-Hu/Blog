@@ -28,4 +28,4 @@ python lesson/21-model-loading/run.py --real --model /models/target --output res
 
 ## 4. 与主题笔记的关系
 
-加载与冷启动的 serving 侧展开见本册 [22-Cold-Start](22-Cold-Start：重复加载首请求与Warm请求)；权重供应链对照 [GitOps：环境晋级与渐进式发布](/source/AI-Infra/4-AI平台工程/24-GitOps-环境晋级与渐进式发布)。
+加载与冷启动的 serving 侧展开见本册 [22-Cold-Start](/source/推理优化课程册/22-Cold-Start：重复加载首请求与Warm请求)；权重供应链对照 [GitOps：环境晋级与渐进式发布](/source/AI-Infra/4-AI平台工程/24-GitOps-环境晋级与渐进式发布)。

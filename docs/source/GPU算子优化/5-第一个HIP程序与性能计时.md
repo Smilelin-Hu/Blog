@@ -108,4 +108,4 @@ CPU 侧固定单线程并打印型号与线程数，是为了让结果可解释�
 
 ## 写在最后
 
-能把程序跑通、把时间量准，才具备讨论「快不快」的资格。下一篇[Profiling 实战](6-Profiling实战)把测量推进一层：可信计时、kernel trace 与 Roofline，回答「慢在哪一段」。
+能把程序跑通、把时间量准，才具备讨论「快不快」的资格。下一篇[Profiling 实战](/source/GPU算子优化/6-Profiling实战)把测量推进一层：可信计时、kernel trace 与 Roofline，回答「慢在哪一段」。

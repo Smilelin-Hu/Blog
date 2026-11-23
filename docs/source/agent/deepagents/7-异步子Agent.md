@@ -302,4 +302,4 @@ langgraph dev --n-jobs-per-worker 10
 
 ## 写在最后
 
-下一篇[Skills 能力包](8-Skills能力包)讲如何把领域知识、操作流程与脚本封装成可复用技能，让 Agent 按需加载而不是一次塞满上下文。
+下一篇[Skills 能力包](/source/agent/deepagents/8-Skills能力包)讲如何把领域知识、操作流程与脚本封装成可复用技能，让 Agent 按需加载而不是一次塞满上下文。

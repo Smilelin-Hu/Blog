@@ -104,4 +104,4 @@ Computer Use 通用性更强，但成本、延迟、稳定性远不如直接通�
 
 ## 写在最后
 
-下一篇[Coding Agent 的工作流程与 Harness](5-2-工作流程与Harness)展开从项目文档化、需求澄清、设计、实现、测试到交付的完整流程，以及 Harness 四组件如何支撑它。
+下一篇[Coding Agent 的工作流程与 Harness](/source/agent/深入理解/5-2-工作流程与Harness)展开从项目文档化、需求澄清、设计、实现、测试到交付的完整流程，以及 Harness 四组件如何支撑它。

@@ -467,4 +467,4 @@ Skills 管理支持自动扫描预配置仓库（Anthropic 官方、ComposioHQ�
 
 ## 写在最后
 
-下一篇[PRD 文档驱动开发](3-PRD文档驱动开发)从「想清楚要做什么」开始：产品验证、与 AI 讨论需求、写 PRD、用文档驱动编码 Agent，把这一章的工作流接到真实项目上。
+下一篇[PRD 文档驱动开发](/source/vibecoding/vibe-advanced/3-PRD文档驱动开发)从「想清楚要做什么」开始：产品验证、与 AI 讨论需求、写 PRD、用文档驱动编码 Agent，把这一章的工作流接到真实项目上。

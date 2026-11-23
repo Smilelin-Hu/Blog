@@ -28,4 +28,4 @@ python lesson/22-cold-start/run.py --real --model /models/target --cycles 2 --ou
 
 ## 4. 与主题笔记的关系
 
-冷启动优化的机制展开见 [Cold Start Optimization：缓存、Warm Pool 与 GPU Memory Service](/source/AI-Infra/3-大模型推理优化工程/23-ColdStartOptimization-缓存-WarmPool与GPUMemoryService)；加载阶段计量见本册 [21-Model-Loading](21-Model-Loading：权重清单CPU装载H2D与首轮生成)。
+冷启动优化的机制展开见 [Cold Start Optimization：缓存、Warm Pool 与 GPU Memory Service](/source/AI-Infra/3-大模型推理优化工程/23-ColdStartOptimization-缓存-WarmPool与GPUMemoryService)；加载阶段计量见本册 [21-Model-Loading](/source/推理优化课程册/21-Model-Loading：权重清单CPU装载H2D与首轮生成)。

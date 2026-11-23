@@ -28,4 +28,4 @@ python lesson/06-dflare-scaling/run.py --real --model /models/target --output re
 
 ## 4. 与主题笔记的关系
 
-特征融合路径的基线见本册 [02-EAGLE-3](02-EAGLE-3：多层Target特征抽取与融合)；层数扩展的成本模型对照 [AI 系统性能工程](/source/AI-Infra/2-AI系统性能工程/README) 的数量级估算方法。
+特征融合路径的基线见本册 [02-EAGLE-3](/source/推理优化课程册/02-EAGLE-3：多层Target特征抽取与融合)；层数扩展的成本模型对照 [AI 系统性能工程](/source/AI-Infra/2-AI系统性能工程/README) 的数量级估算方法。

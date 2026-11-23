@@ -87,4 +87,4 @@ print(crew.kickoff())
 
 ## 写在最后
 
-框架解决「agent 怎么搭」，下一个问题是「知识从哪来」。下一篇[RAG 框架选型](9-RAG框架选型)对比 LlamaIndex、RAGFlow 等实现路径与演进方向。
+框架解决「agent 怎么搭」，下一个问题是「知识从哪来」。下一篇[RAG 框架选型](/source/AI工具全景/9-RAG框架选型)对比 LlamaIndex、RAGFlow 等实现路径与演进方向。

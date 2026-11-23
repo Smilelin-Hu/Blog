@@ -183,4 +183,4 @@ RLHF 的挑战（综述系统梳理）：
 
 ## 写在最后
 
-理论之外，对齐如何落到一台消费级显卡上跑通？下一篇[LLaMA-Factory DPO实战](4-LLaMA-Factory-DPO实战)用 LLaMA-Board 零代码完成一次 Qwen2.5 的 DPO 训练，并对比训练前后的行为风格变化。
+理论之外，对齐如何落到一台消费级显卡上跑通？下一篇[LLaMA-Factory DPO实战](/source/大模型/微调量化篇/4-LLaMA-Factory-DPO实战)用 LLaMA-Board 零代码完成一次 Qwen2.5 的 DPO 训练，并对比训练前后的行为风格变化。

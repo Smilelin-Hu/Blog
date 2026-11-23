@@ -402,4 +402,4 @@ Skills 与 Memory 是连续光谱：Agent 可在工作中更新自己的 Skills�
 
 ## 写在最后
 
-下一篇[长期记忆](9-长期记忆)讲跨对话记忆：Checkpointer 的短期状态、Store 的跨线程记忆，以及 `memory=` 加载的 AGENTS.md 到底解决什么问题。
+下一篇[长期记忆](/source/agent/deepagents/9-长期记忆)讲跨对话记忆：Checkpointer 的短期状态、Store 的跨线程记忆，以及 `memory=` 加载的 AGENTS.md 到底解决什么问题。

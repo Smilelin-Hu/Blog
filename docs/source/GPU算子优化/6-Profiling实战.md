@@ -146,4 +146,4 @@ Roofline 只负责提出假设，验证还要靠受控对照：
 
 ## 写在最后
 
-能测准、能读懂 trace、能把工作点画到屋顶图上，接下来才轮到改代码。下一篇[Element-Wise 与 Reduction](7-ElementWise与Reduction)从两个最基础的算子开始，演示「一轮只改一个设计选择」的优化节奏。
+能测准、能读懂 trace、能把工作点画到屋顶图上，接下来才轮到改代码。下一篇[Element-Wise 与 Reduction](/source/GPU算子优化/7-ElementWise与Reduction)从两个最基础的算子开始，演示「一轮只改一个设计选择」的优化节奏。

@@ -198,4 +198,4 @@ $$ Y^{BF16} = X^{BF16} \cdot \mathrm{doubleDequant}(c_1^{FP32}, c_2^{k\text{-}bi
 
 ## 写在最后
 
-理论就位，接下来是动手——下一篇[LoRA实战与Qwen2.5微调](2-LoRA实战与Qwen2.5微调)用 peft 库把 LoRA 跑起来，再到 Qwen2.5 私有数据上完成一次完整的 QLoRA 微调。
+理论就位，接下来是动手——下一篇[LoRA实战与Qwen2.5微调](/source/大模型/微调量化篇/2-LoRA实战与Qwen2.5微调)用 peft 库把 LoRA 跑起来，再到 Qwen2.5 私有数据上完成一次完整的 QLoRA 微调。

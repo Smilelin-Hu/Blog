@@ -23,4 +23,4 @@ python project/01-speculator-benchmark/run.py --real --baseline-url http://base:
 
 ## 3. 关联
 
-课次基础见本册 [01-投机解码](01-投机解码：Draft提议与Target验证)、[09-Speculator-Artifact](09-Speculator-Artifact：版本绑定与双端点Smoke)；主题展开见 [新一代 Speculator Benchmark](/source/AI-Infra/3-大模型推理优化工程/31-新一代SpeculatorBenchmark)。
+课次基础见本册 [01-投机解码](/source/推理优化课程册/01-投机解码：Draft提议与Target验证)、[09-Speculator-Artifact](/source/推理优化课程册/09-Speculator-Artifact：版本绑定与双端点Smoke)；主题展开见 [新一代 Speculator Benchmark](/source/AI-Infra/3-大模型推理优化工程/31-新一代SpeculatorBenchmark)。

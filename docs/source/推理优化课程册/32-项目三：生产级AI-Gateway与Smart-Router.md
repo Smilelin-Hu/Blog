@@ -23,4 +23,4 @@ python project/03-smart-router/run.py --real --gateway-url http://gw:8000 --repl
 
 ## 3. 关联
 
-课次基础见本册 [15-Gateway开销](15-Gateway开销：直连与Gateway成对计量)、[16-Replica-Set](16-Replica-Set：Inflight与EWMA负载路由)、[17-Prefix-Cache](17-Prefix-Cache：前缀亲和选路与缓存指标)；主题展开见 [生产级 AI Gateway 与 Smart Router](/source/AI-Infra/3-大模型推理优化工程/33-生产级AIGateway与SmartRouter)。
+课次基础见本册 [15-Gateway开销](/source/推理优化课程册/15-Gateway开销：直连与Gateway成对计量)、[16-Replica-Set](/source/推理优化课程册/16-Replica-Set：Inflight与EWMA负载路由)、[17-Prefix-Cache](/source/推理优化课程册/17-Prefix-Cache：前缀亲和选路与缓存指标)；主题展开见 [生产级 AI Gateway 与 Smart Router](/source/AI-Infra/3-大模型推理优化工程/33-生产级AIGateway与SmartRouter)。

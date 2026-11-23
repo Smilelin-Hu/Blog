@@ -343,4 +343,4 @@ function addTask() {
 
 ## 写在最后
 
-下一篇[开发基础](4-开发基础)补齐技术底层：构建流程、技术选型、API 与 HTTP、前后端分离、配置格式、README 结构与找库方法——让 PRD 里的技术描述落得下去。
+下一篇[开发基础](/source/vibecoding/vibe-advanced/4-开发基础)补齐技术底层：构建流程、技术选型、API 与 HTTP、前后端分离、配置格式、README 结构与找库方法——让 PRD 里的技术描述落得下去。

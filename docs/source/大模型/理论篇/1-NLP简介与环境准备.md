@@ -152,4 +152,4 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 
 ## 写在最后
 
-概念和时间线之外，NLP 让机器「懂词」的第一步是把词变成数字——下一篇[文本表示与词向量](2-文本表示与词向量)从分词讲起，记录词向量与 Word2Vec 如何把语言的意义装进向量空间。
+概念和时间线之外，NLP 让机器「懂词」的第一步是把词变成数字——下一篇[文本表示与词向量](/source/大模型/理论篇/2-文本表示与词向量)从分词讲起，记录词向量与 Word2Vec 如何把语言的意义装进向量空间。

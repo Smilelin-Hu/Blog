@@ -404,4 +404,4 @@ Error: Connection timed out - database not responding
 
 ## 写在最后
 
-下一篇[域名与 DNS](13-域名与DNS)给站点绑上自己的域名：域名注册、DNS 解析、备案与 HTTPS 接入，让地址更专业、更稳定。
+下一篇[域名与 DNS](/source/vibecoding/vibe-advanced/13-域名与DNS)给站点绑上自己的域名：域名注册、DNS 解析、备案与 HTTPS 接入，让地址更专业、更稳定。

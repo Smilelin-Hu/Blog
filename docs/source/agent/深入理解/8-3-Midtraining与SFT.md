@@ -129,4 +129,4 @@ Mid-training 与 SFT 的边界，常被「都是微调」掩盖：前者对大�
 
 ## 写在最后
 
-下一篇[单轮 RL 与算法](8-4-单轮RL与算法)从 GeneralPoints 的「记忆 vs 泛化」讲到 GRPO 的 16 次 rollout：奖励、相对优势与一次参数更新如何发生。
+下一篇[单轮 RL 与算法](/source/agent/深入理解/8-4-单轮RL与算法)从 GeneralPoints 的「记忆 vs 泛化」讲到 GRPO 的 16 次 rollout：奖励、相对优势与一次参数更新如何发生。

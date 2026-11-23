@@ -23,4 +23,4 @@ python project/05-fleet-planner/run.py --real --capacity-points capacity.jsonl -
 
 ## 3. 关联
 
-课次基础见本册 [24-Heterogeneous-GPU](24-Heterogeneous-GPU：逐卡容量与延迟画像)、[26-LLM-Autoscaling](26-LLM-Autoscaling：容量校准需求窗口与状态机)、[27-Capacity-Planning](27-Capacity-Planning：并发×输出长度实测矩阵)；主题展开见 [GPU Fleet Planner 与 Autoscaler](/source/AI-Infra/3-大模型推理优化工程/35-GPUFleetPlanner与Autoscaler)。
+课次基础见本册 [24-Heterogeneous-GPU](/source/推理优化课程册/24-Heterogeneous-GPU：逐卡容量与延迟画像)、[26-LLM-Autoscaling](/source/推理优化课程册/26-LLM-Autoscaling：容量校准需求窗口与状态机)、[27-Capacity-Planning](/source/推理优化课程册/27-Capacity-Planning：并发×输出长度实测矩阵)；主题展开见 [GPU Fleet Planner 与 Autoscaler](/source/AI-Infra/3-大模型推理优化工程/35-GPUFleetPlanner与Autoscaler)。

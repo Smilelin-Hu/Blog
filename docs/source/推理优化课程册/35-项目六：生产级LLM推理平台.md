@@ -23,4 +23,4 @@ python project/06-inference-platform/run.py --real --platform-url http://platfor
 
 ## 3. 关联
 
-课次基础见本册 [20-Model-Registry](20-Model-Registry：稳定版Canary门禁与回滚)、[23-Control-Plane](23-Control-Plane：Desired-Actual-Diff与Probe)、[29-Inference-Economics](29-Inference-Economics：Token吞吐功耗与成本)；主题展开见 [生产级 LLM Inference Platform](/source/AI-Infra/3-大模型推理优化工程/36-生产级LLMInferencePlatform)。
+课次基础见本册 [20-Model-Registry](/source/推理优化课程册/20-Model-Registry：稳定版Canary门禁与回滚)、[23-Control-Plane](/source/推理优化课程册/23-Control-Plane：Desired-Actual-Diff与Probe)、[29-Inference-Economics](/source/推理优化课程册/29-Inference-Economics：Token吞吐功耗与成本)；主题展开见 [生产级 LLM Inference Platform](/source/AI-Infra/3-大模型推理优化工程/36-生产级LLMInferencePlatform)。

@@ -331,4 +331,4 @@ class DraftApprovalMiddleware(AgentMiddleware):
 
 ## 写在最后
 
-下一篇[沙箱执行](11-沙箱执行)让 Agent 在隔离环境里运行代码：执行后端、隔离边界与文件平面，以及生产环境的选型。
+下一篇[沙箱执行](/source/agent/deepagents/11-沙箱执行)让 Agent 在隔离环境里运行代码：执行后端、隔离边界与文件平面，以及生产环境的选型。

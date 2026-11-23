@@ -261,4 +261,4 @@ pull 最新代码 → 创建功能分支 → 小步开发、频繁 commit
 
 ## 写在最后
 
-下一篇[Serverless 部署与 CI/CD](12-Serverless部署与CI-CD)把 GitHub 上的代码变成公网可访问的站点：EdgeOne/Vercel 部署、自动化流水线与运维成本。
+下一篇[Serverless 部署与 CI/CD](/source/vibecoding/vibe-advanced/12-Serverless部署与CI-CD)把 GitHub 上的代码变成公网可访问的站点：EdgeOne/Vercel 部署、自动化流水线与运维成本。

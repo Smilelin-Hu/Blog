@@ -318,4 +318,4 @@ middleware = CodeInterpreterMiddleware(
 
 ## 写在最后
 
-下一篇[决策模型 Harness](18-决策模型Harness)把「用哪个模型、这个动作能不能执行」变成程序可消费的判断：Model Router 与 Auto Mode。
+下一篇[决策模型 Harness](/source/agent/deepagents/18-决策模型Harness)把「用哪个模型、这个动作能不能执行」变成程序可消费的判断：Model Router 与 Auto Mode。

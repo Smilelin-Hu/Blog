@@ -149,4 +149,4 @@ RL 后训练再用外部奖励教会模型在特定任务中更有效地利用�
 
 ## 写在最后
 
-下一篇[Mid-training 与 SFT](8-3-Midtraining与SFT)讨论如何补领域底座、如何用示范固化协议，以及 SFT 数据从哪来、四种典型实验各自固化了什么。
+下一篇[Mid-training 与 SFT](/source/agent/深入理解/8-3-Midtraining与SFT)讨论如何补领域底座、如何用示范固化协议，以及 SFT 数据从哪来、四种典型实验各自固化了什么。

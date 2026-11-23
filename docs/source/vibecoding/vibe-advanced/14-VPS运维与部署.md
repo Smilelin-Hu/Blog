@@ -539,4 +539,4 @@ NODE_ENV="production"
 
 ## 写在最后
 
-下一篇[SEO 与分析](15-SEO与分析)让更多人发现网站：Open Graph 分享卡片、搜索引擎优化、Umami 统计与合规基础。
+下一篇[SEO 与分析](/source/vibecoding/vibe-advanced/15-SEO与分析)让更多人发现网站：Open Graph 分享卡片、搜索引擎优化、Umami 统计与合规基础。
