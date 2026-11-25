@@ -1,0 +1,18 @@
+{
+  "records": [
+    {
+      "id": "a",
+      "raw_tokens": 1200,
+      "valid_tokens": 1000,
+      "unique_tokens": 800,
+      "loss_tokens": 640
+    },
+    {
+      "id": "b",
+      "raw_tokens": 800,
+      "valid_tokens": 700,
+      "unique_tokens": 550,
+      "loss_tokens": 420
+    }
+  ]
+}

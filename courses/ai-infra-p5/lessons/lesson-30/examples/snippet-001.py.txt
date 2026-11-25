@@ -1,0 +1,354 @@
+# sim/recovery_state_machine.py
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import shutil
+import tempfile
+import time
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Dict, List, Optional, Set, Tuple
+
+
+def canonical_bytes(obj: object) -> bytes:
+    return json.dumps(obj, ensure_ascii=False, sort_keys=True,
+                      separators=(",", ":")).encode("utf-8")
+
+
+def digest(obj: object) -> str:
+    return hashlib.sha256(canonical_bytes(obj)).hexdigest()
+
+
+def atomic_json(path: Path, obj: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_suffix(path.suffix + ".tmp")
+    raw = json.dumps(obj, ensure_ascii=False, sort_keys=True, indent=2)
+    with open(temp, "w", encoding="utf-8") as handle:
+        handle.write(raw)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(temp, path)
+
+
+class EventLog:
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.sequence = 0
+        if self.path.exists():
+            with open(self.path, "r", encoding="utf-8") as handle:
+                self.sequence = sum(1 for _ in handle)
+
+    def write(self, event: str, **fields: object) -> None:
+        self.sequence += 1
+        row = {
+            "sequence": self.sequence,
+            "event": event,
+            "time": time.time(),
+            **fields,
+        }
+        with open(self.path, "a", encoding="utf-8") as handle:
+            handle.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+
+
+@dataclass
+class RunState:
+    run_id: str
+    policy_version: int = 0
+    policy_value: float = 0.0
+    optimizer_momentum: float = 0.0
+    scheduler_step: int = 0
+    sampler_cursor: int = 0
+    committed_updates: Dict[str, str] = field(default_factory=dict)
+    consumed_experiences: Dict[str, str] = field(default_factory=dict)
+    pending_intents: Dict[str, str] = field(default_factory=dict)
+    last_checkpoint: Optional[str] = None
+
+    def logical_view(self) -> Dict[str, object]:
+        return {
+            "run_id": self.run_id,
+            "policy_version": self.policy_version,
+            "policy_value": round(self.policy_value, 12),
+            "optimizer_momentum": round(self.optimizer_momentum, 12),
+            "scheduler_step": self.scheduler_step,
+            "sampler_cursor": self.sampler_cursor,
+            "committed_updates": dict(sorted(self.committed_updates.items())),
+            "consumed_experiences": dict(sorted(self.consumed_experiences.items())),
+        }
+
+
+class CheckpointStore:
+    def __init__(self, root: Path, log: EventLog) -> None:
+        self.root = root
+        self.root.mkdir(parents=True, exist_ok=True)
+        self.log = log
+
+    def save(self, state: RunState) -> str:
+        checkpoint_id = f"ckpt-{state.policy_version:04d}"
+        staging = self.root / f".{checkpoint_id}.preparing"
+        final = self.root / checkpoint_id
+        if staging.exists():
+            shutil.rmtree(staging)
+        staging.mkdir(parents=True)
+
+        state_obj = asdict(state)
+        state_obj["last_checkpoint"] = checkpoint_id
+        state_hash = digest(state_obj)
+        atomic_json(staging / "state.json", state_obj)
+        manifest = {
+            "checkpoint_id": checkpoint_id,
+            "parent": state.last_checkpoint,
+            "policy_version": state.policy_version,
+            "last_update": f"update-{state.policy_version - 1:04d}"
+            if state.policy_version else None,
+            "state_file": "state.json",
+            "state_hash": state_hash,
+            "status": "COMMITTED",
+        }
+        manifest["manifest_hash"] = digest(manifest)
+        atomic_json(staging / "manifest.json", manifest)
+        if final.exists():
+            shutil.rmtree(final)
+        os.replace(staging, final)
+        atomic_json(self.root / "latest.json", {
+            "checkpoint_id": checkpoint_id,
+            "manifest_hash": manifest["manifest_hash"],
+        })
+        state.last_checkpoint = checkpoint_id
+        self.log.write("checkpoint_committed", checkpoint_id=checkpoint_id,
+                       policy_version=state.policy_version)
+        return checkpoint_id
+
+    def _load_one(self, path: Path) -> RunState:
+        with open(path / "manifest.json", "r", encoding="utf-8") as handle:
+            manifest = json.load(handle)
+        expected_manifest_hash = manifest.pop("manifest_hash")
+        if digest(manifest) != expected_manifest_hash:
+            raise ValueError("manifest_hash_mismatch")
+        if manifest["status"] != "COMMITTED":
+            raise ValueError("checkpoint_not_committed")
+        with open(path / manifest["state_file"], "r", encoding="utf-8") as handle:
+            state_obj = json.load(handle)
+        if digest(state_obj) != manifest["state_hash"]:
+            raise ValueError("state_hash_mismatch")
+        return RunState(**state_obj)
+
+    def load_latest_valid(self) -> Tuple[RunState, List[Dict[str, str]]]:
+        candidates = sorted(
+            [p for p in self.root.glob("ckpt-*") if p.is_dir()], reverse=True
+        )
+        failures: List[Dict[str, str]] = []
+        for path in candidates:
+            try:
+                state = self._load_one(path)
+                self.log.write("checkpoint_loaded", checkpoint_id=path.name)
+                return state, failures
+            except Exception as exc:
+                failure = {"checkpoint_id": path.name, "error": str(exc)}
+                failures.append(failure)
+                self.log.write("checkpoint_rejected", **failure)
+        raise RuntimeError("no_valid_checkpoint")
+
+    def corrupt_latest_manifest(self) -> str:
+        with open(self.root / "latest.json", "r", encoding="utf-8") as handle:
+            latest = json.load(handle)["checkpoint_id"]
+        path = self.root / latest / "manifest.json"
+        with open(path, "r+", encoding="utf-8") as handle:
+            obj = json.load(handle)
+            obj["policy_version"] = int(obj["policy_version"]) + 999
+            handle.seek(0)
+            json.dump(obj, handle, ensure_ascii=False, sort_keys=True, indent=2)
+            handle.truncate()
+            handle.flush()
+            os.fsync(handle.fileno())
+        self.log.write("checkpoint_corrupted_for_test", checkpoint_id=latest)
+        return latest
+
+
+class InjectedCrash(RuntimeError):
+    pass
+
+
+class TrainingRuntime:
+    def __init__(self, state: RunState, store: CheckpointStore,
+                 log: EventLog) -> None:
+        self.state = state
+        self.store = store
+        self.log = log
+
+    def build_experience(self, cursor: int) -> Dict[str, object]:
+        experience_id = f"exp-{cursor:04d}"
+        # 完全由身份确定，恢复后得到相同数据。
+        reward = float(((cursor * 17 + 3) % 7) - 3)
+        return {
+            "experience_id": experience_id,
+            "prompt_id": f"prompt-{cursor:04d}",
+            "reward": reward,
+            "behavior_policy_version": self.state.policy_version,
+        }
+
+    def reserve(self, update_id: str, experience: Dict[str, object]) -> str:
+        eid = str(experience["experience_id"])
+        batch_hash = digest(experience)
+        if update_id in self.state.committed_updates:
+            return "already_committed"
+        if eid in self.state.consumed_experiences:
+            return "already_consumed"
+        prior = self.state.pending_intents.get(update_id)
+        if prior is not None and prior != batch_hash:
+            raise RuntimeError("update_intent_conflict")
+        self.state.pending_intents[update_id] = batch_hash
+        self.log.write("update_reserved", update_id=update_id,
+                       experience_id=eid, batch_hash=batch_hash)
+        return "reserved"
+
+    def apply_update(self, update_id: str, experience: Dict[str, object],
+                     fail_before_commit: bool = False,
+                     fail_after_checkpoint: bool = False) -> str:
+        reservation = self.reserve(update_id, experience)
+        if reservation != "reserved":
+            self.log.write("duplicate_delivery_rejected", update_id=update_id,
+                           result=reservation)
+            return reservation
+
+        batch_hash = self.state.pending_intents[update_id]
+        reward = float(experience["reward"])
+        proposed_momentum = 0.9 * self.state.optimizer_momentum + reward
+        proposed_value = self.state.policy_value + 0.01 * proposed_momentum
+        proposed_version = self.state.policy_version + 1
+        self.log.write("optimizer_computed", update_id=update_id,
+                       proposed_version=proposed_version,
+                       proposed_value=proposed_value)
+        if fail_before_commit:
+            raise InjectedCrash("after_optimizer_before_commit")
+
+        # 原子逻辑提交：真实系统由联合 Checkpoint 和 Ledger 协调。
+        eid = str(experience["experience_id"])
+        self.state.optimizer_momentum = proposed_momentum
+        self.state.policy_value = proposed_value
+        self.state.policy_version = proposed_version
+        self.state.scheduler_step += 1
+        self.state.sampler_cursor += 1
+        self.state.committed_updates[update_id] = batch_hash
+        self.state.consumed_experiences[eid] = update_id
+        self.state.pending_intents.pop(update_id, None)
+        checkpoint_id = self.store.save(self.state)
+        self.log.write("update_committed", update_id=update_id,
+                       experience_id=eid, checkpoint_id=checkpoint_id)
+        if fail_after_checkpoint:
+            raise InjectedCrash("after_checkpoint_before_queue_ack")
+        return "committed"
+
+
+def run_to_target(root: Path, target_updates: int,
+                  inject_before: Optional[int] = None,
+                  inject_after: Optional[int] = None,
+                  resume: bool = False) -> RunState:
+    log = EventLog(root / "events.jsonl")
+    store = CheckpointStore(root / "checkpoints", log)
+    if resume:
+        state, failures = store.load_latest_valid()
+        log.write("recovery_started", rejected_checkpoints=failures,
+                  restored_version=state.policy_version)
+    else:
+        state = RunState(run_id=root.name)
+        store.save(state)
+    runtime = TrainingRuntime(state, store, log)
+
+    while runtime.state.policy_version < target_updates:
+        cursor = runtime.state.sampler_cursor
+        update_id = f"update-{cursor:04d}"
+        experience = runtime.build_experience(cursor)
+        runtime.apply_update(
+            update_id,
+            experience,
+            fail_before_commit=(inject_before == cursor),
+            fail_after_checkpoint=(inject_after == cursor),
+        )
+    atomic_json(root / "final.json", runtime.state.logical_view())
+    return runtime.state
+
+
+def recover_until_complete(root: Path, target_updates: int,
+                           corrupt_latest: bool = False) -> RunState:
+    log = EventLog(root / "events.jsonl")
+    store = CheckpointStore(root / "checkpoints", log)
+    if corrupt_latest:
+        store.corrupt_latest_manifest()
+    return run_to_target(root, target_updates, resume=True)
+
+
+def scenario(root: Path, target_updates: int) -> Dict[str, object]:
+    baseline_root = root / "baseline"
+    failure_root = root / "failure"
+    baseline = run_to_target(baseline_root, target_updates)
+
+    crashes = []
+    try:
+        run_to_target(failure_root, target_updates, inject_before=1)
+    except InjectedCrash as exc:
+        crashes.append(str(exc))
+    first_recovery = recover_until_complete(failure_root, 3)
+
+    # 模拟已经提交但队列未 Ack：再次投递最后一条 Experience。
+    log = EventLog(failure_root / "events.jsonl")
+    store = CheckpointStore(failure_root / "checkpoints", log)
+    loaded, _ = store.load_latest_valid()
+    runtime = TrainingRuntime(loaded, store, log)
+    duplicate_cursor = loaded.sampler_cursor - 1
+    duplicate = runtime.build_experience(duplicate_cursor)
+    duplicate_result = runtime.apply_update(
+        f"update-{duplicate_cursor:04d}", duplicate
+    )
+
+    # 继续到目标，损坏最后快照后再恢复并确定性补算。
+    completed = run_to_target(failure_root, target_updates, resume=True)
+    corrupt_id = CheckpointStore(
+        failure_root / "checkpoints", EventLog(failure_root / "events.jsonl")
+    ).corrupt_latest_manifest()
+    repaired = run_to_target(failure_root, target_updates, resume=True)
+
+    baseline_view = baseline.logical_view()
+    repaired_view = repaired.logical_view()
+    # run_id 不同，不参与逻辑等价比较。
+    baseline_view.pop("run_id", None)
+    repaired_view.pop("run_id", None)
+    equivalent = baseline_view == repaired_view
+    result = {
+        "status": "ok" if equivalent else "mismatch",
+        "experiment_kind": "mechanism_simulation",
+        "target_updates": target_updates,
+        "injected_crashes": crashes,
+        "duplicate_delivery_result": duplicate_result,
+        "corrupted_checkpoint": corrupt_id,
+        "fallback_and_replay_equivalent": equivalent,
+        "baseline": baseline_view,
+        "recovered": repaired_view,
+    }
+    atomic_json(root / "summary.json", result)
+    return result
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", default=None)
+    parser.add_argument("--updates", type=int, default=6)
+    args = parser.parse_args()
+    if args.output:
+        root = Path(args.output).resolve()
+        root.mkdir(parents=True, exist_ok=True)
+        result = scenario(root, args.updates)
+    else:
+        with tempfile.TemporaryDirectory(prefix="rl-recovery-") as tmp:
+            result = scenario(Path(tmp), args.updates)
+    print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+    raise SystemExit(0 if result["status"] == "ok" else 1)
+
+
+if __name__ == "__main__":
+    main()

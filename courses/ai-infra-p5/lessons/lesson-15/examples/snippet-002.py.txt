@@ -1,0 +1,115 @@
+from __future__ import annotations
+
+import json
+import os
+import random
+
+try:
+    import torch
+    import torch.distributed as dist
+    from torch import nn
+except Exception as exc:
+    print(json.dumps({"status": "skipped", "reason": f"torch unavailable: {exc}"}))
+    raise SystemExit(0)
+
+
+def skip(reason: str) -> None:
+    print(json.dumps({"status": "skipped", "reason": reason}))
+    raise SystemExit(0)
+
+
+def sample_domain(rng: random.Random, weights: list[float]) -> int:
+    value, cumulative = rng.random(), 0.0
+    for i, weight in enumerate(weights):
+        cumulative += weight
+        if value <= cumulative:
+            return i
+    return len(weights) - 1
+
+
+def make_tokens(domain: int, batch: int, length: int, vocab: int, device):
+    # 不同合成域使用不同Token区间，便于产生可观察但无真实语义的损失差异。
+    width = vocab // 4
+    low = domain * width
+    high = vocab if domain == 3 else (domain + 1) * width
+    return torch.randint(low, high, (batch, length + 1), device=device)
+
+
+def main() -> None:
+    if not torch.cuda.is_available():
+        skip("CUDA unavailable")
+    if torch.cuda.device_count() < 1:
+        skip(f"requires at least one CUDA device, found {torch.cuda.device_count()}")
+    if int(os.environ.get("WORLD_SIZE", "1")) < 1:
+        skip("launch with torchrun and one or more ranks")
+    dist.init_process_group("nccl")
+    rank = dist.get_rank()
+    local_rank = int(os.environ["LOCAL_RANK"])
+    torch.cuda.set_device(local_rank)
+    device = torch.device("cuda", local_rank)
+    seed = 20260822 + rank * 1000
+    torch.manual_seed(seed)
+    rng = random.Random(seed)
+    mixtures = [
+        [0.55, 0.20, 0.15, 0.10],
+        [0.22, 0.18, 0.35, 0.25],
+    ]
+    mix = mixtures[rank]
+    vocab, hidden, length, batch = 2048, 256, 256, 2
+    model = nn.Sequential(
+        nn.Embedding(vocab, hidden),
+        nn.Linear(hidden, vocab, bias=False),
+    ).to(device)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
+    consumed = [0, 0, 0, 0]
+    try:
+        for _ in range(80):
+            domain = sample_domain(rng, mix)
+            tokens = make_tokens(domain, batch, length, vocab, device)
+            logits = model(tokens[:, :-1])
+            loss = nn.functional.cross_entropy(
+                logits.reshape(-1, vocab), tokens[:, 1:].reshape(-1)
+            )
+            optimizer.zero_grad(set_to_none=True)
+            loss.backward()
+            optimizer.step()
+            consumed[domain] += batch * length
+        losses = []
+        model.eval()
+        with torch.no_grad():
+            for domain in range(4):
+                torch.manual_seed(99_000 + domain)
+                tokens = make_tokens(domain, 4, length, vocab, device)
+                logits = model(tokens[:, :-1])
+                value = nn.functional.cross_entropy(
+                    logits.reshape(-1, vocab), tokens[:, 1:].reshape(-1)
+                )
+                losses.append(round(float(value.item()), 6))
+        local = {
+            "rank": rank,
+            "mixture": mix,
+            "consumed_tokens": consumed,
+            "validation_losses": losses,
+            "peak_allocated_bytes": torch.cuda.max_memory_allocated(device),
+        }
+        gathered = [None, None] if rank == 0 else None
+        dist.gather_object(local, gathered, dst=0)
+        if rank == 0:
+            print(json.dumps({
+                "status": "passed",
+                "proxy_runs": gathered,
+                "claim_boundary": "synthetic mechanism validation only",
+            }))
+    except torch.cuda.OutOfMemoryError as exc:
+        if rank == 0:
+            print(json.dumps({
+                "status": "skipped",
+                "reason": f"CUDA OOM: {exc}",
+                "suggestion": "reduce hidden, length, or batch",
+            }))
+    finally:
+        dist.destroy_process_group()
+
+
+if __name__ == "__main__":
+    main()

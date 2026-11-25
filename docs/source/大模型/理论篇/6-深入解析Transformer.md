@@ -226,4 +226,4 @@ tgt_mask = tgt_pad_mask & tgt_subsequent_mask.unsqueeze(0)          # 两者取�
 
 ## 写在最后
 
-架构的积木齐了，下一个问题是往这套积木里灌什么训练信号——下一篇[预训练模型BERT与GPT](7-预训练模型BERT与GPT)记录 Encoder-Only 与 Decoder-Only 两条路线各自的预训练任务设计。
+架构的积木齐了，下一个问题是往这套积木里灌什么训练信号——下一篇[预训练模型BERT与GPT](/source/大模型/理论篇/7-预训练模型BERT与GPT)记录 Encoder-Only 与 Decoder-Only 两条路线各自的预训练任务设计。

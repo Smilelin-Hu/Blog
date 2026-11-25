@@ -21,3 +21,12 @@ new/
 .qoder/excalidraw-diagram/skills/excalidraw-diagram/references/vendor/
 
 
+
+# Astro 构建产物与依赖（前端已迁 Astro，见 package.json）
+node_modules/
+dist/
+.astro/
+public/pagefind/
+
+# 本地品牌素材 scratch（已拷贝入库版本在 public/brand/）
+logo/

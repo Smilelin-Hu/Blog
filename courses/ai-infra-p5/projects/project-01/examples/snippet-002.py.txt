@@ -1,0 +1,59 @@
+import hashlib
+import json
+import re
+from collections import defaultdict
+
+DOCS = [
+    {"url": "https://a.example/1", "text": "Reliable data needs lineage and replay evidence."},
+    {"url": "https://b.example/2", "text": "Reliable  data needs lineage and replay evidence!"},
+    {"url": "https://c.example/3", "text": "Contact admin@example.org for the private build token."},
+    {"url": "https://d.example/4", "text": "A distinct article about deterministic sharding."},
+]
+
+def canonicalize(text):
+    text = re.sub(r"\s+", " ", text.strip().lower())
+    return re.sub(r"[^a-z0-9@. ]", "", text)
+
+def stable_id(value):
+    return hashlib.sha256(value.encode()).hexdigest()
+
+def shingles(text, width=3):
+    words = text.split()
+    return {" ".join(words[i:i + width]) for i in range(max(1, len(words) - width + 1))}
+
+def jaccard(left, right):
+    return len(left & right) / max(1, len(left | right))
+
+def run(docs, shards=4):
+    output, exact = [], {}
+    for item in docs:
+        canonical = canonicalize(item["text"])
+        doc_id = stable_id(canonical)
+        reason = "keep"
+        if re.search(r"[\w.+-]+@[\w.-]+", canonical):
+            reason = "reject_pii_email"
+        elif doc_id in exact:
+            reason = "reject_exact_duplicate"
+        exact.setdefault(doc_id, item["url"])
+        output.append({
+            "document_id": doc_id,
+            "url": item["url"],
+            "canonical": canonical,
+            "decision": reason,
+            "shard": int(doc_id[:8], 16) % shards,
+        })
+    kept = [x for x in output if x["decision"] == "keep"]
+    fuzzy = []
+    for i, left in enumerate(kept):
+        for right in kept[i + 1:]:
+            score = jaccard(shingles(left["canonical"]), shingles(right["canonical"]))
+            if score >= 0.7:
+                fuzzy.append({"left": left["document_id"], "right": right["document_id"], "score": score})
+    return {"documents": output, "fuzzy_candidates": fuzzy}
+
+first = run(DOCS)
+second = run(list(reversed(DOCS)))
+assert sorted((x["document_id"], x["shard"]) for x in first["documents"]) == sorted(
+    (x["document_id"], x["shard"]) for x in second["documents"]
+)
+print(json.dumps(first, ensure_ascii=False, indent=2))

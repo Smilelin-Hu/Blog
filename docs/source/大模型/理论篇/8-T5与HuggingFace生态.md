@@ -28,7 +28,7 @@ BERT 模式下不同任务要设计不同结构：分类加全连接头、序列
 
 ### 1.3 Span Corruption：为 Encoder-Decoder 定制的预训练目标
 
-不同于 BERT 的单字掩码或 GPT 的单向预测，T5 设计了**片段破坏与重构（Span Corruption）**：**破坏**——随机选若干**连续片段（Span）**替换为哨兵符 `<extra_id_0>`、`<extra_id_1>`；**重构**——要求 Decoder 生成被遮盖的片段。
+不同于 BERT 的单字掩码或 GPT 的单向预测，T5 设计了**片段破坏与重构（Span Corruption）**：**破坏**——随机选若干**连续片段（Span）** 替换为哨兵符 `<extra_id_0>`、`<extra_id_1>`；**重构**——要求 Decoder 生成被遮盖的片段。
 
 <div align="center">
   <img src="https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/basellm_5_3_2.png" width="90%" alt="Span Corruption 预训练目标示意图" />
@@ -196,4 +196,4 @@ def compute_metrics(eval_pred):
 
 ## 写在最后
 
-调用别人训好的模型终归隔了一层——下一篇[手搓Llama2大模型](9-手搓Llama2大模型)从零搭建类 LLaMA 结构，把这些架构知识落成自己的代码。
+调用别人训好的模型终归隔了一层——下一篇[手搓Llama2大模型](/source/大模型/理论篇/9-手搓Llama2大模型)从零搭建类 LLaMA 结构，把这些架构知识落成自己的代码。

@@ -1,0 +1,216 @@
+{
+  "rates": {
+    "A100_80GB": 3.2,
+    "H100_80GB": 4.8,
+    "cpu_core_hour": 0.04,
+    "memory_gib_hour": 0.006,
+    "storage_gib_hour": 0.0002
+  },
+  "shared_platform_cost": 42.0,
+  "idle_gpu_cost": 76.8,
+  "allocation_policy": {
+    "idle_mode": "proportional",
+    "maximum_unknown_cost_ratio": 0.02
+  },
+  "workloads": [
+    {
+      "name": "trainer-a",
+      "tenant": "team-a",
+      "project": "foundation",
+      "cost_center": "cc-100",
+      "owner": "alice",
+      "gpu_type": "A100_80GB",
+      "gpu_count": 4,
+      "runtime_hours": 6,
+      "gpu_utilization": 0.72,
+      "cpu_request": 32,
+      "memory_gib_request": 256,
+      "storage_gib": 500
+    },
+    {
+      "name": "serve-a",
+      "tenant": "team-a",
+      "project": "online",
+      "cost_center": "cc-100",
+      "owner": "bob",
+      "gpu_type": "H100_80GB",
+      "gpu_count": 2,
+      "runtime_hours": 24,
+      "gpu_utilization": 0.61,
+      "cpu_request": 24,
+      "memory_gib_request": 192,
+      "storage_gib": 200
+    },
+    {
+      "name": "trainer-b",
+      "tenant": "team-b",
+      "project": "vision",
+      "cost_center": "cc-200",
+      "owner": "carol",
+      "gpu_type": "A100_80GB",
+      "gpu_count": 8,
+      "runtime_hours": 3,
+      "gpu_utilization": 0.48,
+      "cpu_request": 48,
+      "memory_gib_request": 384,
+      "storage_gib": 800
+    }
+  ],
+  "capacity_policy": {
+    "lead_time_months": 3,
+    "maximum_target_utilization": 0.8
+  },
+  "capacity_pools": [
+    {
+      "name": "A100_80GB",
+      "installed_gpus": 48,
+      "largest_failure_domain_gpus": 8,
+      "monthly_growth_rate": 0.05,
+      "demand_samples": [
+        26,
+        28,
+        31,
+        30,
+        34,
+        36,
+        35,
+        33,
+        38,
+        40,
+        37,
+        39
+      ]
+    },
+    {
+      "name": "H100_80GB",
+      "installed_gpus": 24,
+      "largest_failure_domain_gpus": 4,
+      "monthly_growth_rate": 0.08,
+      "demand_samples": [
+        12,
+        13,
+        15,
+        14,
+        16,
+        17,
+        18,
+        17,
+        19,
+        18,
+        20,
+        21
+      ]
+    }
+  ],
+  "governance": {
+    "price_freshness_hours": 6,
+    "maximum_price_freshness_hours": 24,
+    "billing_reconciliation_ratio": 0.998,
+    "minimum_billing_reconciliation_ratio": 0.995,
+    "gpu_identity_mapping_verified": true,
+    "shared_cost_policy_versioned": true,
+    "budget_owner_present": true
+  },
+  "faults": [
+    {
+      "type": "missing_tenant",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "CostIdentityMissing"
+    },
+    {
+      "type": "missing_project",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "CostIdentityMissing"
+    },
+    {
+      "type": "unknown_gpu_type",
+      "expected_phase": "REJECTED",
+      "expected_reason": "GPUPriceProfileUnknown"
+    },
+    {
+      "type": "negative_runtime",
+      "expected_phase": "REJECTED",
+      "expected_reason": "RuntimeMustBeNonNegative"
+    },
+    {
+      "type": "utilization_above_one",
+      "expected_phase": "REJECTED",
+      "expected_reason": "GPUUtilizationOutOfRange"
+    },
+    {
+      "type": "price_stale",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "PricingDataStale"
+    },
+    {
+      "type": "billing_gap",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "BillingReconciliationCoverageInsufficient"
+    },
+    {
+      "type": "gpu_mapping_unknown",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "GPUIdentityMappingUnverified"
+    },
+    {
+      "type": "shared_policy_missing",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "SharedCostPolicyUnversioned"
+    },
+    {
+      "type": "budget_owner_missing",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "BudgetOwnerMissing"
+    },
+    {
+      "type": "idle_hidden",
+      "expected_phase": "REJECTED",
+      "expected_reason": "IdleCostMustRemainVisible"
+    },
+    {
+      "type": "double_allocation",
+      "expected_phase": "REJECTED",
+      "expected_reason": "CostReconciliationDeltaNonZero"
+    },
+    {
+      "type": "empty_capacity_series",
+      "expected_phase": "REJECTED",
+      "expected_reason": "CapacityDemandSeriesEmpty"
+    },
+    {
+      "type": "forecast_growth_negative",
+      "expected_phase": "REJECTED",
+      "expected_reason": "CapacityGrowthRateInvalid"
+    },
+    {
+      "type": "lead_time_zero",
+      "expected_phase": "REJECTED",
+      "expected_reason": "CapacityLeadTimeInvalid"
+    },
+    {
+      "type": "target_utilization_one",
+      "expected_phase": "REJECTED",
+      "expected_reason": "CapacityHeadroomMissing"
+    },
+    {
+      "type": "failure_domain_unknown",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "FailureDomainCapacityUnknown"
+    },
+    {
+      "type": "commitment_without_baseline",
+      "expected_phase": "REJECTED",
+      "expected_reason": "CommitmentBaselineMissing"
+    },
+    {
+      "type": "spot_without_interruptions",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "SpotInterruptionEvidenceMissing"
+    },
+    {
+      "type": "live_sources_missing",
+      "expected_phase": "SKIPPED",
+      "expected_reason": "NoLiveFinOpsSourceProvided"
+    }
+  ]
+}

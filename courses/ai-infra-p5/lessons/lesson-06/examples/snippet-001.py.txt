@@ -1,0 +1,257 @@
+from __future__ import annotations
+
+import concurrent.futures
+import hashlib
+import json
+import re
+from dataclasses import asdict, dataclass
+from typing import Any, Callable
+
+
+MAP_PARTITIONS = 4
+REDUCE_PARTITIONS = 3
+RECIPE_ID = "distributed-flow-mechanism-v1"
+
+
+def sha(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def stable_partition(key: str, count: int) -> int:
+    return int(sha(key)[:16], 16) % count
+
+
+def canonical_digest(value: Any) -> str:
+    return sha(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
+
+
+@dataclass(frozen=True)
+class Document:
+    document_id: str
+    source: str
+    text: str
+    quality: float
+
+
+@dataclass
+class MapResult:
+    task_id: str
+    attempt: int
+    kept: list[dict[str, Any]]
+    rejected: list[dict[str, str]]
+    stats: dict[str, int]
+
+
+@dataclass
+class ReduceResult:
+    task_id: str
+    representatives: list[dict[str, Any]]
+    duplicate_edges: list[dict[str, str]]
+    stats: dict[str, int]
+
+
+class CommitStore:
+    def __init__(self) -> None:
+        self._commits: dict[str, dict[str, Any]] = {}
+
+    def commit(self, task_id: str, payload: dict[str, Any]) -> bool:
+        digest = canonical_digest(payload)
+        existing = self._commits.get(task_id)
+        if existing is None:
+            self._commits[task_id] = {"digest": digest, "payload": payload}
+            return True
+        if existing["digest"] != digest:
+            raise RuntimeError(f"non-deterministic commit for {task_id}")
+        return False
+
+    def payloads(self, prefix: str) -> list[dict[str, Any]]:
+        return [
+            self._commits[key]["payload"]
+            for key in sorted(self._commits)
+            if key.startswith(prefix)
+        ]
+
+
+def normalize(text: str) -> str:
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def map_task(task_id: str, attempt: int, documents: list[Document], fail_once: bool) -> MapResult:
+    kept: list[dict[str, Any]] = []
+    rejected: list[dict[str, str]] = []
+    input_characters = 0
+    output_characters = 0
+    for index, document in enumerate(documents):
+        input_characters += len(document.text)
+        text = normalize(document.text)
+        if not text:
+            rejected.append({"document_id": document.document_id, "reason": "empty_after_normalize"})
+            continue
+        content_hash = sha(text)
+        kept.append(
+            {
+                "document_id": document.document_id,
+                "source": document.source,
+                "text": text,
+                "quality": document.quality,
+                "content_hash": content_hash,
+            }
+        )
+        output_characters += len(text)
+        if fail_once and attempt == 0 and index == len(documents) // 2:
+            raise RuntimeError("injected map failure")
+    kept.sort(key=lambda item: item["document_id"])
+    rejected.sort(key=lambda item: item["document_id"])
+    return MapResult(
+        task_id,
+        attempt,
+        kept,
+        rejected,
+        {
+            "inputs": len(documents),
+            "kept": len(kept),
+            "rejected": len(rejected),
+            "input_characters": input_characters,
+            "output_characters": output_characters,
+        },
+    )
+
+
+def reduce_task(task_id: str, records: list[dict[str, Any]]) -> ReduceResult:
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for record in records:
+        groups.setdefault(record["content_hash"], []).append(record)
+    representatives: list[dict[str, Any]] = []
+    edges: list[dict[str, str]] = []
+    for content_hash in sorted(groups):
+        group = groups[content_hash]
+        group.sort(
+            key=lambda item: (
+                -float(item["quality"]),
+                -len(str(item["text"])),
+                str(item["document_id"]),
+            )
+        )
+        winner = group[0]
+        representatives.append(winner)
+        for duplicate in group[1:]:
+            edges.append(
+                {
+                    "duplicate_id": duplicate["document_id"],
+                    "representative_id": winner["document_id"],
+                    "content_hash": content_hash,
+                }
+            )
+    representatives.sort(key=lambda item: item["document_id"])
+    edges.sort(key=lambda item: (item["representative_id"], item["duplicate_id"]))
+    return ReduceResult(
+        task_id,
+        representatives,
+        edges,
+        {
+            "inputs": len(records),
+            "groups": len(groups),
+            "duplicates": len(edges),
+        },
+    )
+
+
+def run_with_retry(
+    function: Callable[..., Any], task_id: str, args: tuple[Any, ...], max_attempts: int = 2
+) -> Any:
+    last_error: Exception | None = None
+    for attempt in range(max_attempts):
+        try:
+            return function(task_id, attempt, *args)
+        except RuntimeError as error:
+            last_error = error
+    raise RuntimeError(f"task {task_id} exhausted retries") from last_error
+
+
+def pipeline(documents: list[Document]) -> dict[str, Any]:
+    input_manifest = [asdict(item) for item in sorted(documents, key=lambda item: item.document_id)]
+    manifest_digest = canonical_digest(input_manifest)
+    map_buckets: list[list[Document]] = [[] for _ in range(MAP_PARTITIONS)]
+    for document in documents:
+        map_buckets[stable_partition(document.document_id, MAP_PARTITIONS)].append(document)
+    store = CommitStore()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=MAP_PARTITIONS) as pool:
+        futures = {}
+        for partition, bucket in enumerate(map_buckets):
+            task_id = f"map-{partition:05d}"
+            bucket.sort(key=lambda item: item.document_id)
+            future = pool.submit(
+                run_with_retry,
+                map_task,
+                task_id,
+                (bucket, partition == 1),
+            )
+            futures[future] = task_id
+        for future in concurrent.futures.as_completed(futures):
+            result: MapResult = future.result()
+            payload = asdict(result)
+            payload.pop("attempt")
+            store.commit(result.task_id, payload)
+    map_payloads = store.payloads("map-")
+    map_stats = {
+        key: sum(int(item["stats"][key]) for item in map_payloads)
+        for key in ("inputs", "kept", "rejected", "input_characters", "output_characters")
+    }
+    if map_stats["inputs"] != len(documents):
+        raise RuntimeError("map input ledger mismatch")
+    if map_stats["inputs"] != map_stats["kept"] + map_stats["rejected"]:
+        raise RuntimeError("map status ledger mismatch")
+    reduce_buckets: list[list[dict[str, Any]]] = [[] for _ in range(REDUCE_PARTITIONS)]
+    for payload in map_payloads:
+        for record in payload["kept"]:
+            partition = stable_partition(record["content_hash"], REDUCE_PARTITIONS)
+            reduce_buckets[partition].append(record)
+    for partition, bucket in enumerate(reduce_buckets):
+        task_id = f"reduce-{partition:05d}"
+        result = reduce_task(task_id, bucket)
+        store.commit(task_id, asdict(result))
+    reduce_payloads = store.payloads("reduce-")
+    representatives = [
+        item for payload in reduce_payloads for item in payload["representatives"]
+    ]
+    duplicate_edges = [
+        item for payload in reduce_payloads for item in payload["duplicate_edges"]
+    ]
+    representatives.sort(key=lambda item: item["document_id"])
+    duplicate_edges.sort(key=lambda item: item["duplicate_id"])
+    if len(representatives) + len(duplicate_edges) != map_stats["kept"]:
+        raise RuntimeError("reduce ledger mismatch")
+    release = {
+        "recipe_id": RECIPE_ID,
+        "input_manifest_digest": manifest_digest,
+        "map_stats": map_stats,
+        "representatives": representatives,
+        "duplicate_edges": duplicate_edges,
+    }
+    release["release_digest"] = canonical_digest(release)
+    return release
+
+
+def main() -> None:
+    documents = [
+        Document("doc-001", "web-a", "  分布式   数据流 ", 0.80),
+        Document("doc-002", "web-b", "分布式 数据流", 0.95),
+        Document("doc-003", "docs", "Shuffle 必须显式建模", 0.90),
+        Document("doc-004", "chat", "", 0.70),
+        Document("doc-005", "code", "stable_partition(key)", 0.88),
+        Document("doc-006", "pdf", "Shuffle 必须显式建模", 0.85),
+    ]
+    first = pipeline(documents)
+    second = pipeline(list(reversed(documents)))
+    assert first["release_digest"] == second["release_digest"]
+    print(json.dumps(first, ensure_ascii=False, sort_keys=True, indent=2))
+    print(
+        json.dumps(
+            {"status": "passed", "deterministic": True, "digest": first["release_digest"]},
+            ensure_ascii=False,
+        )
+    )
+
+
+if __name__ == "__main__":
+    main()

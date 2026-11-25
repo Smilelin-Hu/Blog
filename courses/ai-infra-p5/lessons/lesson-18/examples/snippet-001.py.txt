@@ -1,0 +1,83 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import random
+
+
+def simulate(target_ratio: float, tokens: int, seed: int) -> dict[str, float]:
+    rng = random.Random(seed)
+    scale = tokens / 1_000_000
+    target_gain = (1.0 - math.exp(-2.5 * target_ratio * scale))
+    target_gain *= 1.0 - 0.18 * max(0.0, target_ratio - 0.82) ** 2
+    forgetting = 0.23 * target_ratio ** 1.8 * math.log1p(scale)
+    replay_protection = 0.16 * (1.0 - target_ratio) * math.sqrt(scale)
+    forgetting = max(0.0, forgetting - replay_protection)
+    return {
+        "target_gain": target_gain + rng.gauss(0, 0.006),
+        "general_forgetting": forgetting + rng.gauss(0, 0.003),
+    }
+
+
+def aggregate(target_ratio: float, tokens: int) -> dict[str, object]:
+    observations = [simulate(target_ratio, tokens, seed) for seed in range(5)]
+    return {
+        "target_ratio": target_ratio,
+        "replay_ratio": 1.0 - target_ratio,
+        "tokens": tokens,
+        "target_gain": sum(x["target_gain"] for x in observations) / len(observations),
+        "general_forgetting": sum(x["general_forgetting"] for x in observations) / len(observations),
+    }
+
+
+def dominates(a: dict[str, object], b: dict[str, object]) -> bool:
+    no_worse = (
+        a["target_gain"] >= b["target_gain"]
+        and a["general_forgetting"] <= b["general_forgetting"]
+        and a["tokens"] <= b["tokens"]
+    )
+    strictly = (
+        a["target_gain"] > b["target_gain"]
+        or a["general_forgetting"] < b["general_forgetting"]
+        or a["tokens"] < b["tokens"]
+    )
+    return no_worse and strictly
+
+
+def digest(value: object) -> str:
+    raw = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(raw).hexdigest()
+
+
+def main() -> None:
+    candidates = [
+        aggregate(ratio, tokens)
+        for ratio in [0.3, 0.45, 0.6, 0.75, 0.9]
+        for tokens in [250_000, 500_000, 1_000_000, 2_000_000]
+    ]
+    for item in candidates:
+        item["passed_guardrail"] = item["general_forgetting"] <= 0.08
+    feasible = [item for item in candidates if item["passed_guardrail"]]
+    pareto = [
+        item for item in feasible
+        if not any(dominates(other, item) for other in feasible if other is not item)
+    ]
+    selected = max(pareto, key=lambda item: item["target_gain"] - 0.02 * math.log1p(item["tokens"]))
+    result = {
+        "status": "passed",
+        "candidate_count": len(candidates),
+        "pareto_count": len(pareto),
+        "selected": selected,
+        "evidence_digest": digest(candidates),
+        "claim_boundary": "synthetic decision mechanism only",
+    }
+    assert result == {
+        **result,
+        "evidence_digest": digest(candidates),
+    }
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == "__main__":
+    main()

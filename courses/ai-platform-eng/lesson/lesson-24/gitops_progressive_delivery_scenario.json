@@ -1,0 +1,170 @@
+{
+  "policy": {
+    "require_signed_commit": true,
+    "expected_base_commit": "4f2d9a1",
+    "minimum_approvals": 2,
+    "required_evaluation_evidence": "eval@sha256:approved-2026-08-22",
+    "production_change_path": "environments/production/fraud-detector.yaml",
+    "self_heal": true,
+    "minimum_samples": 100,
+    "minimum_availability": 0.99,
+    "maximum_p95_ms": 250,
+    "minimum_quality": 0.91
+  },
+  "promotion_pr": {
+    "author": "release-bot",
+    "approvers": [
+      "platform-reviewer",
+      "model-risk-reviewer"
+    ],
+    "signed_commit": true,
+    "base_commit": "4f2d9a1",
+    "target_environment": "production",
+    "change_path": "environments/production/fraud-detector.yaml",
+    "model_ref": "oci://models/fraud@sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "runtime_ref": "registry.example/vllm@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "evaluation_evidence": "eval@sha256:approved-2026-08-22",
+    "capacity_precheck": {
+      "passed": true,
+      "available_gpu": 12,
+      "peak_required_gpu": 12
+    }
+  },
+  "desired_state": {
+    "model_version": "v2",
+    "model_digest": "sha256:2222",
+    "runtime_digest": "sha256:aaaa",
+    "replicas": 4
+  },
+  "drifted_live_state": {
+    "model_version": "v1",
+    "model_digest": "sha256:1111",
+    "runtime_digest": "sha256:aaaa",
+    "replicas": 6
+  },
+  "capacity": {
+    "available_gpu": 12,
+    "stable_replicas": 4,
+    "gpu_per_replica": 2
+  },
+  "release": {
+    "stable_version": "v1",
+    "candidate_version": "v2",
+    "traffic_manager": true,
+    "weights": [
+      5,
+      25,
+      50,
+      100
+    ],
+    "measurements": {
+      "5": {
+        "samples": 120,
+        "availability": 0.999,
+        "p95_ms": 205,
+        "quality": 0.932
+      },
+      "25": {
+        "samples": 500,
+        "availability": 0.997,
+        "p95_ms": 218,
+        "quality": 0.928
+      },
+      "50": {
+        "samples": 1000,
+        "availability": 0.992,
+        "p95_ms": 412,
+        "quality": 0.904
+      },
+      "100": {
+        "samples": 2000,
+        "availability": 0.996,
+        "p95_ms": 225,
+        "quality": 0.925
+      }
+    }
+  },
+  "expected_release_status": "ROLLED_BACK",
+  "faults": [
+    {
+      "type": "unsigned_commit",
+      "expected_phase": "REJECTED",
+      "expected_reason": "SignedCommitRequired"
+    },
+    {
+      "type": "approval_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "PromotionApprovalMissing"
+    },
+    {
+      "type": "self_approval",
+      "expected_phase": "REJECTED",
+      "expected_reason": "SeparationOfDutiesViolation"
+    },
+    {
+      "type": "stale_base",
+      "expected_phase": "REJECTED",
+      "expected_reason": "StalePromotionBase"
+    },
+    {
+      "type": "mutable_model",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ImmutableModelDigestRequired"
+    },
+    {
+      "type": "mutable_runtime",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ImmutableRuntimeDigestRequired"
+    },
+    {
+      "type": "evaluation_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "EvaluationEvidenceMissing"
+    },
+    {
+      "type": "direct_production_write",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ProductionPathNotAllowed"
+    },
+    {
+      "type": "capacity_precheck_failed",
+      "expected_phase": "REJECTED",
+      "expected_reason": "GPUCapacityPrecheckFailed"
+    },
+    {
+      "type": "drift_without_self_heal",
+      "expected_phase": "OutOfSync",
+      "expected_reason": "ObserveOnly"
+    },
+    {
+      "type": "canary_capacity_shortage",
+      "expected_phase": "Aborted",
+      "expected_reason": "CanaryGPUCapacityInsufficient"
+    },
+    {
+      "type": "metric_provider_error",
+      "expected_phase": "Error",
+      "expected_reason": "MetricProviderError"
+    },
+    {
+      "type": "analysis_samples_missing",
+      "expected_phase": "Inconclusive",
+      "expected_reason": "InsufficientAnalysisSamples"
+    },
+    {
+      "type": "latency_degraded",
+      "expected_phase": "Failed",
+      "expected_reason": "LatencyAboveSLO"
+    },
+    {
+      "type": "registry_alias_race",
+      "expected_phase": "REJECTED",
+      "expected_reason": "RegistryAliasCompareAndSwapConflict"
+    },
+    {
+      "type": "live_cluster_missing",
+      "expected_phase": "SKIPPED",
+      "expected_reason": "NoKubernetesContextProvided"
+    }
+  ]
+}

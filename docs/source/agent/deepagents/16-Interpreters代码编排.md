@@ -311,4 +311,4 @@ QuickJS 默认没有文件、网络与 Shell；一旦把工具接入 PTC，**工
 
 ## 写在最后
 
-下一篇[动态子 Agent](17-动态子Agent)把 QuickJS 里的 `tools.*` 扩展成 `task()`：用代码动态创建并编排多个完整子 Agent，而不是预声明固定角色。
+下一篇[动态子 Agent](/source/agent/deepagents/17-动态子Agent)把 QuickJS 里的 `tools.*` 扩展成 `task()`：用代码动态创建并编排多个完整子 Agent，而不是预声明固定角色。

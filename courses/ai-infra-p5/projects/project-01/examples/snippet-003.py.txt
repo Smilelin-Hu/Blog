@@ -1,0 +1,14 @@
+import importlib.util
+import json
+import os
+import shutil
+
+requirements = {
+    "warcio": importlib.util.find_spec("warcio") is not None,
+    "network_enabled": os.environ.get("ALLOW_COMMONCRAWL_NETWORK") == "1",
+    "disk_at_least_100gb": shutil.disk_usage(".").free >= 100 * 1024 ** 3,
+}
+if not all(requirements.values()):
+    print(json.dumps({"status": "skipped", "reason": "real_data_requirements_unavailable", "checks": requirements}))
+else:
+    print(json.dumps({"status": "ready", "snapshot": os.environ.get("CC_SNAPSHOT", "must_be_explicit")}))

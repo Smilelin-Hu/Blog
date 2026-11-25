@@ -1,0 +1,5 @@
+mini_lake/
+├── blobs/
+│   └── sha256/
+├── manifests/
+└── catalog.db

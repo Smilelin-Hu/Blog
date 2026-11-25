@@ -1,0 +1,1 @@
+python mini_training_lake.py --root mini_lake --reset

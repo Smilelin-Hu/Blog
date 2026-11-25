@@ -1,0 +1,156 @@
+{
+  "baseline": {
+    "verified_on": "2026-08-27",
+    "trainer_stable": "v2.2.1",
+    "api": "trainer.kubeflow.org/v1alpha1",
+    "runtime": "torch-distributed",
+    "execution_api": "JobSet"
+  },
+  "platform_policy": {
+    "allowed_registries": [
+      "registry.training.invalid/ai"
+    ],
+    "required_image_digest": true,
+    "required_service_account": "trainer-runtime",
+    "max_nodes": 8,
+    "max_gpu_per_node": 8,
+    "required_queue": "team-a-localqueue",
+    "required_security": {
+      "run_as_non_root": true,
+      "allow_privilege_escalation": false,
+      "read_only_root_filesystem": true
+    },
+    "immutable_paths": [
+      "/spec/template/spec/replicatedJobs/0/template/spec/template/spec/serviceAccountName",
+      "/spec/template/spec/replicatedJobs/0/template/spec/template/spec/containers/0/securityContext"
+    ]
+  },
+  "runtime": {
+    "name": "torch-distributed",
+    "kind": "ClusterTrainingRuntime",
+    "framework_label": "torch",
+    "image": "registry.training.invalid/ai/pytorch@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "num_proc_per_node": "auto",
+    "replicated_job": "node",
+    "container": "node",
+    "service_account": "trainer-runtime",
+    "pod_group_policy": "kueue"
+  },
+  "jobs": [
+    {
+      "name": "single-node",
+      "namespace": "team-a",
+      "nodes": 1,
+      "gpu_per_node": 2,
+      "queue": "team-a-localqueue",
+      "command": [
+        "python",
+        "/opt/training/train.py"
+      ],
+      "runtime_patches": []
+    },
+    {
+      "name": "four-node",
+      "namespace": "team-a",
+      "nodes": 4,
+      "gpu_per_node": 4,
+      "queue": "team-a-localqueue",
+      "command": [
+        "torchrun",
+        "/opt/training/train.py"
+      ],
+      "runtime_patches": [
+        {
+          "manager": "user",
+          "path": "/spec/template/spec/replicatedJobs/0/template/spec/template/spec/containers/0/env/-",
+          "value": {
+            "name": "NCCL_DEBUG",
+            "value": "WARN"
+          }
+        }
+      ]
+    }
+  ],
+  "faults": [
+    {
+      "type": "mutable_image",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ImageDigestRequired"
+    },
+    {
+      "type": "foreign_registry",
+      "expected_phase": "REJECTED",
+      "expected_reason": "RegistryNotAllowed"
+    },
+    {
+      "type": "too_many_nodes",
+      "expected_phase": "REJECTED",
+      "expected_reason": "NodeLimitExceeded"
+    },
+    {
+      "type": "too_many_gpus",
+      "expected_phase": "REJECTED",
+      "expected_reason": "GPUPerNodeLimitExceeded"
+    },
+    {
+      "type": "queue_bypass",
+      "expected_phase": "REJECTED",
+      "expected_reason": "RequiredQueueMissing"
+    },
+    {
+      "type": "service_account_override",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ImmutableRuntimeField"
+    },
+    {
+      "type": "security_context_override",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ImmutableRuntimeField"
+    },
+    {
+      "type": "duplicate_patch_manager",
+      "expected_phase": "REJECTED",
+      "expected_reason": "RuntimePatchManagerConflict"
+    },
+    {
+      "type": "runtime_missing",
+      "expected_phase": "PENDING",
+      "expected_reason": "RuntimeReferenceNotFound"
+    },
+    {
+      "type": "framework_label_missing",
+      "expected_phase": "SDK_BLOCKED",
+      "expected_reason": "FrameworkLabelRequired"
+    },
+    {
+      "type": "rendezvous_failure",
+      "expected_phase": "FAILED",
+      "expected_reason": "DistributedRendezvousFailed"
+    },
+    {
+      "type": "initializer_failure",
+      "expected_phase": "FAILED",
+      "expected_reason": "DatasetInitializerFailed"
+    },
+    {
+      "type": "artifact_write_failure",
+      "expected_phase": "FAILED",
+      "expected_reason": "OutputModelWriteFailed"
+    },
+    {
+      "type": "deadline_exceeded",
+      "expected_phase": "FAILED",
+      "expected_reason": "DeadlineExceeded"
+    },
+    {
+      "type": "v1_kind_submitted",
+      "expected_phase": "MIGRATION_REQUIRED",
+      "expected_reason": "LegacyFrameworkSpecificCRD"
+    },
+    {
+      "type": "live_cluster_missing",
+      "expected_phase": "SKIPPED",
+      "expected_reason": "NoKubernetesContextProvided"
+    }
+  ]
+}

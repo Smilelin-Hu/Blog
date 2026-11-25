@@ -1,0 +1,157 @@
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import time
+
+import torch
+import torch.distributed as dist
+from torch import nn
+
+
+def digest(value: object) -> str:
+    return hashlib.sha256(
+        json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
+def encode(text: str, length: int, buckets: int) -> torch.Tensor:
+    values = [ord(char) % buckets for char in text[:length]]
+    values.extend([0] * (length - len(values)))
+    return torch.tensor(values, dtype=torch.long)
+
+
+class CharClassifier(nn.Module):
+    def __init__(self, buckets: int, hidden: int, labels: int) -> None:
+        super().__init__()
+        self.embedding = nn.Embedding(buckets, hidden, padding_idx=0)
+        self.head = nn.Sequential(nn.Linear(hidden, hidden), nn.GELU(), nn.Linear(hidden, labels))
+
+    def forward(self, tokens: torch.Tensor) -> torch.Tensor:
+        mask = tokens.ne(0).unsqueeze(-1)
+        hidden = self.embedding(tokens)
+        pooled = (hidden * mask).sum(1) / mask.sum(1).clamp_min(1)
+        return self.head(pooled)
+
+
+def records() -> list[dict[str, object]]:
+    base = [
+        ("中文数据基础设施", 0),
+        ("The data pipeline is deterministic", 1),
+        ("La donnée est structurée", 2),
+        ("El sistema procesa datos", 3),
+        ("データ処理システム", 4),
+        ("def parse(x): return x", 5),
+    ]
+    return [
+        {"unit_id": f"unit-{index:05d}", "text": text, "target": target}
+        for index, (text, target) in enumerate(base * 128)
+    ]
+
+
+def run(args: argparse.Namespace) -> None:
+    rank = int(os.environ.get("RANK", "0"))
+    local_rank = int(os.environ.get("LOCAL_RANK", "0"))
+    world_size = int(os.environ.get("WORLD_SIZE", "1"))
+    if not torch.cuda.is_available() or torch.cuda.device_count() < 1 or world_size < 1:
+        if rank == 0:
+            print(
+                json.dumps(
+                    {
+                        "status": "skipped",
+                        "reason": "requires torchrun with at least one visible CUDA device",
+                        "cuda_devices": torch.cuda.device_count(),
+                        "world_size": world_size,
+                    },
+                    ensure_ascii=False,
+                )
+            )
+        return
+    data = records()
+    manifest_digest = digest(data)
+    dist.init_process_group("nccl")
+    torch.cuda.set_device(local_rank)
+    device = torch.device("cuda", local_rank)
+    all_digests = [None for _ in range(world_size)]
+    dist.all_gather_object(all_digests, manifest_digest)
+    if len(set(all_digests)) != 1:
+        raise RuntimeError("manifest mismatch")
+    usable = len(data) - len(data) % (world_size * args.batch_size)
+    rank_data = data[:usable][rank::world_size]
+    torch.manual_seed(args.seed)
+    model = CharClassifier(args.buckets, args.hidden, args.labels).to(device)
+    model = nn.parallel.DistributedDataParallel(model, device_ids=[local_rank])
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
+    criterion = nn.CrossEntropyLoss()
+    torch.cuda.reset_peak_memory_stats(device)
+    local_ids = []
+    local_characters = 0
+    start = time.perf_counter()
+    for offset in range(0, len(rank_data), args.batch_size):
+        batch = rank_data[offset : offset + args.batch_size]
+        tokens = torch.stack(
+            [encode(str(item["text"]), args.length, args.buckets) for item in batch]
+        ).to(device)
+        targets = torch.tensor([int(item["target"]) for item in batch], device=device)
+        logits = model(tokens)
+        loss = criterion(logits, targets)
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        optimizer.step()
+        local_ids.extend(str(item["unit_id"]) for item in batch)
+        local_characters += sum(len(str(item["text"])) for item in batch)
+    torch.cuda.synchronize(device)
+    elapsed = time.perf_counter() - start
+    metric = torch.tensor([len(local_ids), local_characters], dtype=torch.long, device=device)
+    max_elapsed = torch.tensor([elapsed], dtype=torch.float64, device=device)
+    max_memory = torch.tensor(
+        [torch.cuda.max_memory_allocated(device)], dtype=torch.long, device=device
+    )
+    dist.all_reduce(metric, op=dist.ReduceOp.SUM)
+    dist.all_reduce(max_elapsed, op=dist.ReduceOp.MAX)
+    dist.all_reduce(max_memory, op=dist.ReduceOp.MAX)
+    gathered = [None for _ in range(world_size)] if rank == 0 else None
+    dist.gather_object(local_ids, gathered, dst=0)
+    if rank == 0:
+        flat = [unit_id for values in (gathered or []) for unit_id in (values or [])]
+        expected = {str(item["unit_id"]) for item in data[:usable]}
+        coverage = len(flat) == len(set(flat)) == len(expected) and set(flat) == expected
+        print(
+            json.dumps(
+                {
+                    "status": "passed" if coverage else "failed",
+                    "scope": "mechanism_only_not_a_language_quality_model",
+                    "manifest_digest": manifest_digest,
+                    "usable_records": usable,
+                    "deferred_records": len(data) - usable,
+                    "consumed_records": metric[0].item(),
+                    "consumed_characters": metric[1].item(),
+                    "max_elapsed_seconds": max_elapsed.item(),
+                    "characters_per_second": metric[1].item() / max(max_elapsed.item(), 1e-9),
+                    "max_memory_bytes": max_memory.item(),
+                    "coverage_ok": coverage,
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+                indent=2,
+            )
+        )
+    dist.destroy_process_group()
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--batch-size", type=int, default=16)
+    parser.add_argument("--length", type=int, default=128)
+    parser.add_argument("--buckets", type=int, default=8192)
+    parser.add_argument("--hidden", type=int, default=256)
+    parser.add_argument("--labels", type=int, default=6)
+    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--seed", type=int, default=2026)
+    run(parser.parse_args())
+
+
+if __name__ == "__main__":
+    main()

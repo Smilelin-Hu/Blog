@@ -1,0 +1,3 @@
+python sim/recovery_state_machine.py \
+  --output artifacts/recovery-sim \
+  --updates 6

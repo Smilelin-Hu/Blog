@@ -1,0 +1,356 @@
+{
+  "policy": {
+    "maximum_gpus_per_request": 16,
+    "maximum_capability_freshness_minutes": 15,
+    "fragmentation_penalty": 0.4
+  },
+  "clusters": [
+    {
+      "id": "mgmt-01",
+      "role": "manager",
+      "status": "Ready",
+      "lifecycle_owner": "platform-cluster-team",
+      "bootstrap_revision": "sha256:1111",
+      "credential_scope": "project-scoped",
+      "capability_freshness_minutes": 4,
+      "residency": [
+        "jp"
+      ],
+      "capabilities": [
+        "capi",
+        "argocd",
+        "multikueue",
+        "backstage"
+      ],
+      "gpu_capacity": {},
+      "queue_wait_seconds": 0,
+      "cost_index": 0,
+      "namespaces": [
+        "kueue-system",
+        "argocd",
+        "backstage"
+      ],
+      "local_queues": []
+    },
+    {
+      "id": "gpu-east-a",
+      "role": "worker",
+      "status": "Ready",
+      "lifecycle_owner": "gpu-fleet-team",
+      "bootstrap_revision": "sha256:2222",
+      "credential_scope": "namespaced",
+      "capability_freshness_minutes": 3,
+      "residency": [
+        "jp",
+        "apac"
+      ],
+      "capabilities": [
+        "training",
+        "inference",
+        "rdma"
+      ],
+      "gpu_capacity": {
+        "H100_80GB": {
+          "total": 32,
+          "available": 12
+        },
+        "A100_80GB": {
+          "total": 64,
+          "available": 20
+        }
+      },
+      "queue_wait_seconds": 50,
+      "cost_index": 1.2,
+      "namespaces": [
+        "tenant-a",
+        "tenant-b"
+      ],
+      "local_queues": [
+        "tenant-a",
+        "tenant-b"
+      ]
+    },
+    {
+      "id": "gpu-west-b",
+      "role": "worker",
+      "status": "Ready",
+      "lifecycle_owner": "gpu-fleet-team",
+      "bootstrap_revision": "sha256:3333",
+      "credential_scope": "namespaced",
+      "capability_freshness_minutes": 5,
+      "residency": [
+        "jp",
+        "apac"
+      ],
+      "capabilities": [
+        "training",
+        "inference"
+      ],
+      "gpu_capacity": {
+        "H100_80GB": {
+          "total": 16,
+          "available": 8
+        },
+        "A100_80GB": {
+          "total": 32,
+          "available": 16
+        }
+      },
+      "queue_wait_seconds": 18,
+      "cost_index": 1,
+      "namespaces": [
+        "tenant-a",
+        "tenant-b"
+      ],
+      "local_queues": [
+        "tenant-a",
+        "tenant-b"
+      ]
+    },
+    {
+      "id": "gpu-eu-c",
+      "role": "worker",
+      "status": "Ready",
+      "lifecycle_owner": "gpu-fleet-team",
+      "bootstrap_revision": "sha256:4444",
+      "credential_scope": "namespaced",
+      "capability_freshness_minutes": 6,
+      "residency": [
+        "eu"
+      ],
+      "capabilities": [
+        "training",
+        "inference"
+      ],
+      "gpu_capacity": {
+        "H100_80GB": {
+          "total": 16,
+          "available": 10
+        }
+      },
+      "queue_wait_seconds": 10,
+      "cost_index": 0.9,
+      "namespaces": [
+        "tenant-c"
+      ],
+      "local_queues": [
+        "tenant-c"
+      ]
+    }
+  ],
+  "portal": {
+    "approved_templates": [
+      "distributed-train",
+      "model-service"
+    ],
+    "kubernetes_proxy_enabled": false,
+    "entities": [
+      {
+        "name": "distributed-train",
+        "owner": "platform-ml",
+        "definition_revision": "sha256:aaaa"
+      },
+      {
+        "name": "model-service",
+        "owner": "platform-serving",
+        "definition_revision": "sha256:bbbb"
+      }
+    ]
+  },
+  "gitops": {
+    "desired_clusters": [
+      "gpu-east-a",
+      "gpu-west-b",
+      "gpu-eu-c"
+    ],
+    "registered_clusters": [
+      "gpu-east-a",
+      "gpu-west-b",
+      "gpu-eu-c"
+    ],
+    "bootstrapped_clusters": [
+      "gpu-east-a",
+      "gpu-west-b",
+      "gpu-eu-c"
+    ],
+    "drifted_clusters": [
+      "gpu-west-b"
+    ],
+    "self_heal": true
+  },
+  "requests": [
+    {
+      "name": "train-foundation",
+      "tenant": "tenant-a",
+      "project": "foundation",
+      "owner": "alice",
+      "cost_center": "cc-100",
+      "template": "distributed-train",
+      "template_version": "sha256:train-v4",
+      "queue": "tenant-a",
+      "namespace": "tenant-a",
+      "environment": "development",
+      "approval": false,
+      "direct_cluster_credentials": false,
+      "gpu_type": "H100_80GB",
+      "requested_gpus": 8,
+      "residency": "jp",
+      "required_capability": "training"
+    },
+    {
+      "name": "serve-recommendation",
+      "tenant": "tenant-b",
+      "project": "online",
+      "owner": "bob",
+      "cost_center": "cc-200",
+      "template": "model-service",
+      "template_version": "sha256:serve-v7",
+      "queue": "tenant-b",
+      "namespace": "tenant-b",
+      "environment": "production",
+      "approval": true,
+      "direct_cluster_credentials": false,
+      "gpu_type": "A100_80GB",
+      "requested_gpus": 4,
+      "residency": "jp",
+      "required_capability": "inference"
+    }
+  ],
+  "faults": [
+    {
+      "type": "missing_owner",
+      "expected_phase": "REJECTED",
+      "expected_reason": "RequiredFieldMissing:owner"
+    },
+    {
+      "type": "mutable_template",
+      "expected_phase": "REJECTED",
+      "expected_reason": "TemplateVersionMustBeImmutable"
+    },
+    {
+      "type": "direct_cluster_credentials",
+      "expected_phase": "REJECTED",
+      "expected_reason": "DirectClusterCredentialForbidden"
+    },
+    {
+      "type": "unapproved_template",
+      "expected_phase": "REJECTED",
+      "expected_reason": "TemplateNotApproved"
+    },
+    {
+      "type": "production_without_approval",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ProductionApprovalMissing"
+    },
+    {
+      "type": "gpu_request_too_large",
+      "expected_phase": "REJECTED",
+      "expected_reason": "GPURequestLimitExceeded"
+    },
+    {
+      "type": "unknown_gpu_type",
+      "expected_phase": "PENDING",
+      "expected_reason": "NoEligibleWorkerCluster"
+    },
+    {
+      "type": "residency_mismatch",
+      "expected_phase": "PENDING",
+      "expected_reason": "NoEligibleWorkerCluster"
+    },
+    {
+      "type": "capacity_shortage",
+      "expected_phase": "PENDING",
+      "expected_reason": "NoEligibleWorkerCluster"
+    },
+    {
+      "type": "worker_not_ready",
+      "expected_phase": "PENDING",
+      "expected_reason": "NoEligibleWorkerCluster"
+    },
+    {
+      "type": "worker_namespace_missing",
+      "expected_phase": "PENDING",
+      "expected_reason": "NoEligibleWorkerCluster"
+    },
+    {
+      "type": "worker_localqueue_missing",
+      "expected_phase": "PENDING",
+      "expected_reason": "NoEligibleWorkerCluster"
+    },
+    {
+      "type": "manager_used_as_worker",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ManagerClusterCannotExecuteDelegatedWorkload"
+    },
+    {
+      "type": "cluster_identity_duplicate",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ClusterIdentityInvalid"
+    },
+    {
+      "type": "cluster_owner_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ClusterLifecycleOwnerMissing"
+    },
+    {
+      "type": "bootstrap_revision_mutable",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ClusterBootstrapRevisionMutable"
+    },
+    {
+      "type": "cluster_credential_broad",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ClusterCredentialScopeTooBroad"
+    },
+    {
+      "type": "capability_inventory_stale",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "ClusterCapabilityInventoryStale"
+    },
+    {
+      "type": "gitops_registration_missing",
+      "expected_phase": "DEGRADED",
+      "expected_reason": "DesiredClusterNotRegistered"
+    },
+    {
+      "type": "gitops_bootstrap_missing",
+      "expected_phase": "DEGRADED",
+      "expected_reason": "ClusterBootstrapIncomplete"
+    },
+    {
+      "type": "drift_without_self_heal",
+      "expected_phase": "DEGRADED",
+      "expected_reason": "ClusterDriftUnreconciled"
+    },
+    {
+      "type": "backstage_proxy_enabled",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ArbitraryKubernetesProxyEnabled"
+    },
+    {
+      "type": "catalog_owner_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "CatalogOwnerMissing"
+    },
+    {
+      "type": "manager_status_assumed_worker_status",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "WorkerExecutionStatusMustComeFromWorkload"
+    },
+    {
+      "type": "cost_identity_missing",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "CostIdentityMissing"
+    },
+    {
+      "type": "destructive_cluster_delete",
+      "expected_phase": "REJECTED",
+      "expected_reason": "DestructiveLifecycleActionRequiresApproval"
+    },
+    {
+      "type": "live_clusters_missing",
+      "expected_phase": "SKIPPED",
+      "expected_reason": "NoKubernetesContextsProvided"
+    }
+  ]
+}

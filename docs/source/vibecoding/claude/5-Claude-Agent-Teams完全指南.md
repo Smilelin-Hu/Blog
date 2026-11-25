@@ -2162,7 +2162,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 #### 结论
 
-Agent Teams 的核心价值不在于"更快"，而在于**"更完整、更专业"**。
+Agent Teams 的核心价值不在于"更快"，而在于 **"更完整、更专业"**。
 
 - 对于简单项目（如贪吃蛇），单个 Prompt 就够了
 - 对于复杂项目（如宝可梦 RPG），Agent Teams 能产生更好的结果

@@ -1,0 +1,8 @@
+torchrun --standalone --nproc_per_node=1 train_data_value_probe.py \
+  --steps 240 \
+  --validation-steps 30 \
+  --micro-batch-size 24 \
+  --sequence-length 128 \
+  --hidden-size 256 \
+  --layers 6 \
+  --heads 8

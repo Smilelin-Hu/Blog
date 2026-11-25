@@ -1,0 +1,228 @@
+{
+  "nodes": [
+    {
+      "name": "gpu-a",
+      "gpu": 4,
+      "cpu": 64,
+      "allocated_gpu": 2,
+      "allocated_cpu": 16,
+      "rack": "r1"
+    },
+    {
+      "name": "gpu-b",
+      "gpu": 4,
+      "cpu": 64,
+      "allocated_gpu": 0,
+      "allocated_cpu": 0,
+      "rack": "r1"
+    },
+    {
+      "name": "gpu-c",
+      "gpu": 4,
+      "cpu": 64,
+      "allocated_gpu": 0,
+      "allocated_cpu": 0,
+      "rack": "r2"
+    }
+  ],
+  "jobs": [
+    {
+      "name": "train-four",
+      "tasks": 4,
+      "min_available": 4,
+      "gpu_per_task": 1,
+      "queue": "offline"
+    },
+    {
+      "name": "eval-two",
+      "tasks": 2,
+      "min_available": 2,
+      "gpu_per_task": 1,
+      "queue": "offline"
+    }
+  ],
+  "cluster_resources": {
+    "gpu": 8,
+    "cpu": 128,
+    "memory": 512
+  },
+  "drf_jobs": [
+    {
+      "name": "gpu-heavy",
+      "gpu_request": 4,
+      "cpu_request": 16,
+      "memory_request": 64
+    },
+    {
+      "name": "cpu-light",
+      "gpu_request": 1,
+      "cpu_request": 16,
+      "memory_request": 32
+    },
+    {
+      "name": "memory-heavy",
+      "gpu_request": 1,
+      "cpu_request": 16,
+      "memory_request": 384
+    }
+  ],
+  "queues": {
+    "offline": {
+      "weight": 1,
+      "guarantee_gpu": 0,
+      "deserved_gpu": 4,
+      "capability_gpu": 8,
+      "priority": 10,
+      "reclaimable": true
+    },
+    "online": {
+      "weight": 1,
+      "guarantee_gpu": 2,
+      "deserved_gpu": 4,
+      "capability_gpu": 6,
+      "priority": 100,
+      "reclaimable": false
+    }
+  },
+  "queue_usage_gpu": {
+    "offline": 6,
+    "online": 2
+  },
+  "online_burst": {
+    "name": "online-scale",
+    "queue": "online",
+    "gpu": 2,
+    "priority": 200,
+    "warmup_seconds": 35,
+    "deadline_seconds": 90
+  },
+  "offline_checkpoint_seconds": 40,
+  "same_queue_running": [
+    {
+      "name": "offline-dev-a",
+      "queue": "offline",
+      "gpu": 1,
+      "priority": 10
+    },
+    {
+      "name": "offline-normal",
+      "queue": "offline",
+      "gpu": 2,
+      "priority": 100
+    }
+  ],
+  "same_queue_preemptor": {
+    "name": "offline-urgent",
+    "queue": "offline",
+    "gpu": 1,
+    "priority": 200
+  },
+  "scheduler_pipeline": {
+    "actions": [
+      "enqueue",
+      "allocate",
+      "preempt",
+      "reclaim",
+      "backfill"
+    ],
+    "plugins": [
+      "priority",
+      "gang",
+      "predicates",
+      "capacity",
+      "proportion",
+      "nodeorder",
+      "binpack"
+    ]
+  },
+  "safe_scheduler_pipeline": {
+    "actions": [
+      "allocate",
+      "preempt",
+      "reclaim",
+      "backfill"
+    ],
+    "plugins": [
+      "priority",
+      "gang",
+      "predicates",
+      "capacity",
+      "nodeorder",
+      "binpack"
+    ]
+  },
+  "faults": [
+    {
+      "name": "job-has-fewer-tasks-than-minavailable",
+      "type": "min_available_missing",
+      "expected_phase": "PENDING",
+      "expected_reason": "GangMinAvailableUnsatisfied"
+    },
+    {
+      "name": "capacity-and-proportion-enabled-together",
+      "type": "capacity_proportion_conflict",
+      "expected_phase": "REJECTED",
+      "expected_reason": "CapacityAndProportionConflict"
+    },
+    {
+      "name": "enqueue-prevents-pods-that-trigger-reclaim",
+      "type": "enqueue_reclaim_conflict",
+      "expected_phase": "BLOCKED",
+      "expected_reason": "EnqueuePreventsReclaimTrigger"
+    },
+    {
+      "name": "queue-hard-capability-exceeded",
+      "type": "queue_capability",
+      "expected_phase": "PENDING",
+      "expected_reason": "QueueCapabilityExceeded"
+    },
+    {
+      "name": "offline-queue-disallows-reclaim",
+      "type": "queue_not_reclaimable",
+      "expected_phase": "PENDING",
+      "expected_reason": "TargetQueueNotReclaimable"
+    },
+    {
+      "name": "high-priority-job-preempts-same-queue",
+      "type": "same_queue_priority",
+      "expected_phase": "ALLOCATED",
+      "expected_reason": "SameQueuePriorityPreempt"
+    },
+    {
+      "name": "preempt-action-used-across-queues",
+      "type": "cross_queue_preempt",
+      "expected_phase": "REJECTED",
+      "expected_reason": "UseReclaimForCrossQueue"
+    },
+    {
+      "name": "predicates-reject-all-nodes",
+      "type": "predicates_failure",
+      "expected_phase": "PENDING",
+      "expected_reason": "PredicatesRejectedAllNodes"
+    },
+    {
+      "name": "binpack-concentrates-rack-risk",
+      "type": "binpack_hotspot",
+      "expected_phase": "DEGRADED",
+      "expected_reason": "BinpackConcentratedFailureDomain"
+    },
+    {
+      "name": "drf-deprioritizes-large-dominant-share",
+      "type": "drf_large_share",
+      "expected_phase": "DEPRIORITIZED",
+      "expected_reason": "HigherDominantShare"
+    },
+    {
+      "name": "reclaimed-victim-still-in-grace-period",
+      "type": "victim_grace",
+      "expected_phase": "RECLAIMING",
+      "expected_reason": "VictimsTerminating"
+    },
+    {
+      "name": "scheduler-restarts-between-sessions",
+      "type": "scheduler_restart",
+      "expected_phase": "RECOVERED",
+      "expected_reason": "SessionRebuiltFromCacheAndAPI"
+    }
+  ]
+}

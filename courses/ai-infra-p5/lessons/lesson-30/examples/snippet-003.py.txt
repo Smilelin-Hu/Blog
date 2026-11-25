@@ -1,0 +1,537 @@
+# real/cuda_recovery.py
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import multiprocessing as mp
+import os
+import queue
+import re
+import shutil
+import time
+from pathlib import Path
+from typing import Dict, List, Tuple
+
+
+def emit(event: str, **fields: object) -> None:
+    print(json.dumps({"event": event, "time": time.time(), **fields},
+                     ensure_ascii=False, sort_keys=True), flush=True)
+
+
+def state_hash(state: Dict[str, object]) -> str:
+    h = hashlib.sha256()
+    for key in sorted(state):
+        h.update(key.encode("utf-8"))
+        tensor = state[key].detach().cpu().contiguous()
+        h.update(tensor.numpy().tobytes())
+    return h.hexdigest()
+
+
+def to_cpu_state(state: Dict[str, object]) -> Dict[str, object]:
+    return {k: v.detach().cpu().clone() for k, v in state.items()}
+
+
+def atomic_torch_save(obj: object, path: Path) -> None:
+    import torch
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_suffix(path.suffix + ".tmp")
+    torch.save(obj, temp)
+    with open(temp, "rb") as handle:
+        os.fsync(handle.fileno())
+    os.replace(temp, path)
+
+
+def move_optimizer_state(optimizer, device: str) -> None:
+    import torch
+    for values in optimizer.state.values():
+        for key, value in values.items():
+            if torch.is_tensor(value):
+                values[key] = value.to(device)
+
+
+def load_model(args, device_index: int):
+    import torch
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+    from peft import LoraConfig, get_peft_model
+
+    torch.cuda.set_device(device_index)
+    torch.manual_seed(2026)
+    tokenizer = AutoTokenizer.from_pretrained(
+        args.model_path, local_files_only=True
+    )
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    model = AutoModelForCausalLM.from_pretrained(
+        args.model_path,
+        local_files_only=True,
+        torch_dtype=torch.float16,
+    ).to(f"cuda:{device_index}")
+    config = LoraConfig(
+        r=args.lora_rank,
+        lora_alpha=2 * args.lora_rank,
+        lora_dropout=0.0,
+        target_modules=args.target_modules.split(","),
+        task_type="CAUSAL_LM",
+    )
+    model = get_peft_model(model, config)
+    return tokenizer, model
+
+
+def chosen_logprobs(logits, input_ids):
+    import torch
+    values = torch.log_softmax(logits[:, :-1].float(), dim=-1)
+    return torch.gather(values, -1, input_ids[:, 1:].unsqueeze(-1)).squeeze(-1)
+
+
+def exact_reward(text: str, answer: int) -> Tuple[float, str]:
+    matches = re.findall(r"FINAL\s*:\s*([-+]?\d+)", text)
+    if len(matches) != 1:
+        return 0.0, "parser_reject"
+    return (1.0, "correct") if int(matches[0]) == answer else (0.0, "wrong")
+
+
+def rollout_worker(args, command_q, output_q, weight_q, metric_q):
+    import torch
+    from peft import set_peft_model_state_dict
+
+    tokenizer, model = load_model(args, 0)
+    model.eval()
+    active_version = -1
+    while True:
+        command = command_q.get()
+        if command["type"] == "stop":
+            break
+        if command["type"] != "rollout":
+            continue
+        latest = None
+        while True:
+            try:
+                latest = weight_q.get_nowait()
+            except queue.Empty:
+                break
+        if latest is not None:
+            started = time.perf_counter()
+            set_peft_model_state_dict(model, latest["adapter"])
+            active_version = int(latest["policy_version"])
+            torch.cuda.synchronize(0)
+            metric_q.put({
+                "metric": "rollout_weight_load_seconds",
+                "value": time.perf_counter() - started,
+                "policy_version": active_version,
+                "adapter_hash": latest["adapter_hash"],
+            })
+        expected_version = int(command["policy_version"])
+        if active_version != expected_version:
+            output_q.put({
+                "status": "version_mismatch",
+                "active": active_version,
+                "expected": expected_version,
+            })
+            continue
+
+        rows = []
+        started = time.perf_counter()
+        for prompt_index, item in enumerate(command["items"]):
+            tokenized = tokenizer(item["prompt"], return_tensors="pt")
+            prompt_ids = tokenized.input_ids.to("cuda:0")
+            prompt_len = int(prompt_ids.shape[1])
+            for member in range(args.group_size):
+                generator = torch.Generator(device="cuda:0")
+                generator.manual_seed(
+                    args.seed + command["round"] * 1000 + prompt_index * 100 + member
+                )
+                with torch.no_grad():
+                    generated = model.generate(
+                        prompt_ids,
+                        do_sample=True,
+                        temperature=0.8,
+                        top_p=0.95,
+                        max_new_tokens=args.max_new_tokens,
+                        pad_token_id=tokenizer.pad_token_id,
+                        generator=generator,
+                    )
+                    logits = model(generated).logits
+                    old_all = chosen_logprobs(logits, generated)[0]
+                text = tokenizer.decode(
+                    generated[0, prompt_len:], skip_special_tokens=True
+                )
+                reward, reward_status = exact_reward(text, int(item["answer"]))
+                rows.append({
+                    "experience_id": (
+                        f"round-{command['round']}-prompt-{prompt_index}-member-{member}"
+                    ),
+                    "group_id": f"round-{command['round']}-prompt-{prompt_index}",
+                    "behavior_policy_version": active_version,
+                    "input_ids": generated[0].cpu(),
+                    "prompt_len": prompt_len,
+                    "old_logprobs": old_all[prompt_len - 1:].cpu(),
+                    "reward": reward,
+                    "reward_status": reward_status,
+                    "response_text": text,
+                    "response_tokens": int(generated.shape[1] - prompt_len),
+                })
+        torch.cuda.synchronize(0)
+        output_q.put({
+            "status": "ok",
+            "rows": rows,
+            "policy_version": active_version,
+            "rollout_seconds": time.perf_counter() - started,
+        })
+    metric_q.put({"metric": "rollout_stopped", "value": 1})
+
+
+def checkpoint_payload(model, optimizer, state: Dict[str, object]):
+    from peft import get_peft_model_state_dict
+    return {
+        "format_version": 1,
+        "adapter": to_cpu_state(get_peft_model_state_dict(model)),
+        "optimizer": optimizer.state_dict(),
+        "run_state": state,
+    }
+
+
+def trainer_worker(args, command_q, result_q, publish_q, metric_q):
+    import torch
+    from peft import get_peft_model_state_dict, set_peft_model_state_dict
+
+    tokenizer, model = load_model(args, 1)
+    model.train()
+    optimizer = torch.optim.AdamW(
+        [p for p in model.parameters() if p.requires_grad],
+        lr=args.learning_rate,
+    )
+    checkpoint_path = Path(args.output) / "latest.pt"
+    state: Dict[str, object] = {
+        "policy_version": 0,
+        "optimizer_step": 0,
+        "sampler_cursor": 0,
+        "committed_updates": {},
+        "consumed_experiences": {},
+    }
+    load_started = time.perf_counter()
+    recovered = False
+    if checkpoint_path.exists():
+        payload = torch.load(checkpoint_path, map_location="cpu")
+        if int(payload.get("format_version", -1)) != 1:
+            raise RuntimeError("unsupported_checkpoint_format")
+        set_peft_model_state_dict(model, payload["adapter"])
+        optimizer.load_state_dict(payload["optimizer"])
+        move_optimizer_state(optimizer, "cuda:0")
+        state = payload["run_state"]
+        recovered = True
+    torch.cuda.synchronize(1)
+    metric_q.put({
+        "metric": "trainer_recovery_seconds",
+        "value": time.perf_counter() - load_started,
+        "recovered": recovered,
+        "policy_version": int(state["policy_version"]),
+    })
+
+    def publish() -> None:
+        adapter = to_cpu_state(get_peft_model_state_dict(model))
+        publish_q.put({
+            "policy_version": int(state["policy_version"]),
+            "adapter": adapter,
+            "adapter_hash": state_hash(adapter),
+            "recovered": recovered,
+        })
+
+    publish()
+    while True:
+        command = command_q.get()
+        if command["type"] == "stop":
+            break
+        update_id = str(command["update_id"])
+        committed = state["committed_updates"]
+        if update_id in committed:
+            result_q.put({
+                "status": "already_committed",
+                "update_id": update_id,
+                "policy_version": int(state["policy_version"]),
+                "checkpoint": str(checkpoint_path),
+            })
+            continue
+        rows = command["rows"]
+        versions = {int(x["behavior_policy_version"]) for x in rows}
+        if versions != {int(state["policy_version"])}:
+            result_q.put({
+                "status": "policy_version_reject",
+                "versions": sorted(versions),
+                "trainer_version": int(state["policy_version"]),
+            })
+            continue
+        duplicates = [
+            x["experience_id"] for x in rows
+            if x["experience_id"] in state["consumed_experiences"]
+        ]
+        if duplicates:
+            result_q.put({"status": "experience_duplicate", "ids": duplicates})
+            continue
+
+        rewards_by_group: Dict[str, List[float]] = {}
+        for row in rows:
+            rewards_by_group.setdefault(row["group_id"], []).append(float(row["reward"]))
+        advantages: Dict[str, List[float]] = {}
+        for gid, rewards in rewards_by_group.items():
+            values = torch.tensor(rewards, dtype=torch.float32)
+            std = values.std(unbiased=False)
+            advantages[gid] = (
+                torch.zeros_like(values) if std < 1e-8
+                else (values - values.mean()) / std
+            ).tolist()
+        positions = {gid: 0 for gid in advantages}
+
+        optimizer.zero_grad(set_to_none=True)
+        loss_sum = torch.zeros((), device="cuda:0", dtype=torch.float32)
+        valid_tokens = 0
+        ratio_errors = []
+        train_started = time.perf_counter()
+        for row in rows:
+            ids = row["input_ids"].unsqueeze(0).to("cuda:0")
+            logits = model(ids).logits
+            current_all = chosen_logprobs(logits, ids)[0]
+            current = current_all[int(row["prompt_len"]) - 1:]
+            old = row["old_logprobs"].to("cuda:0", dtype=torch.float32)
+            if current.shape != old.shape:
+                raise RuntimeError("old_current_logprob_shape_mismatch")
+            ratio = torch.exp(current.float() - old)
+            ratio_errors.append(float((ratio - 1).abs().mean().detach().cpu()))
+            gid = row["group_id"]
+            index = positions[gid]
+            positions[gid] += 1
+            advantage = float(advantages[gid][index])
+            loss_sum = loss_sum - advantage * current.float().sum()
+            valid_tokens += int(current.numel())
+        loss = loss_sum / max(valid_tokens, 1)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        optimizer.step()
+        torch.cuda.synchronize(1)
+
+        new_version = int(state["policy_version"]) + 1
+        state["policy_version"] = new_version
+        state["optimizer_step"] = int(state["optimizer_step"]) + 1
+        state["sampler_cursor"] = int(command["next_sampler_cursor"])
+        state["committed_updates"][update_id] = {
+            "experience_ids": [x["experience_id"] for x in rows],
+            "policy_version": new_version,
+        }
+        for row in rows:
+            state["consumed_experiences"][row["experience_id"]] = update_id
+        checkpoint_started = time.perf_counter()
+        payload = checkpoint_payload(model, optimizer, state)
+        atomic_torch_save(payload, checkpoint_path)
+        checkpoint_seconds = time.perf_counter() - checkpoint_started
+        checkpoint_bytes = checkpoint_path.stat().st_size
+        metric_q.put({
+            "metric": "checkpoint_seconds",
+            "value": checkpoint_seconds,
+            "bytes": checkpoint_bytes,
+            "policy_version": new_version,
+        })
+        if bool(command.get("crash_after_checkpoint", False)):
+            emit("trainer_injected_exit", update_id=update_id,
+                 policy_version=new_version)
+            os._exit(97)
+
+        publish()
+        result_q.put({
+            "status": "committed",
+            "update_id": update_id,
+            "policy_version": new_version,
+            "loss": float(loss.detach().cpu()),
+            "valid_tokens": valid_tokens,
+            "mean_initial_ratio_abs_error": (
+                sum(ratio_errors) / max(len(ratio_errors), 1)
+            ),
+            "train_seconds": time.perf_counter() - train_started,
+            "checkpoint_seconds": checkpoint_seconds,
+            "checkpoint_bytes": checkpoint_bytes,
+            "peak_memory_bytes": int(torch.cuda.max_memory_allocated(1)),
+        })
+    metric_q.put({"metric": "trainer_stopped", "value": 1})
+
+
+def receive(queue_obj, timeout: float, name: str):
+    try:
+        return queue_obj.get(timeout=timeout)
+    except queue.Empty as exc:
+        raise TimeoutError(f"timeout waiting for {name}") from exc
+
+
+def start_trainer(ctx, args, command_q, result_q, publish_q, metric_q):
+    process = ctx.Process(
+        target=trainer_worker,
+        args=(args, command_q, result_q, publish_q, metric_q),
+    )
+    process.start()
+    published = receive(publish_q, 600, "trainer initial publish")
+    return process, published
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model-path", required=True)
+    parser.add_argument("--output", required=True)
+    parser.add_argument("--target-modules", default="q_proj,v_proj")
+    parser.add_argument("--lora-rank", type=int, default=8)
+    parser.add_argument("--learning-rate", type=float, default=1e-5)
+    parser.add_argument("--max-new-tokens", type=int, default=32)
+    parser.add_argument("--group-size", type=int, default=2)
+    parser.add_argument("--rounds", type=int, default=3)
+    parser.add_argument("--seed", type=int, default=20260821)
+    args = parser.parse_args()
+
+    try:
+        import torch
+        import transformers
+        import peft
+    except ImportError as exc:
+        print(json.dumps({"status": "skipped", "reason": f"missing_dependency:{exc}"}))
+        return
+    if not Path(args.model_path).is_dir():
+        print(json.dumps({"status": "skipped", "reason": "local_model_path_not_found"}))
+        return
+    if not torch.cuda.is_available() or torch.cuda.device_count() < 1:
+        print(json.dumps({
+            "status": "skipped",
+            "reason": "requires_two_cuda_devices",
+            "visible_cuda_devices": torch.cuda.device_count(),
+        }))
+        return
+    output = Path(args.output).resolve()
+    output.mkdir(parents=True, exist_ok=True)
+    args.output = str(output)
+
+    ctx = mp.get_context("spawn")
+    rollout_command_q = ctx.Queue()
+    rollout_output_q = ctx.Queue()
+    rollout_weight_q = ctx.Queue()
+    trainer_command_q = ctx.Queue()
+    trainer_result_q = ctx.Queue()
+    trainer_publish_q = ctx.Queue()
+    metric_q = ctx.Queue()
+
+    rollout = ctx.Process(
+        target=rollout_worker,
+        args=(args, rollout_command_q, rollout_output_q,
+              rollout_weight_q, metric_q),
+    )
+    rollout.start()
+    trainer, published = start_trainer(
+        ctx, args, trainer_command_q, trainer_result_q,
+        trainer_publish_q, metric_q
+    )
+    rollout_weight_q.put(published)
+    policy_version = int(published["policy_version"])
+    recovery_events = []
+    round_results = []
+    items = [
+        {"prompt": "Compute 14 + 28. End with FINAL: <integer>\nAnswer:", "answer": 42},
+        {"prompt": "Compute 8 * 9. End with FINAL: <integer>\nAnswer:", "answer": 72},
+    ]
+
+    try:
+        for round_id in range(args.rounds):
+            rollout_command_q.put({
+                "type": "rollout",
+                "round": round_id,
+                "policy_version": policy_version,
+                "items": items,
+            })
+            rollout_result = receive(
+                rollout_output_q, 600, f"rollout round {round_id}"
+            )
+            if rollout_result.get("status") != "ok":
+                raise RuntimeError(f"rollout failure: {rollout_result}")
+            command = {
+                "type": "update",
+                "update_id": f"update-{round_id:04d}",
+                "rows": rollout_result["rows"],
+                "next_sampler_cursor": round_id + 1,
+                "crash_after_checkpoint": round_id == 1,
+            }
+            trainer_command_q.put(command)
+            if round_id == 1:
+                trainer.join(timeout=600)
+                if trainer.exitcode != 97:
+                    raise RuntimeError(
+                        f"expected injected exit 97, got {trainer.exitcode}"
+                    )
+                crashed_at = time.perf_counter()
+                trainer, republished = start_trainer(
+                    ctx, args, trainer_command_q, trainer_result_q,
+                    trainer_publish_q, metric_q
+                )
+                recovery_seconds = time.perf_counter() - crashed_at
+                recovery_events.append({
+                    "round": round_id,
+                    "recovery_seconds": recovery_seconds,
+                    "restored_policy_version": republished["policy_version"],
+                    "adapter_hash": republished["adapter_hash"],
+                })
+                policy_version = int(republished["policy_version"])
+                rollout_weight_q.put(republished)
+                # 相同 Update 重投，Checkpoint Ledger 必须拒绝重复。
+                retry_command = dict(command)
+                retry_command["crash_after_checkpoint"] = False
+                trainer_command_q.put(retry_command)
+                retry_result = receive(
+                    trainer_result_q, 600, "duplicate update result"
+                )
+                if retry_result.get("status") != "already_committed":
+                    raise RuntimeError(f"exactly-once failed: {retry_result}")
+                round_results.append(retry_result)
+                continue
+
+            result = receive(trainer_result_q, 600, f"trainer round {round_id}")
+            if result.get("status") != "committed":
+                raise RuntimeError(f"trainer failure: {result}")
+            published = receive(trainer_publish_q, 600, "updated adapter")
+            policy_version = int(published["policy_version"])
+            rollout_weight_q.put(published)
+            round_results.append(result)
+    finally:
+        rollout_command_q.put({"type": "stop"})
+        if trainer.is_alive():
+            trainer_command_q.put({"type": "stop"})
+        rollout.join(timeout=60)
+        trainer.join(timeout=60)
+        if rollout.is_alive():
+            rollout.terminate()
+        if trainer.is_alive():
+            trainer.terminate()
+
+    metrics = []
+    while True:
+        try:
+            metrics.append(metric_q.get_nowait())
+        except queue.Empty:
+            break
+    checkpoint = torch.load(output / "latest.pt", map_location="cpu")
+    state = checkpoint["run_state"]
+    expected_updates = {f"update-{i:04d}" for i in range(args.rounds)}
+    observed_updates = set(state["committed_updates"])
+    success = (
+        observed_updates == expected_updates
+        and int(state["policy_version"]) == args.rounds
+        and len(state["consumed_experiences"]) == args.rounds * len(items) * args.group_size
+    )
+    summary = {
+        "status": "ok" if success else "mismatch",
+        "experiment_kind": "real_dual_gpu_fault_injection",
+        "device_requirement": "2 x CUDA GPU",
+        "final_run_state": state,
+        "recovery_events": recovery_events,
+        "round_results": round_results,
+        "metrics": metrics,
+    }
+    with open(output / "summary.json", "w", encoding="utf-8") as handle:
+        json.dump(summary, handle, ensure_ascii=False, indent=2, default=str)
+    print(json.dumps(summary, ensure_ascii=False, indent=2, default=str))
+    raise SystemExit(0 if success else 1)
+
+
+if __name__ == "__main__":
+    main()

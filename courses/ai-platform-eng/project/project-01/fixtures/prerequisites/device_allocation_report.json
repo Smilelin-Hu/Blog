@@ -1,0 +1,205 @@
+{
+  "status": "PASS",
+  "cluster_version": "1.36",
+  "device_plugin_registration": {
+    "socket": "/var/lib/kubelet/device-plugins/kubelet.sock",
+    "resource": "accelerator.training.invalid/gpu",
+    "status": "Registered"
+  },
+  "legacy_node_resources": {
+    "gpu-node-a": {
+      "capacity": 2,
+      "allocatable": 2
+    },
+    "gpu-node-b": {
+      "capacity": 2,
+      "allocatable": 1
+    },
+    "gpu-node-c": {
+      "capacity": 1,
+      "allocatable": 1
+    }
+  },
+  "resource_slices": [
+    {
+      "pool": "gpu-node-a",
+      "node": "gpu-node-a",
+      "devices": [
+        {
+          "name": "a100-0",
+          "attributes": {
+            "product": "A100-80GB",
+            "memoryGiB": 80,
+            "computeCapability": 8.0
+          },
+          "health": "Healthy"
+        },
+        {
+          "name": "a100-1",
+          "attributes": {
+            "product": "A100-80GB",
+            "memoryGiB": 80,
+            "computeCapability": 8.0
+          },
+          "health": "Healthy"
+        }
+      ]
+    },
+    {
+      "pool": "gpu-node-b",
+      "node": "gpu-node-b",
+      "devices": [
+        {
+          "name": "l40s-0",
+          "attributes": {
+            "product": "L40S",
+            "memoryGiB": 48,
+            "computeCapability": 8.9
+          },
+          "health": "Healthy"
+        },
+        {
+          "name": "l40s-1",
+          "attributes": {
+            "product": "L40S",
+            "memoryGiB": 48,
+            "computeCapability": 8.9
+          },
+          "health": "Unhealthy"
+        }
+      ]
+    },
+    {
+      "pool": "gpu-node-c",
+      "node": "gpu-node-c",
+      "devices": [
+        {
+          "name": "h100-0",
+          "attributes": {
+            "product": "H100-80GB",
+            "memoryGiB": 80,
+            "computeCapability": 9.0
+          },
+          "health": "Healthy"
+        }
+      ]
+    }
+  ],
+  "allocations": [
+    {
+      "name": "legacy-two-gpus",
+      "mode": "device-plugin",
+      "passed": true,
+      "phase": "Allocated",
+      "reason": "KubeletAllocateCompleted",
+      "node": "gpu-node-a",
+      "resource": "accelerator.training.invalid/gpu",
+      "device_ids": [
+        "a100-0",
+        "a100-1"
+      ],
+      "cdi_devices": [
+        "gpu.training.invalid/device=a100-0",
+        "gpu.training.invalid/device=a100-1"
+      ],
+      "injection": "CDI"
+    },
+    {
+      "name": "dra-high-memory",
+      "mode": "dra",
+      "passed": true,
+      "phase": "Allocated",
+      "reason": "AllocationResultPublished",
+      "node": "gpu-node-a",
+      "claim_type": "ResourceClaim",
+      "selected_subrequest": null,
+      "device_ids": [
+        "a100-0"
+      ],
+      "cdi_devices": [
+        "gpu.training.invalid/device=a100-0"
+      ],
+      "allocation_result": [
+        {
+          "driver": "gpu.training.invalid",
+          "pool": "gpu-node-a",
+          "device": "a100-0"
+        }
+      ]
+    },
+    {
+      "name": "dra-prioritized-fallback",
+      "mode": "dra",
+      "passed": true,
+      "phase": "Allocated",
+      "reason": "AllocationResultPublished",
+      "node": "gpu-node-c",
+      "claim_type": "ResourceClaimTemplate",
+      "selected_subrequest": "h100",
+      "device_ids": [
+        "h100-0"
+      ],
+      "cdi_devices": [
+        "gpu.training.invalid/device=h100-0"
+      ],
+      "allocation_result": [
+        {
+          "driver": "gpu.training.invalid",
+          "pool": "gpu-node-c",
+          "device": "h100-0"
+        }
+      ]
+    }
+  ],
+  "faults": [
+    {
+      "name": "plugin-unregistered",
+      "passed": true,
+      "phase": "RegistrationBlocked",
+      "reason": "PluginSocketUnavailable"
+    },
+    {
+      "name": "legacy-capacity-exhausted",
+      "passed": true,
+      "phase": "Pending",
+      "reason": "InsufficientExtendedResource",
+      "resource": "accelerator.training.invalid/gpu"
+    },
+    {
+      "name": "dra-no-matching-device",
+      "passed": true,
+      "phase": "ClaimPending",
+      "reason": "NoMatchingDevice"
+    },
+    {
+      "name": "dra-node-binding-conflict",
+      "passed": true,
+      "phase": "ClaimPending",
+      "reason": "NodeConstraintConflict"
+    },
+    {
+      "name": "stale-cdi-spec",
+      "passed": true,
+      "phase": "ContainerCreateBlocked",
+      "reason": "CDIDeviceUnresolvable",
+      "device_id": "a100-0"
+    },
+    {
+      "name": "allocated-device-unhealthy",
+      "passed": true,
+      "phase": "RunningDegraded",
+      "reason": "AllocatedDeviceUnhealthy",
+      "device_id": "a100-0",
+      "allocation_retained": true,
+      "eligible_for_new_claims": false
+    },
+    {
+      "name": "claim-released",
+      "passed": true,
+      "phase": "Released",
+      "reason": "ClaimLifecycleCompleted",
+      "device_id": "h100-0",
+      "eligible_for_new_claims": true
+    }
+  ]
+}

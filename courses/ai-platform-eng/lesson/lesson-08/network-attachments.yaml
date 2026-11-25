@@ -1,0 +1,42 @@
+apiVersion: k8s.cni.cncf.io/v1
+kind: NetworkAttachmentDefinition
+metadata:
+  name: train-roce
+  namespace: ai-training
+  annotations:
+    k8s.v1.cni.cncf.io/resourceName: nvidia.com/sriov_rdma
+spec:
+  config: |-
+    {
+      "cniVersion": "1.0.0",
+      "name": "train-roce",
+      "type": "sriov",
+      "vlan": 120,
+      "spoofchk": "on",
+      "trust": "off",
+      "ipam": {
+        "type": "whereabouts",
+        "range": "192.0.2.0/24",
+        "exclude": ["192.0.2.0/29"]
+      }
+    }
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: rdma-topology-probe
+  namespace: ai-training
+  annotations:
+    k8s.v1.cni.cncf.io/networks: train-roce
+spec:
+  restartPolicy: Never
+  nodeSelector:
+    ai.training.invalid/network-profile: roce-gdr-dual-rail
+  containers:
+    - name: probe
+      image: example.invalid/rdma-tools:validated-digest
+      command: ["sleep", "3600"]
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+          nvidia.com/sriov_rdma: 1

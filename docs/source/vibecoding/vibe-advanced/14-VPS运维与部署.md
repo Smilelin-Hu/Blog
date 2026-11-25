@@ -1,6 +1,6 @@
 # VPS 运维与部署：拿回完全控制权
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_mll08oqx-9a52a9d3a1e83c5d.jpg
+![云服务器运维与项目部署](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_mll08oqx-9a52a9d3a1e83c5d.jpg)
 
 <p>图 1：云服务器运维与项目部署</p>
 
@@ -49,7 +49,7 @@ VPS（Virtual Private Server）就是云上租的一台电脑：24 小时开机�
 
 **购买注意**：薅新用户优惠；长期用选包年包月（租房签年约），临时测试选按量计费（住酒店）；看清流量限制与续费价格（首年优惠与续费可能差 3-5 倍）；**别忘了安全组**——很多新手买完装好应用却打不开，十有八九是端口没开放。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302205408945.png
+![云服务器购买页面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302205408945.png)
 
 <p>图 2：云服务器购买页面</p>
 
@@ -59,11 +59,11 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202603
 
 **方法一：云厂商 Web 终端（推荐新手）**：控制台服务器概览 → 远程登录 → 免密登录，浏览器直接打开终端。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-server-console-01.png
+![腾讯云轻量服务器控制台](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-server-console-01.png)
 
 <p>图 3：腾讯云轻量服务器控制台</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-web-terminal-02.png
+![Web 终端入口](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-web-terminal-02.png)
 
 <p>图 4：Web 终端入口</p>
 
@@ -77,11 +77,11 @@ ssh root@你的服务器IP
 
 **方法三：FinalShell**：带终端界面 + 文件管理器，填 IP、用户名、密码即可。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-finalssh-03.png
+![FinalShell 连接配置](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-finalssh-03.png)
 
 <p>图 5：FinalShell 连接配置</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-ssh-success-04.png
+![SSH 连接成功](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-ssh-success-04.png)
 
 <p>图 6：SSH 连接成功</p>
 
@@ -93,11 +93,11 @@ apt update && apt upgrade -y
 
 就像新电脑装完系统先打补丁：`apt update` 刷新软件列表，`apt upgrade` 安装所有更新。若弹出配置页面按回车保持默认，中途断开重连即可。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-apt-update-05.png
+![apt update](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-apt-update-05.png)
 
 <p>图 7：apt update</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-apt-upgrade-06.png
+![apt upgrade](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-apt-upgrade-06.png)
 
 <p>图 8：apt upgrade</p>
 
@@ -127,11 +127,11 @@ curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_
 
 安装时设置：面板端口改不常见端口（如 `29876`）、用户名不要用 `admin`、设置强密码。完成后终端显示访问地址：`http://IP:端口/安全入口`。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-1panel-install-07.png
+![1Panel 安装过程](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-1panel-install-07.png)
 
 <p>图 9：1Panel 安装过程</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-1panel-install-10.png
+![安装完成](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-1panel-install-10.png)
 
 <p>图 10：安装完成</p>
 
@@ -150,21 +150,21 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-1panel-
 
 腾讯云叫「防火墙」，阿里云叫「安全组」。**安全组与系统防火墙是两道门，都要开**——很多新手只开一道，怎么都访问不了。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-security-group-14.png
+![添加安全组规则](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-security-group-14.png)
 
 <p>图 11：添加安全组规则</p>
 
 配置后打开 1Panel 登录页：
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-1panel-login-11.png
+![1Panel 登录页](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-1panel-login-11.png)
 
 <p>图 12：1Panel 登录页</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-1panel-dashboard-12.png
+![1Panel 主界面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-1panel-dashboard-12.png)
 
 <p>图 13：1Panel 主界面</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-monitor-10.png
+![容器监控面板](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-monitor-10.png)
 
 <p>图 14：容器监控面板</p>
 
@@ -178,17 +178,17 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-monit
 
 **启用防火墙**：`系统 → 防火墙`，放行 80、443、面板端口等。规则要同时加在 1Panel 与云厂商安全组。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-firewall-21.png
+![1Panel 防火墙配置](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-firewall-21.png)
 
 <p>图 15：1Panel 防火墙配置</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-firewall-rules-22.png
+![防火墙规则列表](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-firewall-rules-22.png)
 
 <p>图 16：防火墙规则列表</p>
 
 **修改 SSH 端口**：默认 22 是扫描重点。`系统 > SSH 管理` 改为不常见端口（如 `24324`），然后在安全组和防火墙里**都开放新端口**，用新端口测试成功后再关 22。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-ssh-port-19.png
+![修改 SSH 端口](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-ssh-port-19.png)
 
 <p>图 17：修改 SSH 端口</p>
 
@@ -196,11 +196,11 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-ssh-por
 
 **Fail2Ban**：自动拉黑，连续输错密码 5 次封 IP。`工具箱 > Fail2Ban` 一键安装，记得把监听端口改成新 SSH 端口。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-fail2ban-24.png
+![安装 Fail2Ban](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-fail2ban-24.png)
 
 <p>图 18：安装 Fail2Ban</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-fail2ban-25.png
+![Fail2Ban 配置](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-fail2ban-25.png)
 
 <p>图 19：Fail2Ban 配置</p>
 
@@ -211,11 +211,11 @@ ssh-keygen -t rsa -b 4096
 cat ~/.ssh/id_rsa.pub
 ```
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-ssh-keygen-15.png
+![生成 SSH 密钥](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-ssh-keygen-15.png)
 
 <p>图 20：生成 SSH 密钥</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-ssh-key-mgr-16.png
+![1Panel 授权密钥](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-ssh-key-mgr-16.png)
 
 <p>图 21：1Panel 授权密钥</p>
 
@@ -223,7 +223,7 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-ssh-key
 
 **WAF（可选但推荐）**：绑定域名后，`高级功能 → WAF` 开启访问频率限制，自动拦截扫描、爆破、SQL 注入等恶意请求，不影响正常访问。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-waf-28.png
+![1Panel WAF 配置](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-waf-28.png)
 
 <p>图 22：1Panel WAF 配置</p>
 
@@ -245,11 +245,11 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-2-waf-28.
 
 常用应用：PostgreSQL（项目必装）、Redis（缓存/会话）、OpenResty（Web 服务器/反向代理，绑域名必装）、Node.js（跑 Next.js 等项目）。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-appstore-01.png
+![1Panel 应用商店](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-appstore-01.png)
 
 <p>图 23：1Panel 应用商店</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-app-install-02.png
+![安装 PostgreSQL 配置页](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-app-install-02.png)
 
 <p>图 24：安装 PostgreSQL 配置页</p>
 
@@ -257,27 +257,27 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-app-i
 
 以 Halo 博客为例，应用商店的典型流程是：选择配置 → 等待安装 → 初始化设置 → 开始使用。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-halo-db-04.png
+![Halo 数据库选择](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-halo-db-04.png)
 
 <p>图 25：Halo 数据库选择</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-halo-init-05.png
+![Halo 初始化](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-halo-init-05.png)
 
 <p>图 26：Halo 初始化</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-halo-user-06.png
+![创建管理员账号](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-halo-user-06.png)
 
 <p>图 27：创建管理员账号</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-halo-admin-07.png
+![管理后台](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-halo-admin-07.png)
 
 <p>图 28：管理后台</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-halo-frontend-08.png
+![前台页面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-halo-frontend-08.png)
 
 <p>图 29：前台页面</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-halo-plugin-09.png
+![插件管理](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-halo-plugin-09.png)
 
 <p>图 30：插件管理</p>
 
@@ -285,7 +285,7 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-halo-
 
 装完 PostgreSQL 还要在「数据库 - PostgreSQL」新建一个具体数据库——**DBMS 是软件（Excel），Database 是文件（.xlsx）**。装一次 PostgreSQL 可以建无数个独立数据库供不同项目使用。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-db-conn-03.png
+![数据库连接信息](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-db-conn-03.png)
 
 <p>图 31：数据库连接信息</p>
 
@@ -293,11 +293,11 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-db-co
 
 `应用商店 - 已安装` 管理商店应用（重建、重启、参数）；`容器` 管理所有容器（终端、日志、监控、删除）。容器像临时工位，走了就清空；**Volume 是专属文件柜**，换多少次工位文件都在。1Panel 安装的应用默认配置 Volume，数据在 `/opt/1panel/` 下。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-container-list-20.png
+![容器列表](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-container-list-20.png)
 
 <p>图 32：容器列表</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-container-log-11.png
+![容器日志](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-1-container-log-11.png)
 
 <p>图 33：容器日志</p>
 
@@ -336,7 +336,7 @@ Redis 同理：有密码 `redis://:密码@容器名:6379`，无密码 `redis://�
 用户访问 服务器IP:3001 → 转发到 容器内部:3000 → Next.js
 ```
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260303151924020.png
+![端口映射示意](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260303151924020.png)
 
 <p>图 34：端口映射示意</p>
 
@@ -363,13 +363,13 @@ free -h
 - 启动命令：`git pull && pnpm build && pnpm start`（自定义模式）
 - 容器名称：用于容器间通信
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302235637992.png
+![运行环境基础配置](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302235637992.png)
 
 <p>图 35：运行环境基础配置</p>
 
 **端口映射**：高级配置 → 添加 → 主机端口 3001、容器端口 3000。记得在安全组开放 3001。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260303151929448.png
+![端口映射配置](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260303151929448.png)
 
 <p>图 36：端口映射配置</p>
 
@@ -389,13 +389,13 @@ BETTER_AUTH_URL="http://你的IP:3001"
 NODE_ENV="production"
 ```
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302235711891.png
+![环境变量配置](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302235711891.png)
 
 <p>图 37：环境变量配置</p>
 
 点击确认后，1Panel 依次拉代码、构建、启动。2GB 机器首次构建可能要几分钟。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302235748925.png
+![构建与启动日志](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260302235748925.png)
 
 <p>图 38：构建与启动日志</p>
 
@@ -416,7 +416,7 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202603
 
 **静态网站**：本地 `pnpm build` → 1Panel 创建网站（选静态）→ 上传 `dist` 产物 → 绑定域名。SPA 需要把未知路径回退到 `index.html`，并给带哈希的静态资源设置长缓存、`index.html` 短缓存。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-3-static-site-01.png
+![静态站点配置](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-3-static-site-01.png)
 
 <p>图 39：静态站点配置</p>
 
@@ -433,17 +433,17 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-3-3-stati
 | A | `@` | 服务器公网 IP | 600 |
 | A | `www` | 服务器公网 IP | 600 |
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-4-dns-root-01.png
+![根域名 A 记录](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-4-dns-root-01.png)
 
 <p>图 40：根域名 A 记录</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-4-dns-www-02.png
+![www 记录](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-4-dns-www-02.png)
 
 <p>图 41：www 记录</p>
 
 **第二步：创建网站**：在 1Panel 创建网站并填主域名，等于告诉 OpenResty「收到这个域名的请求交给我」。只做 DNS 不建网站，请求到了服务器没人接；只建网站不做 DNS，用户找不到服务器。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-4-openresty-03.png
+![安装 OpenResty](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-4-openresty-03.png)
 
 <p>图 42：安装 OpenResty</p>
 
@@ -451,25 +451,25 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-4-openres
 
 **第三步：申请 Let's Encrypt 证书**：`网站 > 证书 > 申请证书`，填域名，验证方式选 HTTP（需 80 端口可访问），开启自动续签。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-4-http-insecure-05.png
+![HTTP 的「不安全」提示](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-4-http-insecure-05.png)
 
 <p>图 43：HTTP 的「不安全」提示</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-4-ssl-apply-06.png
+![申请 SSL 证书](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-4-ssl-apply-06.png)
 
 <p>图 44：申请 SSL 证书</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-4-ssl-http-verify-07.png
+![HTTP 验证配置](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-4-ssl-http-verify-07.png)
 
 <p>图 45：HTTP 验证配置</p>
 
 **第四步：启用 HTTPS 并强制跳转**：网站 HTTPS 设置里选择证书，HTTP 选项选「访问 HTTP 自动跳转到 HTTPS」。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-4-ssl-success-08.png
+![证书已签发](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-4-ssl-success-08.png)
 
 <p>图 46：证书已签发</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-4-https-enable-09.png
+![启用 HTTPS](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-4-https-enable-09.png)
 
 <p>图 47：启用 HTTPS</p>
 
@@ -489,17 +489,17 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_14-4-https-e
 
 **Umami**：隐私友好的网站统计，Google Analytics 的开源替代。应用商店一键安装，绑定已装的 PostgreSQL；在后台添加网站会生成追踪脚本，加到网站 `<head>` 即可。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260303152245410.png
+![Umami 安装配置](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260303152245410.png)
 
 <p>图 48：Umami 安装配置</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260303152328354.png
+![Umami 统计面板](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260303152328354.png)
 
 <p>图 49：Umami 统计面板</p>
 
 **n8n**：开源自动化工作流平台（类似 Zapier 但可自托管）。拖一个「定时触发」节点，再拖一个「GitHub」节点连起来，就能实现「每天 9 点检查 Issue 并发邮件」——不用写代码。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260303152359300.png
+![n8n 工作流编辑器](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260303152359300.png)
 
 <p>图 50：n8n 工作流编辑器</p>
 
@@ -539,4 +539,4 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202603
 
 ## 写在最后
 
-下一篇[SEO 与分析](15-SEO与分析)让更多人发现网站：Open Graph 分享卡片、搜索引擎优化、Umami 统计与合规基础。
+下一篇[SEO 与分析](/source/vibecoding/vibe-advanced/15-SEO与分析)让更多人发现网站：Open Graph 分享卡片、搜索引擎优化、Umami 统计与合规基础。

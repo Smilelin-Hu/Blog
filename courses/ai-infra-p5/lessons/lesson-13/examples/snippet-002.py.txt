@@ -1,0 +1,65 @@
+from __future__ import annotations
+
+import json
+import os
+import sys
+import torch
+import torch.distributed as dist
+from torch import nn
+
+
+class ToyDetector(nn.Module):
+    def __init__(self, dim=64):
+        super().__init__()
+        torch.manual_seed(31)
+        self.emb = nn.Embedding(256, dim)
+        self.head = nn.Linear(dim, 2)
+
+    def forward(self, ids):
+        return self.head(self.emb(ids))
+
+
+def emit(x):
+    print(json.dumps(x, ensure_ascii=False))
+
+
+def main():
+    if not torch.cuda.is_available() or torch.cuda.device_count() < 1:
+        emit({"status": "skipped", "reason": "requires at least one visible CUDA GPU"}); return
+    if "RANK" not in os.environ:
+        emit({"status": "skipped", "reason": "launch with torchrun"}); return
+    dist.init_process_group("nccl")
+    rank, world = dist.get_rank(), dist.get_world_size()
+    if world < 1:
+        if rank == 0: emit({"status": "skipped", "reason": f"expected world_size>=1, got {world}"})
+        dist.destroy_process_group(); return
+    torch.cuda.set_device(rank)
+    device = torch.device("cuda", rank)
+    corpus = ["示例用户邮箱 user@example.invalid", "普通技术文档不含身份字段",
+              "联系电话示例 000-0000-0000", "退出请求必须沿血缘传播"]
+    ids_all = list(range(rank, len(corpus), world))
+    model = ToyDetector().to(device).eval()
+    result = []
+    with torch.no_grad():
+        for idx in ids_all:
+            raw = list(corpus[idx].encode("utf-8")[:128])
+            ids = torch.tensor(raw, dtype=torch.long, device=device)[None, :]
+            prob = model(ids).softmax(-1)[0, :, 1]
+            result.append({"record_index": idx, "bytes": len(raw),
+                           "max_toy_risk": float(prob.max().item())})
+    gathered = [None] * world if rank == 0 else None
+    dist.gather_object(result, gathered, dst=0)
+    if rank == 0:
+        flat = sorted([x for part in gathered for x in part], key=lambda x: x["record_index"])
+        emit({"status": "passed", "world_size": world,
+              "device": torch.cuda.get_device_name(0), "results": flat,
+              "claim": "mechanism only; random model must not be used for PII decisions"})
+    dist.destroy_process_group()
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as exc:
+        emit({"status": "failed", "error": repr(exc)})
+        sys.exit(1)

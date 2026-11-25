@@ -157,4 +157,4 @@ def ask_vlm(image_bytes, question: str, image_kind: str = "photo") -> str:
 
 ## 写在最后
 
-部署的关键不是「模型能跑」，而是「输入链路正确、延迟可接受、问题可定位」。下一篇[动手跑通第一个 VLM](4-动手跑通第一个VLM)把这条链路落到两种最小可运行方式上：本地 Transformers 与服务端 OpenAI 兼容接口。
+部署的关键不是「模型能跑」，而是「输入链路正确、延迟可接受、问题可定位」。下一篇[动手跑通第一个 VLM](/source/大模型/多模态大模型实战/4-动手跑通第一个VLM)把这条链路落到两种最小可运行方式上：本地 Transformers 与服务端 OpenAI 兼容接口。

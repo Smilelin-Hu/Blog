@@ -1,0 +1,35 @@
+{
+  "workload": {
+    "python_ops": 0.8,
+    "gpu_inference": 1.0,
+    "streaming_state": 0.2,
+    "sql_ops": 0.1
+  },
+  "engines": {
+    "datatrove": {
+      "python_ops": 1.0,
+      "gpu_inference": 0.3,
+      "streaming_state": 0.1,
+      "sql_ops": 0.1
+    },
+    "nemo-curator": {
+      "python_ops": 0.8,
+      "gpu_inference": 1.0,
+      "streaming_state": 0.1,
+      "sql_ops": 0.1
+    },
+    "ray-data": {
+      "python_ops": 0.9,
+      "gpu_inference": 0.9,
+      "streaming_state": 0.4,
+      "sql_ops": 0.2
+    },
+    "spark": {
+      "python_ops": 0.5,
+      "gpu_inference": 0.2,
+      "streaming_state": 1.0,
+      "sql_ops": 1.0
+    }
+  },
+  "expected": "ray-data"
+}

@@ -1,0 +1,192 @@
+{
+  "queue_quota_gpu": 32,
+  "daemonset_overhead": {
+    "gpu": 0,
+    "cpu": 4,
+    "memory": 8
+  },
+  "node_pools": {
+    "training": {
+      "capacity_types": [
+        "spot",
+        "on-demand"
+      ],
+      "instance_types": [
+        "gpu-8-spot",
+        "gpu-8-od",
+        "gpu-4-spot"
+      ],
+      "current_gpu": 8,
+      "gpu_limit": 64
+    }
+  },
+  "instance_types": [
+    {
+      "name": "gpu-8-spot",
+      "capacity_type": "spot",
+      "gpu": 8,
+      "cpu": 96,
+      "memory": 768,
+      "zones": [
+        "z1",
+        "z2",
+        "z3"
+      ],
+      "price_per_hour": 8.0,
+      "provider_capacity": true
+    },
+    {
+      "name": "gpu-8-od",
+      "capacity_type": "on-demand",
+      "gpu": 8,
+      "cpu": 96,
+      "memory": 768,
+      "zones": [
+        "z1",
+        "z2"
+      ],
+      "price_per_hour": 24.0,
+      "provider_capacity": true
+    },
+    {
+      "name": "gpu-4-spot",
+      "capacity_type": "spot",
+      "gpu": 4,
+      "cpu": 48,
+      "memory": 384,
+      "zones": [
+        "z1"
+      ],
+      "price_per_hour": 5.0,
+      "provider_capacity": true
+    }
+  ],
+  "workload": {
+    "node_pool": "training",
+    "pods": 4,
+    "gpu_per_pod": 4,
+    "cpu_per_pod": 32,
+    "memory_per_pod": 200,
+    "zone": "z1"
+  },
+  "disruption_budget_nodes": 1,
+  "nodes_disrupting": 0,
+  "consolidation_nodes": [
+    {
+      "name": "safe-spot-node",
+      "blocking_pdb": false,
+      "do_not_disrupt": false,
+      "preserves_required_topology": true,
+      "current_cost": 8.0,
+      "replacement_cost": 5.0
+    },
+    {
+      "name": "topology-anchor",
+      "blocking_pdb": false,
+      "do_not_disrupt": false,
+      "preserves_required_topology": false,
+      "current_cost": 8.0,
+      "replacement_cost": 5.0
+    },
+    {
+      "name": "pdb-protected",
+      "blocking_pdb": true,
+      "do_not_disrupt": false,
+      "preserves_required_topology": true,
+      "current_cost": 8.0,
+      "replacement_cost": 5.0
+    }
+  ],
+  "spot_interruption": {
+    "notice_seconds": 120,
+    "replacement_launch_seconds": 70,
+    "checkpoint_seconds": 35,
+    "drain_seconds": 20
+  },
+  "faults": [
+    {
+      "name": "pod-requests-understate-runtime-demand",
+      "type": "requests_too_low",
+      "expected_phase": "DEGRADED",
+      "expected_reason": "NodeProvisionedFromRequestsButRuntimeDemandExceedsCapacity"
+    },
+    {
+      "name": "nodepool-gpu-limit-reached",
+      "type": "pool_limit",
+      "expected_phase": "FAILED",
+      "expected_reason": "NodePoolResourceLimitExceeded"
+    },
+    {
+      "name": "pod-and-nodepool-constraints-conflict",
+      "type": "constraint_conflict",
+      "expected_phase": "FAILED",
+      "expected_reason": "NoInstanceTypeMatchesPodAndNodePoolConstraints"
+    },
+    {
+      "name": "cloud-has-no-matching-capacity",
+      "type": "provider_capacity",
+      "expected_phase": "FAILED",
+      "expected_reason": "CloudProviderCapacityUnavailable"
+    },
+    {
+      "name": "workload-has-no-quota-reservation",
+      "type": "quota_missing",
+      "expected_phase": "PENDING",
+      "expected_reason": "QuotaReservationMissing"
+    },
+    {
+      "name": "reserved-capacity-booking-expired",
+      "type": "booking_expired",
+      "expected_phase": "PENDING",
+      "expected_reason": "ProvisioningBookingExpired"
+    },
+    {
+      "name": "provider-revokes-provisioned-capacity",
+      "type": "capacity_revoked",
+      "expected_phase": "EVICTED",
+      "expected_reason": "ProvisionedCapacityRevoked"
+    },
+    {
+      "name": "pdb-blocks-voluntary-consolidation",
+      "type": "pdb_blocks",
+      "expected_phase": "BLOCKED",
+      "expected_reason": "PodDisruptionBudgetBlocksVoluntaryDisruption"
+    },
+    {
+      "name": "spot-interruption-is-forceful",
+      "type": "do_not_disrupt_forceful",
+      "expected_phase": "DISRUPTING",
+      "expected_reason": "ForcefulInterruptionIgnoresDoNotDisrupt"
+    },
+    {
+      "name": "consolidation-breaks-eight-node-rack",
+      "type": "topology_fragmentation",
+      "expected_phase": "BLOCKED",
+      "expected_reason": "ConsolidationWouldBreakTopologyCapacity"
+    },
+    {
+      "name": "checkpoint-exceeds-spot-notice",
+      "type": "checkpoint_too_slow",
+      "expected_phase": "INTERRUPTED",
+      "expected_reason": "InterruptionDeadlineExceeded"
+    },
+    {
+      "name": "replacement-not-ready-before-reclaim",
+      "type": "replacement_too_slow",
+      "expected_phase": "DEGRADED",
+      "expected_reason": "ReplacementNotReadyBeforeTermination"
+    },
+    {
+      "name": "nodepool-disruption-budget-exhausted",
+      "type": "budget_exhausted",
+      "expected_phase": "BLOCKED",
+      "expected_reason": "NodePoolDisruptionBudgetExhausted"
+    },
+    {
+      "name": "daemonset-overhead-was-omitted",
+      "type": "daemonset_overhead",
+      "expected_phase": "FAILED",
+      "expected_reason": "DaemonSetOverheadMakesPodShapeInfeasible"
+    }
+  ]
+}

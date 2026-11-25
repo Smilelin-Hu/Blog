@@ -1,0 +1,17 @@
+commoncrawl_pipeline/
+  configs/sources.yaml
+  configs/recipes/v1.yaml
+  schemas/source_record.json
+  schemas/document.json
+  schemas/decision.json
+  src/resolve_snapshot.py
+  src/fetch_warc.py
+  src/parse_html.py
+  src/filter_document.py
+  src/deduplicate.py
+  src/publish_release.py
+  tests/fixtures/
+  tests/test_replay.py
+  artifacts/manifests/
+  artifacts/metrics/
+  artifacts/data_cards/

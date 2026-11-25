@@ -1,0 +1,231 @@
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import multiprocessing as mp
+import os
+import queue
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+import torch
+from torch import nn
+
+
+def digest(value: Any) -> str:
+    payload = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def encode(texts: list[str], max_length: int, buckets: int) -> torch.Tensor:
+    rows = []
+    for text in texts:
+        values = [ord(char) % buckets for char in text[:max_length]]
+        values.extend([0] * (max_length - len(values)))
+        rows.append(values)
+    return torch.tensor(rows, dtype=torch.long)
+
+
+class ScoreModel(nn.Module):
+    def __init__(self, buckets: int, hidden: int) -> None:
+        super().__init__()
+        self.embedding = nn.Embedding(buckets, hidden, padding_idx=0)
+        self.head = nn.Sequential(nn.Linear(hidden, hidden), nn.GELU(), nn.Linear(hidden, 1))
+
+    def forward(self, tokens: torch.Tensor) -> torch.Tensor:
+        mask = tokens.ne(0).unsqueeze(-1)
+        hidden = self.embedding(tokens)
+        pooled = (hidden * mask).sum(1) / mask.sum(1).clamp_min(1)
+        return self.head(pooled).squeeze(-1)
+
+
+@dataclass
+class Batch:
+    batch_id: str
+    records: list[dict[str, str]]
+    token_cost: int
+
+
+def load_records(path: str | None) -> list[dict[str, str]]:
+    if path:
+        result = []
+        with Path(path).open("r", encoding="utf-8") as handle:
+            for number, line in enumerate(handle, start=1):
+                value = json.loads(line)
+                if not isinstance(value.get("unit_id"), str) or not isinstance(value.get("text"), str):
+                    raise ValueError(f"invalid record at line {number}")
+                result.append({"unit_id": value["unit_id"], "text": value["text"]})
+        return result
+    texts = [
+        "DataTrove pipeline block and executor",
+        "NeMo Curator resource-aware stage",
+        "Ray Data streaming physical operator",
+        "Spark partition stage and shuffle",
+        "Manifest commit makes retries idempotent",
+    ] * 256
+    return [
+        {"unit_id": hashlib.sha256(f"{index}:{text}".encode()).hexdigest()[:24], "text": text}
+        for index, text in enumerate(texts)
+    ]
+
+
+def plan_batches(records: list[dict[str, str]], max_tokens: int, max_length: int) -> list[Batch]:
+    ordered = sorted(records, key=lambda item: (min(len(item["text"]), max_length), item["unit_id"]))
+    batches: list[Batch] = []
+    current: list[dict[str, str]] = []
+    current_tokens = 0
+    for record in ordered:
+        cost = max(1, min(len(record["text"]), max_length))
+        if current and current_tokens + cost > max_tokens:
+            batch_id = digest([item["unit_id"] for item in current])[:24]
+            batches.append(Batch(batch_id, current, current_tokens))
+            current = []
+            current_tokens = 0
+        current.append(record)
+        current_tokens += cost
+    if current:
+        batch_id = digest([item["unit_id"] for item in current])[:24]
+        batches.append(Batch(batch_id, current, current_tokens))
+    return batches
+
+
+def assign_batches(batches: list[Batch], workers: int) -> list[list[Batch]]:
+    assignments: list[list[Batch]] = [[] for _ in range(workers)]
+    costs = [0 for _ in range(workers)]
+    for batch in sorted(batches, key=lambda item: (-item.token_cost, item.batch_id)):
+        worker = min(range(workers), key=lambda index: (costs[index], index))
+        assignments[worker].append(batch)
+        costs[worker] += batch.token_cost
+    for assignment in assignments:
+        assignment.sort(key=lambda item: item.batch_id)
+    return assignments
+
+
+def gpu_worker(
+    worker_id: int,
+    batches: list[Batch],
+    result_queue: mp.Queue,
+    args: argparse.Namespace,
+) -> None:
+    try:
+        torch.cuda.set_device(worker_id)
+        torch.manual_seed(args.seed)
+        device = torch.device("cuda", worker_id)
+        model = ScoreModel(args.buckets, args.hidden).to(device).eval()
+        torch.cuda.reset_peak_memory_stats(device)
+        start = time.perf_counter()
+        outputs: list[dict[str, Any]] = []
+        with torch.inference_mode():
+            for batch in batches:
+                texts = [item["text"] for item in batch.records]
+                tokens = encode(texts, args.max_length, args.buckets).to(device, non_blocking=True)
+                with torch.autocast(device_type="cuda", dtype=torch.float16):
+                    scores = model(tokens).float().cpu().tolist()
+                for record, score in zip(batch.records, scores):
+                    outputs.append(
+                        {
+                            "unit_id": record["unit_id"],
+                            "score": round(float(score), 7),
+                            "batch_id": batch.batch_id,
+                            "worker_id": worker_id,
+                        }
+                    )
+        torch.cuda.synchronize(device)
+        elapsed = time.perf_counter() - start
+        result_queue.put(
+            {
+                "status": "success",
+                "worker_id": worker_id,
+                "outputs": outputs,
+                "batches": len(batches),
+                "token_cost": sum(batch.token_cost for batch in batches),
+                "elapsed_seconds": elapsed,
+                "max_memory_bytes": torch.cuda.max_memory_allocated(device),
+            }
+        )
+    except Exception as exc:
+        result_queue.put(
+            {"status": "failed", "worker_id": worker_id, "error": type(exc).__name__}
+        )
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input", default=None)
+    parser.add_argument("--max-tokens", type=int, default=1024)
+    parser.add_argument("--max-length", type=int, default=256)
+    parser.add_argument("--buckets", type=int, default=4096)
+    parser.add_argument("--hidden", type=int, default=256)
+    parser.add_argument("--seed", type=int, default=2026)
+    args = parser.parse_args()
+    if not torch.cuda.is_available() or torch.cuda.device_count() < 1:
+        print(
+            json.dumps(
+                {
+                    "status": "skipped",
+                    "reason": "requires at least one CUDA device",
+                    "cuda_devices": torch.cuda.device_count(),
+                },
+                ensure_ascii=False,
+            )
+        )
+        return
+    records = load_records(args.input)
+    manifest_digest = digest(records)
+    batches = plan_batches(records, args.max_tokens, args.max_length)
+    assignments = assign_batches(batches, 2)
+    context = mp.get_context("spawn")
+    result_queue = context.Queue()
+    processes = [
+        context.Process(target=gpu_worker, args=(worker, assignments[worker], result_queue, args))
+        for worker in range(2)
+    ]
+    for process in processes:
+        process.start()
+    results = []
+    for _ in processes:
+        try:
+            results.append(result_queue.get(timeout=300))
+        except queue.Empty as exc:
+            raise RuntimeError("GPU worker timeout") from exc
+    for process in processes:
+        process.join(timeout=10)
+        if process.exitcode != 0:
+            raise RuntimeError(f"worker exited with {process.exitcode}")
+    if any(item["status"] != "success" for item in results):
+        print(json.dumps({"status": "failed", "workers": results}, ensure_ascii=False, indent=2))
+        raise SystemExit(1)
+    outputs = [item for result in results for item in result["outputs"]]
+    outputs.sort(key=lambda item: item["unit_id"])
+    input_ids = [item["unit_id"] for item in records]
+    output_ids = [item["unit_id"] for item in outputs]
+    coverage_ok = len(output_ids) == len(set(output_ids)) == len(input_ids) and set(output_ids) == set(input_ids)
+    elapsed = max(float(item["elapsed_seconds"]) for item in results)
+    report = {
+        "status": "passed" if coverage_ok else "failed",
+        "manifest_digest": manifest_digest,
+        "output_digest": digest(outputs),
+        "records": len(records),
+        "batches": len(batches),
+        "coverage_ok": coverage_ok,
+        "elapsed_seconds": elapsed,
+        "records_per_second": len(records) / max(elapsed, 1e-9),
+        "max_memory_bytes": max(int(item["max_memory_bytes"]) for item in results),
+        "worker_stats": [
+            {
+                key: item[key]
+                for key in ("worker_id", "batches", "token_cost", "elapsed_seconds", "max_memory_bytes")
+            }
+            for item in sorted(results, key=lambda value: value["worker_id"])
+        ],
+    }
+    print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
+    if not coverage_ok:
+        raise SystemExit(1)
+
+
+if __name__ == "__main__":
+    main()

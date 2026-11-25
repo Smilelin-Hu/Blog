@@ -1,0 +1,48 @@
+import hashlib
+import json
+from collections import defaultdict, deque
+
+def canonical_hash(value):
+    payload = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode()).hexdigest()
+
+class Catalog:
+    def __init__(self):
+        self.assets = {}
+        self.forward = defaultdict(set)
+        self.reverse = defaultdict(set)
+
+    def register(self, kind, manifest, parents=()):
+        version = canonical_hash({"kind": kind, "manifest": manifest, "parents": sorted(parents)})
+        self.assets.setdefault(version, {"kind": kind, "manifest": manifest, "status": "ready"})
+        for parent in parents:
+            self.forward[parent].add(version)
+            self.reverse[version].add(parent)
+        return version
+
+    def descendants(self, root):
+        seen, queue = set(), deque([root])
+        while queue:
+            node = queue.popleft()
+            for child in self.forward[node]:
+                if child not in seen:
+                    seen.add(child)
+                    queue.append(child)
+        return sorted(seen)
+
+    def withdraw(self, root):
+        affected = [root] + self.descendants(root)
+        for item in affected:
+            self.assets[item]["status"] = "withdrawn"
+        return affected
+
+catalog = Catalog()
+source = catalog.register("source", {"uri": "fixture://source-a", "sha256": "abc"})
+document = catalog.register("document", {"recipe": "parse-v1"}, [source])
+release = catalog.register("release", {"recipe": "filter-v3", "tokens": 1200}, [document])
+checkpoint = catalog.register("checkpoint", {"step": 100, "consumption": [release]}, [release])
+
+assert checkpoint in catalog.descendants(source)
+impact = catalog.withdraw(source)
+assert catalog.assets[checkpoint]["status"] == "withdrawn"
+print(json.dumps({"source": source, "checkpoint": checkpoint, "impact": impact}, indent=2))

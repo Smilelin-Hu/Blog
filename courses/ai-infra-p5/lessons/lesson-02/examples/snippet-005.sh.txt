@@ -1,0 +1,2 @@
+nvidia-smi --query-gpu=index,name,memory.total --format=csv
+python -c "import torch; print(torch.__version__, torch.version.cuda, torch.cuda.device_count())"

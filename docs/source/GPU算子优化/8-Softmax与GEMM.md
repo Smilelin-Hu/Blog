@@ -64,4 +64,4 @@ Triton 的 program 分组也遵循同样的规律：`32×32` 升到 `64×32` 从
 
 ## 写在最后
 
-有了归约、分块与融合三块积木，就可以拼更复杂的算子。下一篇[Attention 与 Fused RMSNorm](9-Attention与FusedRMSNorm)看这两种积木如何组合：一个用在线 Softmax 消掉大矩阵，一个把归约、广播与逐元素权重收进单个 kernel。
+有了归约、分块与融合三块积木，就可以拼更复杂的算子。下一篇[Attention 与 Fused RMSNorm](/source/GPU算子优化/9-Attention与FusedRMSNorm)看这两种积木如何组合：一个用在线 Softmax 消掉大矩阵，一个把归约、广播与逐元素权重收进单个 kernel。

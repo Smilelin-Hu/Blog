@@ -1,6 +1,6 @@
 # 后端 API：从 CRUD 到可用的服务接口
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_mll04abe-1f408b85793aaf81.jpg
+![后端 API 开发](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_mll04abe-1f408b85793aaf81.jpg)
 
 <p>图 1：后端 API 开发</p>
 
@@ -409,4 +409,4 @@ API 大部分时候正常，但每天晚上 8-10 点偶尔返回 500，报错是
 
 ## 写在最后
 
-下一篇[认证与安全](8-认证与安全)处理「谁能访问我的数据」：用户系统、环境变量与密钥、认证方式、路由保护与安全清单。
+下一篇[认证与安全](/source/vibecoding/vibe-advanced/8-认证与安全)处理「谁能访问我的数据」：用户系统、环境变量与密钥、认证方式、路由保护与安全清单。

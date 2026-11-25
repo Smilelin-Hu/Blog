@@ -1,0 +1,261 @@
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import random
+import struct
+import tempfile
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Any, Iterable
+
+
+MAGIC = b"TKSHARD1"
+VERSION = 1
+HEADER = struct.Struct("<8sIIQ")
+TOKEN = struct.Struct("<I")
+RECIPE_ID = "token-shard-mechanism-v1"
+
+
+def sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while chunk := handle.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def canonical_digest(value: Any) -> str:
+    payload = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return sha256_bytes(payload.encode("utf-8"))
+
+
+@dataclass(frozen=True)
+class Sample:
+    sample_id: str
+    source: str
+    tokens: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class IndexEntry:
+    sample_id: str
+    source: str
+    token_offset: int
+    token_length: int
+
+
+def write_atomic(path: Path, value: bytes) -> None:
+    temporary = path.with_suffix(path.suffix + f".tmp-{os.getpid()}")
+    temporary.write_bytes(value)
+    os.replace(temporary, path)
+
+
+def write_shard(root: Path, shard_number: int, samples: list[Sample]) -> dict[str, Any]:
+    shard_name = f"shard-{shard_number:05d}"
+    bin_path = root / f"{shard_name}.bin"
+    idx_path = root / f"{shard_name}.idx.json"
+    entries: list[IndexEntry] = []
+    token_offset = 0
+    payload = bytearray()
+    for sample in samples:
+        if not sample.tokens:
+            raise ValueError(f"empty sample {sample.sample_id}")
+        for token in sample.tokens:
+            if not 0 <= token <= 0xFFFFFFFF:
+                raise ValueError(f"token out of uint32 range: {token}")
+            payload.extend(TOKEN.pack(token))
+        entries.append(
+            IndexEntry(sample.sample_id, sample.source, token_offset, len(sample.tokens))
+        )
+        token_offset += len(sample.tokens)
+    header = HEADER.pack(MAGIC, VERSION, 1, token_offset)
+    write_atomic(bin_path, header + bytes(payload))
+    index_value = {
+        "format": "token-shard-index-v1",
+        "recipe_id": RECIPE_ID,
+        "shard_name": shard_name,
+        "parent_bin_sha256": sha256_file(bin_path),
+        "entries": [asdict(entry) for entry in entries],
+    }
+    write_atomic(
+        idx_path,
+        (json.dumps(index_value, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8"),
+    )
+    return {
+        "shard_id": canonical_digest([entry.sample_id for entry in entries])[:24],
+        "bin_file": bin_path.name,
+        "index_file": idx_path.name,
+        "bin_bytes": bin_path.stat().st_size,
+        "samples": len(entries),
+        "tokens": token_offset,
+        "bin_sha256": sha256_file(bin_path),
+        "index_sha256": sha256_file(idx_path),
+    }
+
+
+def build_dataset(root: Path, samples: Iterable[Sample], target_tokens: int) -> dict[str, Any]:
+    root.mkdir(parents=True, exist_ok=True)
+    ordered = sorted(samples, key=lambda sample: sample.sample_id)
+    if len({sample.sample_id for sample in ordered}) != len(ordered):
+        raise ValueError("sample_id must be unique")
+    shards = []
+    current: list[Sample] = []
+    current_tokens = 0
+    for sample in ordered:
+        if current and current_tokens + len(sample.tokens) > target_tokens:
+            shards.append(write_shard(root, len(shards), current))
+            current = []
+            current_tokens = 0
+        current.append(sample)
+        current_tokens += len(sample.tokens)
+    if current:
+        shards.append(write_shard(root, len(shards), current))
+    manifest = {
+        "format": "token-shard-dataset-v1",
+        "recipe_id": RECIPE_ID,
+        "target_tokens": target_tokens,
+        "samples": sum(int(shard["samples"]) for shard in shards),
+        "tokens": sum(int(shard["tokens"]) for shard in shards),
+        "shards": shards,
+    }
+    manifest["dataset_digest"] = canonical_digest(manifest)
+    write_atomic(
+        root / "manifest.json",
+        (json.dumps(manifest, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode("utf-8"),
+    )
+    return manifest
+
+
+def validate_shard(root: Path, shard: dict[str, Any]) -> list[IndexEntry]:
+    bin_path = root / str(shard["bin_file"])
+    idx_path = root / str(shard["index_file"])
+    if sha256_file(bin_path) != shard["bin_sha256"]:
+        raise ValueError("bin digest mismatch")
+    if sha256_file(idx_path) != shard["index_sha256"]:
+        raise ValueError("index digest mismatch")
+    raw_index = json.loads(idx_path.read_text(encoding="utf-8"))
+    if raw_index["parent_bin_sha256"] != shard["bin_sha256"]:
+        raise ValueError("index parent digest mismatch")
+    with bin_path.open("rb") as handle:
+        magic, version, dtype_code, total_tokens = HEADER.unpack(handle.read(HEADER.size))
+    if magic != MAGIC or version != VERSION or dtype_code != 1:
+        raise ValueError("unsupported shard header")
+    if bin_path.stat().st_size != HEADER.size + total_tokens * TOKEN.size:
+        raise ValueError("shard length mismatch")
+    entries = [IndexEntry(**value) for value in raw_index["entries"]]
+    previous_end = 0
+    for entry in entries:
+        if entry.token_offset < previous_end:
+            raise ValueError("index offsets overlap or regress")
+        if entry.token_offset + entry.token_length > total_tokens:
+            raise ValueError("index entry out of bounds")
+        previous_end = entry.token_offset + entry.token_length
+    if len(entries) != shard["samples"]:
+        raise ValueError("sample count mismatch")
+    return entries
+
+
+def read_sample(root: Path, shard: dict[str, Any], entry: IndexEntry) -> tuple[int, ...]:
+    byte_offset = HEADER.size + entry.token_offset * TOKEN.size
+    byte_length = entry.token_length * TOKEN.size
+    with (root / str(shard["bin_file"])).open("rb") as handle:
+        handle.seek(byte_offset)
+        payload = handle.read(byte_length)
+    if len(payload) != byte_length:
+        raise ValueError("short range read")
+    return tuple(value[0] for value in struct.iter_unpack("<I", payload))
+
+
+def epoch_plan(
+    manifest: dict[str, Any], root: Path, epoch: int, seed: int
+) -> list[tuple[int, IndexEntry]]:
+    records: list[tuple[int, IndexEntry]] = []
+    for shard_number, shard in enumerate(manifest["shards"]):
+        for entry in validate_shard(root, shard):
+            records.append((shard_number, entry))
+    rng = random.Random(f"{manifest['dataset_digest']}:{epoch}:{seed}")
+    rng.shuffle(records)
+    return records
+
+
+def partition_plan(
+    plan: list[tuple[int, IndexEntry]], rank: int, world_size: int
+) -> list[tuple[int, IndexEntry]]:
+    if not 0 <= rank < world_size:
+        raise ValueError("invalid rank")
+    return plan[rank::world_size]
+
+
+def consume(
+    root: Path,
+    manifest: dict[str, Any],
+    plan: list[tuple[int, IndexEntry]],
+    start_cursor: int = 0,
+) -> tuple[list[tuple[str, tuple[int, ...]]], int]:
+    output = []
+    for cursor in range(start_cursor, len(plan)):
+        shard_number, entry = plan[cursor]
+        tokens = read_sample(root, manifest["shards"][shard_number], entry)
+        output.append((entry.sample_id, tokens))
+    return output, len(plan)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", default=None)
+    parser.add_argument("--world-size", type=int, default=3)
+    args = parser.parse_args()
+    temporary: tempfile.TemporaryDirectory[str] | None = None
+    if args.output:
+        root = Path(args.output)
+    else:
+        temporary = tempfile.TemporaryDirectory(prefix="token-shard-lab-")
+        root = Path(temporary.name)
+    samples = [
+        Sample(f"sample-{index:04d}", f"source-{index % 3}", tuple(range(index + 1, index + 7 + index % 5)))
+        for index in range(40)
+    ]
+    manifest = build_dataset(root, samples, target_tokens=55)
+    plan = epoch_plan(manifest, root, epoch=0, seed=2026)
+    all_ids: list[str] = []
+    resumed_digests = []
+    for rank in range(args.world_size):
+        rank_plan = partition_plan(plan, rank, args.world_size)
+        full, _ = consume(root, manifest, rank_plan)
+        split = len(rank_plan) // 2
+        first, cursor = consume(root, manifest, rank_plan[:split])
+        second, _ = consume(root, manifest, rank_plan, start_cursor=split)
+        resumed = first + second
+        if resumed != full:
+            raise RuntimeError("checkpoint recovery changed the consumption sequence")
+        all_ids.extend(sample_id for sample_id, _ in full)
+        resumed_digests.append(canonical_digest(resumed))
+    expected_ids = {sample.sample_id for sample in samples}
+    coverage_ok = len(all_ids) == len(set(all_ids)) == len(expected_ids) and set(all_ids) == expected_ids
+    report = {
+        "status": "passed" if coverage_ok else "failed",
+        "root": str(root),
+        "dataset_digest": manifest["dataset_digest"],
+        "shards": len(manifest["shards"]),
+        "samples": manifest["samples"],
+        "tokens": manifest["tokens"],
+        "world_size": args.world_size,
+        "coverage_ok": coverage_ok,
+        "rank_sequence_digests": resumed_digests,
+    }
+    print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
+    if not coverage_ok:
+        raise SystemExit(1)
+    if temporary is not None:
+        temporary.cleanup()
+
+
+if __name__ == "__main__":
+    main()

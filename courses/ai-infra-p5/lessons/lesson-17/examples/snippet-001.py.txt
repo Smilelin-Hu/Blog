@@ -1,0 +1,115 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import random
+from dataclasses import dataclass
+
+
+def stable_u64(*parts: object) -> int:
+    raw = "\x1f".join(str(part) for part in parts).encode("utf-8")
+    return int.from_bytes(hashlib.sha256(raw).digest()[:8], "big")
+
+
+def build_shards(sample_ids: list[str], partitions: int, target: int) -> list[list[str]]:
+    buckets = [[] for _ in range(partitions)]
+    for sample_id in sample_ids:
+        buckets[stable_u64("partition", sample_id) % partitions].append(sample_id)
+    shards = []
+    for bucket_id, bucket in enumerate(buckets):
+        ordered = sorted(bucket)
+        for start in range(0, len(ordered), target):
+            shards.append(ordered[start:start + target])
+    return shards
+
+
+@dataclass
+class State:
+    source_pos: int
+    buffer: list[str]
+    rng_state: tuple
+    emitted: int
+
+
+class BufferedShuffle:
+    def __init__(self, source: list[str], size: int, seed: int) -> None:
+        self.source = source
+        self.size = size
+        self.rng = random.Random(seed)
+        self.source_pos = 0
+        self.buffer: list[str] = []
+        self.emitted = 0
+
+    def next(self) -> str:
+        while len(self.buffer) < self.size and self.source_pos < len(self.source):
+            self.buffer.append(self.source[self.source_pos])
+            self.source_pos += 1
+        if not self.buffer:
+            raise StopIteration
+        index = self.rng.randrange(len(self.buffer))
+        value = self.buffer.pop(index)
+        self.emitted += 1
+        return value
+
+    def save(self) -> State:
+        return State(self.source_pos, self.buffer[:], self.rng.getstate(), self.emitted)
+
+    def restore(self, state: State) -> None:
+        self.source_pos = state.source_pos
+        self.buffer = state.buffer[:]
+        self.rng.setstate(state.rng_state)
+        self.emitted = state.emitted
+
+
+def logical_source(shards: list[list[str]], seed: int, rank: int, world: int) -> list[str]:
+    order = list(range(len(shards)))
+    random.Random(stable_u64(seed, "shards")).shuffle(order)
+    owned = [index for position, index in enumerate(order) if position % world == rank]
+    result = []
+    for shard_index in owned:
+        members = shards[shard_index][:]
+        random.Random(stable_u64(seed, "members", shard_index)).shuffle(members)
+        result.extend(members)
+    return result
+
+
+def consume(stream: BufferedShuffle, limit: int | None = None) -> list[str]:
+    output = []
+    while limit is None or len(output) < limit:
+        try:
+            output.append(stream.next())
+        except StopIteration:
+            break
+    return output
+
+
+def digest(values: list[str]) -> str:
+    return hashlib.sha256("\n".join(values).encode()).hexdigest()
+
+
+def main() -> None:
+    sample_ids = [f"sample-{i:05d}" for i in range(1000)]
+    shards = build_shards(sample_ids, partitions=17, target=37)
+    reports = []
+    rank_outputs = []
+    for rank in range(2):
+        source = logical_source(shards, seed=20260822, rank=rank, world=2)
+        uninterrupted = BufferedShuffle(source, size=41, seed=stable_u64("buffer", rank))
+        expected = consume(uninterrupted)
+
+        interrupted = BufferedShuffle(source, size=41, seed=stable_u64("buffer", rank))
+        prefix = consume(interrupted, 123)
+        saved = interrupted.save()
+        restored = BufferedShuffle(source, size=41, seed=stable_u64("buffer", rank))
+        restored.restore(saved)
+        actual = prefix + consume(restored)
+        assert actual == expected
+        rank_outputs.append(set(actual))
+        reports.append({"rank": rank, "count": len(actual), "digest": digest(actual)})
+    assert not (rank_outputs[0] & rank_outputs[1])
+    assert rank_outputs[0] | rank_outputs[1] == set(sample_ids)
+    print(json.dumps({"status": "passed", "ranks": reports}, indent=2))
+
+
+if __name__ == "__main__":
+    main()

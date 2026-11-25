@@ -1,0 +1,33 @@
+{
+  "edges": [
+    [
+      "src-a",
+      "doc-a"
+    ],
+    [
+      "doc-a",
+      "sample-a"
+    ],
+    [
+      "sample-a",
+      "dataset-v2"
+    ],
+    [
+      "dataset-v2",
+      "run-7"
+    ],
+    [
+      "run-7",
+      "checkpoint-7"
+    ]
+  ],
+  "withdraw": "src-a",
+  "expected_affected": [
+    "src-a",
+    "doc-a",
+    "sample-a",
+    "dataset-v2",
+    "run-7",
+    "checkpoint-7"
+  ]
+}

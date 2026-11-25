@@ -123,4 +123,4 @@ llm_input = projector_mlp(vision_features)
 
 ## 写在最后
 
-BLIP-2 与 LLaVA 仍属于「连接」范式——视觉编码器与 LLM 各自独立、靠适配器拼接。下一篇[原生统一架构与简化Omni](3-原生统一架构与简化Omni)看 Flamingo、Chameleon、GPT-4o 如何走向单一网络，并用 Chameleon 的「一切皆 Token」思路亲手搭一个简化版 Omni。
+BLIP-2 与 LLaVA 仍属于「连接」范式——视觉编码器与 LLM 各自独立、靠适配器拼接。下一篇[原生统一架构与简化Omni](/source/大模型/多模态篇/3-原生统一架构与简化Omni)看 Flamingo、Chameleon、GPT-4o 如何走向单一网络，并用 Chameleon 的「一切皆 Token」思路亲手搭一个简化版 Omni。

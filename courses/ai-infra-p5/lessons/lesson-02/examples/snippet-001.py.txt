@@ -1,0 +1,330 @@
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import math
+import random
+import re
+import statistics
+import unicodedata
+from collections import Counter, defaultdict
+from dataclasses import dataclass
+from typing import Dict, Iterable, List, Sequence, Set, Tuple
+
+
+TOKEN_RE = re.compile(r"[\u3400-\u9fff]|[A-Za-z]+|\d+|[^\s]")
+
+
+@dataclass(frozen=True)
+class Document:
+    doc_id: str
+    source: str
+    domain: str
+    text: str
+    parse_ok: bool
+    license_ok: bool
+    safety_ok: bool
+    completeness: float
+    naturalness: float
+    educational: float
+    trustworthiness: float
+
+
+class UnionFind:
+    def __init__(self, items: Iterable[str]) -> None:
+        self.parent = {item: item for item in items}
+
+    def find(self, item: str) -> str:
+        root = item
+        while self.parent[root] != root:
+            root = self.parent[root]
+        while self.parent[item] != item:
+            parent = self.parent[item]
+            self.parent[item] = root
+            item = parent
+        return root
+
+    def union(self, left: str, right: str) -> None:
+        left_root = self.find(left)
+        right_root = self.find(right)
+        if left_root != right_root:
+            self.parent[right_root] = left_root
+
+
+def normalize(text: str) -> str:
+    text = unicodedata.normalize("NFKC", text).lower()
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def tokenize(text: str) -> List[str]:
+    return TOKEN_RE.findall(normalize(text))
+
+
+def stable_hash(text: str) -> str:
+    return hashlib.sha256(normalize(text).encode("utf-8")).hexdigest()
+
+
+def shingles(text: str, width: int = 5) -> Set[str]:
+    tokens = tokenize(text)
+    if len(tokens) < width:
+        return {"\u241f".join(tokens)} if tokens else set()
+    return {
+        "\u241f".join(tokens[index:index + width])
+        for index in range(len(tokens) - width + 1)
+    }
+
+
+def jaccard(left: Set[str], right: Set[str]) -> float:
+    if not left and not right:
+        return 1.0
+    union = left | right
+    return len(left & right) / len(union) if union else 0.0
+
+
+def quality(document: Document) -> float:
+    score = (
+        0.25 * document.completeness
+        + 0.20 * document.naturalness
+        + 0.30 * document.educational
+        + 0.25 * document.trustworthiness
+    )
+    return min(1.0, max(0.0, score))
+
+
+def eligible(document: Document) -> bool:
+    return (
+        document.parse_ok
+        and document.license_ok
+        and document.safety_ok
+        and len(tokenize(document.text)) >= 8
+    )
+
+
+def build_demo_documents() -> List[Document]:
+    rows = [
+        ("d01", "docs-a", "systems", "分布式检查点必须同时保存模型、优化器、数据游标和随机数状态。", 0.96),
+        ("d02", "mirror-a", "systems", "分布式检查点必须同时保存模型、优化器、数据游标和随机数状态。", 0.88),
+        ("d03", "docs-b", "systems", "可靠的分布式检查点需要保存模型参数、优化器状态、数据读取游标以及随机数状态。", 0.94),
+        ("d04", "math-a", "mathematics", "证明一个结论时，需要写出前提、推导步骤、边界条件与可验证结果。", 0.97),
+        ("d05", "math-b", "mathematics", "反例能够说明命题缺少什么条件，也能界定结论成立的范围。", 0.95),
+        ("d06", "code-a", "code", "单元测试不仅检查成功路径，还应覆盖异常、超时、重试和幂等语义。", 0.94),
+        ("d07", "code-b", "code", "调用接口后检查返回值。首页 首页 首页 点击这里 点击这里。", 0.48),
+        ("d08", "forum-a", "dialogue", "用户说任务偶发失败，工程师先核对时间窗口，再关联请求标识与服务日志。", 0.86),
+        ("d09", "forum-b", "dialogue", "任务偶尔失败时，先确认发生时间，再用请求标识关联上下游日志。", 0.84),
+        ("d10", "bad-a", "unknown", "\ufffd\ufffd\ufffd script menu menu menu 12345", 0.12),
+        ("d11", "legal-a", "systems", "一份内容即使技术正确，如果许可不允许训练，也不能进入可训练资产。", 0.92),
+        ("d12", "unsafe-a", "security", "这条记录用于演示硬门禁优先于质量分。", 0.99),
+    ]
+    documents = []
+    for doc_id, source, domain, text, base_quality in rows:
+        documents.append(
+            Document(
+                doc_id=doc_id,
+                source=source,
+                domain=domain,
+                text=text,
+                parse_ok=doc_id != "d10",
+                license_ok=doc_id != "d11",
+                safety_ok=doc_id != "d12",
+                completeness=base_quality,
+                naturalness=min(1.0, base_quality + 0.02),
+                educational=max(0.0, base_quality - 0.01),
+                trustworthiness=base_quality,
+            )
+        )
+    return documents
+
+
+def exact_clusters(documents: Sequence[Document]) -> Dict[str, List[Document]]:
+    clusters: Dict[str, List[Document]] = defaultdict(list)
+    for document in documents:
+        clusters[stable_hash(document.text)].append(document)
+    return clusters
+
+
+def lexical_clusters(
+    documents: Sequence[Document], threshold: float
+) -> List[List[Document]]:
+    union_find = UnionFind(document.doc_id for document in documents)
+    shingle_map = {document.doc_id: shingles(document.text) for document in documents}
+    for left_index, left in enumerate(documents):
+        for right in documents[left_index + 1:]:
+            if jaccard(shingle_map[left.doc_id], shingle_map[right.doc_id]) >= threshold:
+                union_find.union(left.doc_id, right.doc_id)
+    grouped: Dict[str, List[Document]] = defaultdict(list)
+    by_id = {document.doc_id: document for document in documents}
+    for doc_id in by_id:
+        grouped[union_find.find(doc_id)].append(by_id[doc_id])
+    return list(grouped.values())
+
+
+def select_representative(cluster: Sequence[Document]) -> Document:
+    source_priority = {"docs-a": 4, "docs-b": 4, "math-a": 4, "math-b": 4}
+    return max(
+        cluster,
+        key=lambda document: (
+            quality(document),
+            source_priority.get(document.source, 1),
+            len(tokenize(document.text)),
+            document.doc_id,
+        ),
+    )
+
+
+def effective_tokens(
+    representatives: Sequence[Document], domain_weights: Dict[str, float]
+) -> float:
+    return sum(
+        len(tokenize(document.text))
+        * quality(document)
+        * domain_weights.get(document.domain, 0.5)
+        for document in representatives
+    )
+
+
+def bootstrap_interval(
+    representatives: Sequence[Document],
+    domain_weights: Dict[str, float],
+    iterations: int,
+    seed: int,
+) -> Tuple[float, float]:
+    rng = random.Random(seed)
+    if not representatives:
+        return 0.0, 0.0
+    values = []
+    for _ in range(iterations):
+        sample = [rng.choice(representatives) for _ in representatives]
+        values.append(effective_tokens(sample, domain_weights))
+    values.sort()
+    low_index = int(0.025 * (len(values) - 1))
+    high_index = int(0.975 * (len(values) - 1))
+    return values[low_index], values[high_index]
+
+
+def domain_entropy(documents: Sequence[Document]) -> Tuple[float, float]:
+    counts = Counter(document.domain for document in documents)
+    total = sum(counts.values())
+    entropy = -sum((count / total) * math.log(count / total) for count in counts.values())
+    return entropy, math.exp(entropy)
+
+
+def source_value_proxy(
+    representatives: Sequence[Document], domain_weights: Dict[str, float]
+) -> List[Dict[str, float]]:
+    all_shingles = {document.doc_id: shingles(document.text) for document in representatives}
+    frequency = Counter(
+        shingle
+        for document_shingles in all_shingles.values()
+        for shingle in document_shingles
+    )
+    values = []
+    for document in representatives:
+        novelty = sum(1.0 / frequency[item] for item in all_shingles[document.doc_id])
+        score = novelty * quality(document) * domain_weights.get(document.domain, 0.5)
+        values.append({
+            "doc_id": document.doc_id,
+            "source": document.source,
+            "proxy_value": round(score, 4),
+        })
+    return sorted(values, key=lambda row: row["proxy_value"], reverse=True)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--jaccard-threshold", type=float, default=0.45)
+    parser.add_argument("--bootstrap", type=int, default=2000)
+    parser.add_argument("--seed", type=int, default=20260821)
+    args = parser.parse_args()
+
+    documents = build_demo_documents()
+    eligible_documents = [document for document in documents if eligible(document)]
+    exact = exact_clusters(eligible_documents)
+    lexical = lexical_clusters(eligible_documents, args.jaccard_threshold)
+    representatives = [select_representative(cluster) for cluster in lexical]
+    domain_weights = {
+        "mathematics": 1.25,
+        "code": 1.15,
+        "systems": 1.00,
+        "dialogue": 0.90,
+        "security": 1.05,
+        "unknown": 0.20,
+    }
+
+    raw_tokens = sum(len(tokenize(document.text)) for document in documents)
+    eligible_tokens = sum(len(tokenize(document.text)) for document in eligible_documents)
+    exact_unique_tokens = sum(
+        len(tokenize(select_representative(cluster).text))
+        for cluster in exact.values()
+    )
+    lexical_unique_tokens = sum(len(tokenize(document.text)) for document in representatives)
+    effective = effective_tokens(representatives, domain_weights)
+    low, high = bootstrap_interval(
+        representatives,
+        domain_weights,
+        iterations=args.bootstrap,
+        seed=args.seed,
+    )
+    entropy, effective_domains = domain_entropy(representatives)
+
+    report = {
+        "metric_contract": {
+            "tokenizer": "course_regex_tokenizer_v1",
+            "normalizer": "unicode_nfkc_lower_whitespace_v1",
+            "lexical_similarity": "token_5_shingle_jaccard",
+            "jaccard_threshold": args.jaccard_threshold,
+            "effective_token_formula": "representative_tokens * quality * domain_weight",
+        },
+        "funnel": {
+            "raw_documents": len(documents),
+            "raw_tokens": raw_tokens,
+            "eligible_documents": len(eligible_documents),
+            "eligible_tokens": eligible_tokens,
+            "exact_unique_documents": len(exact),
+            "exact_unique_tokens": exact_unique_tokens,
+            "lexical_unique_documents": len(representatives),
+            "lexical_unique_tokens": lexical_unique_tokens,
+            "data_effective_tokens": round(effective, 3),
+        },
+        "ratios": {
+            "eligible_token_ratio": round(eligible_tokens / raw_tokens, 4),
+            "lexical_unique_ratio_of_eligible": round(
+                lexical_unique_tokens / eligible_tokens, 4
+            ),
+            "effective_ratio_of_raw": round(effective / raw_tokens, 4),
+        },
+        "clusters": [
+            {
+                "members": [document.doc_id for document in cluster],
+                "representative": select_representative(cluster).doc_id,
+            }
+            for cluster in lexical
+        ],
+        "coverage": {
+            "domain_counts": dict(Counter(document.domain for document in representatives)),
+            "domain_entropy": round(entropy, 4),
+            "effective_domain_count": round(effective_domains, 4),
+        },
+        "uncertainty": {
+            "bootstrap_95_interval": [round(low, 3), round(high, 3)],
+            "iterations": args.bootstrap,
+            "limitation": "only document resampling uncertainty; excludes scorer and source bias",
+        },
+        "source_value_proxy": source_value_proxy(representatives, domain_weights),
+        "rejected": [
+            {
+                "doc_id": document.doc_id,
+                "parse_ok": document.parse_ok,
+                "license_ok": document.license_ok,
+                "safety_ok": document.safety_ok,
+            }
+            for document in documents
+            if not eligible(document)
+        ],
+    }
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

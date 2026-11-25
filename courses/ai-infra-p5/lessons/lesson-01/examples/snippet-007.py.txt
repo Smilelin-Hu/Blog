@@ -1,0 +1,54 @@
+import json
+import subprocess
+import unittest
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parent
+OUTPUT = ROOT / "outputs"
+
+
+class LineageTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        subprocess.run(
+            ["python3", str(ROOT / "build_lineage.py")],
+            check=True,
+            cwd=ROOT,
+        )
+
+    def read_jsonl(self, name: str) -> list[dict]:
+        with (OUTPUT / name).open("r", encoding="utf-8") as handle:
+            return [json.loads(line) for line in handle if line.strip()]
+
+    def test_counts(self) -> None:
+        self.assertEqual(len(self.read_jsonl("documents.jsonl")), 3)
+        self.assertEqual(len(self.read_jsonl("samples.jsonl")), 3)
+        self.assertEqual(len(self.read_jsonl("sequences.jsonl")), 3)
+        self.assertEqual(len(self.read_jsonl("lineage.jsonl")), 9)
+
+    def test_pii_is_redacted(self) -> None:
+        documents = self.read_jsonl("documents.jsonl")
+        joined = "\n".join(row["text"] for row in documents)
+        self.assertNotIn("user@example.invalid", joined)
+        self.assertIn("<EMAIL_REDACTED>", joined)
+
+    def test_every_sample_has_parent(self) -> None:
+        documents = {
+            row["document_id"]
+            for row in self.read_jsonl("documents.jsonl")
+        }
+        for sample in self.read_jsonl("samples.jsonl"):
+            self.assertIn(sample["parent_document_id"], documents)
+
+    def test_every_sequence_has_sample(self) -> None:
+        samples = {
+            row["sample_id"]
+            for row in self.read_jsonl("samples.jsonl")
+        }
+        for sequence in self.read_jsonl("sequences.jsonl"):
+            self.assertTrue(set(sequence["parent_sample_ids"]).issubset(samples))
+
+
+if __name__ == "__main__":
+    unittest.main()

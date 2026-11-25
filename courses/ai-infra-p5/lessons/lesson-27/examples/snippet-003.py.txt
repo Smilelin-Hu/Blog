@@ -1,0 +1,397 @@
+# real/cuda_role_split.py
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import multiprocessing as mp
+import os
+import queue
+import re
+import time
+from typing import Dict, List, Tuple
+
+
+def emit(event: str, **fields: object) -> None:
+    print(json.dumps({"event": event, "ts": time.time(), **fields},
+                     ensure_ascii=False, sort_keys=True), flush=True)
+
+
+def sha_state(state: Dict[str, object]) -> str:
+    import torch
+    h = hashlib.sha256()
+    for key in sorted(state):
+        h.update(key.encode())
+        tensor = state[key].detach().cpu().contiguous()
+        h.update(tensor.numpy().tobytes())
+    return h.hexdigest()
+
+
+def cpu_state(state: Dict[str, object]) -> Dict[str, object]:
+    return {k: v.detach().cpu().clone() for k, v in state.items()}
+
+
+def parse_final(text: str) -> Tuple[str, float]:
+    matches = re.findall(r"FINAL\s*:\s*([-+]?\d+)", text)
+    if len(matches) != 1:
+        return "parser_reject", 0.0
+    return matches[0], 1.0
+
+
+def response_logprobs(logits, input_ids):
+    import torch
+    shifted = torch.log_softmax(logits[:, :-1].float(), dim=-1)
+    targets = input_ids[:, 1:]
+    return torch.gather(shifted, -1, targets.unsqueeze(-1)).squeeze(-1)
+
+
+def load_policy(model_path: str, device: int, target_modules: List[str], rank: int):
+    import torch
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+    from peft import LoraConfig, get_peft_model
+
+    torch.cuda.set_device(device)
+    torch.manual_seed(1234)
+    tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path,
+        local_files_only=True,
+        torch_dtype=torch.float16,
+    ).to(f"cuda:{device}")
+    config = LoraConfig(
+        r=rank,
+        lora_alpha=2 * rank,
+        lora_dropout=0.0,
+        target_modules=target_modules,
+        task_type="CAUSAL_LM",
+    )
+    model = get_peft_model(model, config)
+    return tokenizer, model
+
+
+def rollout_process(args, command_q, trajectory_q, metric_q, weight_q):
+    import torch
+    from peft import set_peft_model_state_dict
+
+    tokenizer, model = load_policy(
+        args.model_path, 0, args.target_modules.split(","), args.lora_rank
+    )
+    model.eval()
+    active_version = -1
+    while True:
+        command = command_q.get()
+        if command["type"] == "stop":
+            break
+        if command["type"] != "generate":
+            continue
+
+        sync_start = time.perf_counter()
+        latest = None
+        while True:
+            try:
+                latest = weight_q.get_nowait()
+            except queue.Empty:
+                break
+        if latest is not None:
+            set_peft_model_state_dict(model, latest["state"])
+            active_version = int(latest["version"])
+            torch.cuda.synchronize(0)
+            metric_q.put({
+                "role": "rollout",
+                "metric": "weight_sync_seconds",
+                "value": time.perf_counter() - sync_start,
+                "policy_version": active_version,
+                "state_hash": latest["hash"],
+            })
+        expected = int(command["policy_version"])
+        if active_version != expected:
+            trajectory_q.put({
+                "status": "version_error",
+                "active_version": active_version,
+                "expected_version": expected,
+            })
+            continue
+
+        prompts = command["prompts"]
+        group_size = int(command["group_size"])
+        for prompt_index, prompt in enumerate(prompts):
+            encoded = tokenizer(prompt, return_tensors="pt")
+            input_ids = encoded.input_ids.to("cuda:0")
+            prompt_len = int(input_ids.shape[1])
+            for member in range(group_size):
+                started = time.perf_counter()
+                generator = torch.Generator(device="cuda:0")
+                generator.manual_seed(command["seed"] + prompt_index * 100 + member)
+                with torch.no_grad():
+                    output = model.generate(
+                        input_ids,
+                        max_new_tokens=args.max_new_tokens,
+                        do_sample=True,
+                        temperature=0.8,
+                        top_p=0.95,
+                        pad_token_id=tokenizer.pad_token_id,
+                        generator=generator,
+                    )
+                    logits = model(output).logits
+                    old = response_logprobs(logits, output)[0]
+                torch.cuda.synchronize(0)
+                elapsed = time.perf_counter() - started
+                text = tokenizer.decode(output[0, prompt_len:], skip_special_tokens=True)
+                parsed, format_reward = parse_final(text)
+                expected_answer = int(command["answers"][prompt_index])
+                correct = 1.0 if format_reward and int(parsed) == expected_answer else 0.0
+                row = {
+                    "status": "ok",
+                    "group_id": f"round-{command['round']}-prompt-{prompt_index}",
+                    "member_id": f"r{command['round']}-p{prompt_index}-m{member}",
+                    "policy_version": active_version,
+                    "input_ids": output[0].cpu(),
+                    "prompt_len": prompt_len,
+                    "old_logprobs": old[prompt_len - 1:].cpu(),
+                    "reward": correct,
+                    "reward_components": {
+                        "format": format_reward,
+                        "correct": correct,
+                    },
+                    "text": text,
+                    "generated_tokens": int(output.shape[1] - prompt_len),
+                    "rollout_seconds": elapsed,
+                    "enqueued_at": time.time(),
+                }
+                trajectory_q.put(row)
+
+    metric_q.put({"role": "rollout", "metric": "stopped", "value": 1})
+
+
+def trainer_process(args, batch_q, result_q, metric_q, weight_q):
+    import torch
+    from peft import get_peft_model_state_dict
+
+    tokenizer, model = load_policy(
+        args.model_path, 1, args.target_modules.split(","), args.lora_rank
+    )
+    model.train()
+    optimizer = torch.optim.AdamW(
+        [p for p in model.parameters() if p.requires_grad], lr=args.learning_rate
+    )
+    policy_version = 0
+
+    def publish(version: int) -> None:
+        started = time.perf_counter()
+        state = cpu_state(get_peft_model_state_dict(model))
+        state_hash = sha_state(state)
+        weight_q.put({"version": version, "state": state, "hash": state_hash})
+        metric_q.put({
+            "role": "trainer",
+            "metric": "weight_publish_seconds",
+            "value": time.perf_counter() - started,
+            "policy_version": version,
+            "state_hash": state_hash,
+            "bytes": sum(v.numel() * v.element_size() for v in state.values()),
+        })
+
+    publish(policy_version)
+    while True:
+        batch = batch_q.get()
+        if batch["type"] == "stop":
+            break
+        rows = batch["rows"]
+        behavior_versions = {int(x["policy_version"]) for x in rows}
+        if len(behavior_versions) != 1:
+            result_q.put({"status": "mixed_policy_versions"})
+            continue
+        behavior_version = next(iter(behavior_versions))
+        if behavior_version != policy_version:
+            result_q.put({
+                "status": "policy_lag_reject",
+                "behavior_version": behavior_version,
+                "trainer_version": policy_version,
+            })
+            continue
+
+        rewards_by_group: Dict[str, List[float]] = {}
+        for row in rows:
+            rewards_by_group.setdefault(row["group_id"], []).append(float(row["reward"]))
+        advantages: Dict[str, List[float]] = {}
+        for gid, rewards in rewards_by_group.items():
+            values = torch.tensor(rewards, dtype=torch.float32)
+            std = values.std(unbiased=False)
+            adv = torch.zeros_like(values) if std < 1e-8 else (values - values.mean()) / std
+            advantages[gid] = adv.tolist()
+        offsets = {gid: 0 for gid in advantages}
+
+        optimizer.zero_grad(set_to_none=True)
+        loss_sum = torch.zeros((), device="cuda:0", dtype=torch.float32)
+        valid_tokens = 0
+        ratio_abs_error = []
+        train_started = time.perf_counter()
+        queue_waits = []
+        for row in rows:
+            ids = row["input_ids"].unsqueeze(0).to("cuda:0")
+            out = model(ids)
+            current = response_logprobs(out.logits, ids)[0]
+            start = int(row["prompt_len"]) - 1
+            current = current[start:]
+            old = row["old_logprobs"].to("cuda:0", dtype=torch.float32)
+            if current.shape != old.shape:
+                raise RuntimeError(f"logprob shape mismatch: {current.shape} vs {old.shape}")
+            ratio = torch.exp(current.float() - old)
+            ratio_abs_error.append(float((ratio - 1.0).abs().mean().detach().cpu()))
+            idx = offsets[row["group_id"]]
+            advantage = float(advantages[row["group_id"]][idx])
+            offsets[row["group_id"]] += 1
+            # 初始单步系统实验采用未裁剪代理目标；第25课实现完整目标。
+            loss_sum = loss_sum - (current.float() * advantage).sum()
+            valid_tokens += int(current.numel())
+            queue_waits.append(time.time() - float(row["enqueued_at"]))
+
+        loss = loss_sum / max(valid_tokens, 1)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        optimizer.step()
+        torch.cuda.synchronize(1)
+        train_seconds = time.perf_counter() - train_started
+        policy_version += 1
+        publish(policy_version)
+        result_q.put({
+            "status": "updated",
+            "policy_version": policy_version,
+            "loss": float(loss.detach().cpu()),
+            "valid_tokens": valid_tokens,
+            "mean_initial_ratio_abs_error": sum(ratio_abs_error) / len(ratio_abs_error),
+            "mean_queue_wait_seconds": sum(queue_waits) / len(queue_waits),
+            "train_seconds": train_seconds,
+            "peak_memory_bytes": int(torch.cuda.max_memory_allocated(1)),
+        })
+
+    metric_q.put({"role": "trainer", "metric": "stopped", "value": 1})
+
+
+def wait_initial_weight(weight_q, timeout: float = 300.0):
+    started = time.time()
+    while time.time() - started < timeout:
+        try:
+            return weight_q.get(timeout=1.0)
+        except queue.Empty:
+            pass
+    raise TimeoutError("trainer did not publish initial adapter")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model-path", required=True)
+    parser.add_argument("--target-modules", default="q_proj,v_proj")
+    parser.add_argument("--lora-rank", type=int, default=8)
+    parser.add_argument("--max-new-tokens", type=int, default=32)
+    parser.add_argument("--learning-rate", type=float, default=1e-5)
+    parser.add_argument("--rounds", type=int, default=3)
+    parser.add_argument("--group-size", type=int, default=2)
+    args = parser.parse_args()
+
+    try:
+        import torch
+        import transformers
+        import peft
+    except ImportError as exc:
+        print(json.dumps({"status": "skipped", "reason": f"missing_dependency:{exc}"}))
+        return
+    if not os.path.isdir(args.model_path):
+        print(json.dumps({"status": "skipped", "reason": "local_model_path_not_found"}))
+        return
+    if not torch.cuda.is_available() or torch.cuda.device_count() < 1:
+        print(json.dumps({
+            "status": "skipped",
+            "reason": "requires_two_cuda_devices",
+            "visible_cuda_devices": torch.cuda.device_count(),
+        }))
+        return
+
+    ctx = mp.get_context("spawn")
+    command_q = ctx.Queue()
+    trajectory_q = ctx.Queue()
+    batch_q = ctx.Queue()
+    result_q = ctx.Queue()
+    metric_q = ctx.Queue()
+    trainer_to_controller_q = ctx.Queue()
+    rollout_weight_q = ctx.Queue()
+
+    # Trainer 先将 Adapter 发给 Controller，Controller 再转给 Rollout，避免两个消费者抢同一消息。
+    trainer = ctx.Process(
+        target=trainer_process,
+        args=(args, batch_q, result_q, metric_q, trainer_to_controller_q),
+    )
+    rollout = ctx.Process(
+        target=rollout_process,
+        args=(args, command_q, trajectory_q, metric_q, rollout_weight_q),
+    )
+    trainer.start()
+    rollout.start()
+
+    initial = wait_initial_weight(trainer_to_controller_q)
+    rollout_weight_q.put(initial)
+    policy_version = int(initial["version"])
+    prompts = [
+        "Compute 17 + 25. End with exactly FINAL: <integer>\nAnswer:",
+        "Compute 9 * 7. End with exactly FINAL: <integer>\nAnswer:",
+    ]
+    answers = [42, 63]
+
+    all_results = []
+    try:
+        for round_id in range(args.rounds):
+            command_q.put({
+                "type": "generate",
+                "round": round_id,
+                "prompts": prompts,
+                "answers": answers,
+                "group_size": args.group_size,
+                "policy_version": policy_version,
+                "seed": 20_000 + round_id * 1000,
+            })
+            rows = []
+            expected = len(prompts) * args.group_size
+            for _ in range(expected):
+                row = trajectory_q.get(timeout=600)
+                if row.get("status") != "ok":
+                    raise RuntimeError(f"rollout failed: {row}")
+                rows.append(row)
+            batch_q.put({"type": "update", "rows": rows})
+            result = result_q.get(timeout=600)
+            emit("round_result", round=round_id, **result)
+            if result.get("status") != "updated":
+                raise RuntimeError(f"trainer failed: {result}")
+            policy_version = int(result["policy_version"])
+            latest = wait_initial_weight(trainer_to_controller_q)
+            if int(latest["version"]) != policy_version:
+                raise RuntimeError("published version mismatch")
+            rollout_weight_q.put(latest)
+            all_results.append(result)
+    finally:
+        command_q.put({"type": "stop"})
+        batch_q.put({"type": "stop"})
+        rollout.join(timeout=60)
+        trainer.join(timeout=60)
+        if rollout.is_alive():
+            rollout.terminate()
+        if trainer.is_alive():
+            trainer.terminate()
+
+    metrics = []
+    while True:
+        try:
+            metrics.append(metric_q.get_nowait())
+        except queue.Empty:
+            break
+    print(json.dumps({
+        "status": "ok",
+        "experiment_kind": "real_dual_gpu",
+        "device_requirement": "2 x CUDA GPU",
+        "rounds": all_results,
+        "metrics": metrics,
+    }, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

@@ -290,4 +290,4 @@ generator("I like eating fried", max_new_tokens=5, num_return_sequences=1)
 
 ## 写在最后
 
-两条路线的源头是「预训练语料从哪来、任务怎么自举」——下一篇[T5与HuggingFace生态](8-T5与HuggingFace生态)记录把一切任务统一成文本到文本的 T5，以及撑起整个预训练生态的 Hugging Face 工具箱。
+两条路线的源头是「预训练语料从哪来、任务怎么自举」——下一篇[T5与HuggingFace生态](/source/大模型/理论篇/8-T5与HuggingFace生态)记录把一切任务统一成文本到文本的 T5，以及撑起整个预训练生态的 Hugging Face 工具箱。

@@ -1,0 +1,23 @@
+{
+  "expected_bypasses": 1,
+  "cases": [
+    {
+      "id": "valid",
+      "answer": "42",
+      "canonical_answer": "42",
+      "weak_pattern": "42"
+    },
+    {
+      "id": "suffix-attack",
+      "answer": "not 42 but contains 42",
+      "canonical_answer": "42",
+      "weak_pattern": "42"
+    },
+    {
+      "id": "wrong",
+      "answer": "41",
+      "canonical_answer": "42",
+      "weak_pattern": "42"
+    }
+  ]
+}

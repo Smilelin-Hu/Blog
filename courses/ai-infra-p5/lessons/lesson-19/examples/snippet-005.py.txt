@@ -1,0 +1,213 @@
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import statistics
+import time
+from pathlib import Path
+
+try:
+    import torch
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+except Exception as exc:
+    print(json.dumps({"status": "skipped", "reason": f"dependency import failed: {exc}"}))
+    raise SystemExit(0)
+
+
+def skip(reason: str) -> None:
+    print(json.dumps({"status": "skipped", "reason": reason}, ensure_ascii=False))
+    raise SystemExit(0)
+
+
+def read_jsonl(path: Path) -> list[dict]:
+    rows = []
+    with path.open(encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            if "sample_id" not in row or "messages" not in row:
+                raise ValueError(f"invalid row at line {line_number}")
+            rows.append(row)
+    if not rows:
+        raise ValueError("dataset is empty")
+    return rows
+
+
+def apply_template_with_mask(tokenizer, messages: list[dict]) -> tuple[list[int], list[int]]:
+    try:
+        output = tokenizer.apply_chat_template(
+            messages,
+            tokenize=True,
+            add_generation_prompt=False,
+            return_dict=True,
+            return_assistant_tokens_mask=True,
+        )
+    except Exception as exc:
+        raise RuntimeError(f"chat template cannot return assistant mask: {exc}") from exc
+    input_ids = output["input_ids"]
+    mask = output.get("assistant_masks") or output.get("assistant_mask")
+    if mask is None:
+        raise RuntimeError("chat template did not return an assistant mask")
+    if input_ids and isinstance(input_ids[0], list):
+        input_ids = input_ids[0]
+    if mask and isinstance(mask[0], list):
+        mask = mask[0]
+    if len(input_ids) != len(mask):
+        raise RuntimeError("assistant mask length differs from input ids")
+    return list(input_ids), [int(value) for value in mask]
+
+
+def build_sequences(tokenizer, rows: list[dict], mode: str, max_length: int) -> list[dict]:
+    sequences = []
+    for row in rows:
+        input_ids, assistant_mask = apply_template_with_mask(tokenizer, row["messages"])
+        if len(input_ids) > max_length:
+            raise ValueError(
+                f"{row['sample_id']} exceeds max_length; this verifier refuses hard truncation"
+            )
+        if mode == "assistant_only":
+            labels = [token if active else -100 for token, active in zip(input_ids, assistant_mask)]
+        elif mode == "full_sequence":
+            labels = list(input_ids)
+        else:
+            raise ValueError("unknown mode")
+        supervised = sum(value != -100 for value in labels)
+        if supervised == 0:
+            raise ValueError(f"{row['sample_id']} has zero supervised tokens")
+        sequences.append({
+            "sample_id": row["sample_id"],
+            "input_ids": input_ids,
+            "labels": labels,
+            "assistant_mask": assistant_mask,
+            "supervised": supervised,
+        })
+    return sequences
+
+
+def collate(items: list[dict], pad_id: int) -> dict[str, torch.Tensor]:
+    max_length = max(len(item["input_ids"]) for item in items)
+    ids, labels, attention = [], [], []
+    for item in items:
+        padding = max_length - len(item["input_ids"])
+        ids.append(item["input_ids"] + [pad_id] * padding)
+        labels.append(item["labels"] + [-100] * padding)
+        attention.append([1] * len(item["input_ids"]) + [0] * padding)
+    return {
+        "input_ids": torch.tensor(ids, dtype=torch.long),
+        "labels": torch.tensor(labels, dtype=torch.long),
+        "attention_mask": torch.tensor(attention, dtype=torch.long),
+    }
+
+
+def token_loss_by_mask(model, batch: dict[str, torch.Tensor]) -> tuple[torch.Tensor, int]:
+    outputs = model(
+        input_ids=batch["input_ids"],
+        attention_mask=batch["attention_mask"],
+        use_cache=False,
+    )
+    logits = outputs.logits[:, :-1].contiguous()
+    targets = batch["labels"][:, 1:].contiguous()
+    valid = targets.ne(-100)
+    losses = torch.nn.functional.cross_entropy(
+        logits.view(-1, logits.shape[-1]),
+        targets.view(-1),
+        ignore_index=-100,
+        reduction="sum",
+    )
+    count = int(valid.sum().item())
+    return losses / max(count, 1), count
+
+
+def train_mode(model_path: str, tokenizer, rows: list[dict], mode: str, args) -> dict:
+    dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path,
+        local_files_only=True,
+        torch_dtype=dtype,
+    ).cuda()
+    model.config.use_cache = False
+    if args.gradient_checkpointing:
+        model.gradient_checkpointing_enable()
+    sequences = build_sequences(tokenizer, rows, mode, args.max_length)
+    batch = collate(sequences, tokenizer.pad_token_id).cuda()
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate)
+
+    torch.cuda.reset_peak_memory_stats()
+    durations, losses, supervised_counts = [], [], []
+    for step in range(args.steps + args.warmup):
+        optimizer.zero_grad(set_to_none=True)
+        started = time.perf_counter()
+        with torch.autocast("cuda", dtype=dtype):
+            loss, count = token_loss_by_mask(model, batch)
+        loss.backward()
+        optimizer.step()
+        torch.cuda.synchronize()
+        elapsed = time.perf_counter() - started
+        if step >= args.warmup:
+            durations.append(elapsed)
+            losses.append(float(loss.detach().cpu()))
+            supervised_counts.append(count)
+
+    peak = torch.cuda.max_memory_allocated() / 1024**2
+    median_step = statistics.median(durations)
+    total_supervised = sum(supervised_counts)
+    return {
+        "mode": mode,
+        "sequence_count": len(sequences),
+        "input_tokens_per_step": int(batch["attention_mask"].sum().item()),
+        "supervised_tokens_per_step": supervised_counts[0],
+        "supervised_fraction": supervised_counts[0] / int(batch["attention_mask"].sum().item()),
+        "first_measured_loss": losses[0],
+        "last_measured_loss": losses[-1],
+        "median_step_seconds": median_step,
+        "supervised_tokens_per_second": total_supervised / sum(durations),
+        "peak_memory_mib": peak,
+    }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model-path", required=True)
+    parser.add_argument("--data", required=True)
+    parser.add_argument("--steps", type=int, default=20)
+    parser.add_argument("--warmup", type=int, default=3)
+    parser.add_argument("--max-length", type=int, default=1024)
+    parser.add_argument("--learning-rate", type=float, default=1e-6)
+    parser.add_argument("--gradient-checkpointing", action="store_true")
+    args = parser.parse_args()
+
+    if not torch.cuda.is_available():
+        skip("CUDA GPU is not available")
+    if not Path(args.model_path).is_dir():
+        skip("model path is not a local directory")
+    if not Path(args.data).is_file():
+        skip("data JSONL does not exist")
+
+    tokenizer = AutoTokenizer.from_pretrained(args.model_path, local_files_only=True)
+    if not tokenizer.chat_template:
+        skip("local tokenizer has no reviewed chat template")
+    if tokenizer.pad_token_id is None:
+        if tokenizer.eos_token_id is None:
+            skip("tokenizer has neither pad nor eos token")
+        tokenizer.pad_token = tokenizer.eos_token
+
+    rows = read_jsonl(Path(args.data))
+    reports = []
+    for mode in ("full_sequence", "assistant_only"):
+        torch.manual_seed(20260821)
+        reports.append(train_mode(args.model_path, tokenizer, rows, mode, args))
+        torch.cuda.empty_cache()
+    print(json.dumps({
+        "status": "succeeded",
+        "device": torch.cuda.get_device_name(0),
+        "torch": torch.__version__,
+        "model_path": os.path.abspath(args.model_path),
+        "configuration": vars(args),
+        "reports": reports,
+    }, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

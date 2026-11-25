@@ -1,0 +1,195 @@
+{
+  "baseline": {
+    "verified_on": "2026-08-27",
+    "kuberay_stable": "v1.7.0",
+    "ray_stable": "2.58.0",
+    "stable_crds": [
+      "RayCluster",
+      "RayJob",
+      "RayService"
+    ],
+    "alpha_crds": [
+      "RayCronJob"
+    ]
+  },
+  "platform_policy": {
+    "require_image_digest": true,
+    "allowed_auth_modes": [
+      "token",
+      "kubernetes-rbac"
+    ],
+    "minimum_head_cpu": 2,
+    "max_worker_replicas": 20,
+    "max_gpu_per_worker": 8,
+    "required_queue": "team-a-localqueue",
+    "worker_pods_per_node": 2,
+    "min_worker_nodes": 1,
+    "max_worker_nodes": 10,
+    "raycronjob_alpha_enabled": false
+  },
+  "demands": [
+    {
+      "name": "idle",
+      "ongoing_requests": 0,
+      "logical_cpu": 0,
+      "logical_gpu": 0
+    },
+    {
+      "name": "steady",
+      "ongoing_requests": 24,
+      "logical_cpu": 8,
+      "logical_gpu": 2
+    },
+    {
+      "name": "burst",
+      "ongoing_requests": 80,
+      "logical_cpu": 24,
+      "logical_gpu": 8
+    }
+  ],
+  "workloads": [
+    {
+      "name": "reusable-development-cluster",
+      "mode": "interactive",
+      "isolation_per_run": false,
+      "image": "registry.training.invalid/ai/ray@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "auth_mode": "token",
+      "head_cpu": 2,
+      "gpu_per_worker": 1,
+      "queue": "team-a-localqueue",
+      "readiness_gate": false,
+      "expose_dashboard_publicly": false,
+      "worker": {
+        "min_replicas": 1,
+        "max_replicas": 10,
+        "cpu_per_pod": 4,
+        "gpu_per_pod": 1
+      }
+    },
+    {
+      "name": "isolated-batch-job",
+      "mode": "batch",
+      "isolation_per_run": true,
+      "image": "registry.training.invalid/ai/ray@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "auth_mode": "kubernetes-rbac",
+      "head_cpu": 2,
+      "gpu_per_worker": 1,
+      "queue": "team-a-localqueue",
+      "readiness_gate": false,
+      "expose_dashboard_publicly": false,
+      "worker": {
+        "min_replicas": 0,
+        "max_replicas": 10,
+        "cpu_per_pod": 4,
+        "gpu_per_pod": 1
+      }
+    },
+    {
+      "name": "online-inference-service",
+      "mode": "serve",
+      "isolation_per_run": false,
+      "image": "registry.training.invalid/ai/ray-serve@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "auth_mode": "token",
+      "head_cpu": 4,
+      "gpu_per_worker": 1,
+      "queue": "team-a-localqueue",
+      "readiness_gate": true,
+      "expose_dashboard_publicly": false,
+      "worker": {
+        "min_replicas": 1,
+        "max_replicas": 10,
+        "cpu_per_pod": 4,
+        "gpu_per_pod": 1
+      },
+      "serve": {
+        "min_replicas": 1,
+        "max_replicas": 8,
+        "target_ongoing_requests": 10,
+        "cpu_per_replica": 1,
+        "gpu_per_replica": 1
+      }
+    }
+  ],
+  "faults": [
+    {
+      "type": "mutable_image",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ImageDigestRequired"
+    },
+    {
+      "type": "public_dashboard",
+      "expected_phase": "REJECTED",
+      "expected_reason": "PublicDashboardForbidden"
+    },
+    {
+      "type": "missing_auth",
+      "expected_phase": "REJECTED",
+      "expected_reason": "AuthenticationRequired"
+    },
+    {
+      "type": "head_too_small",
+      "expected_phase": "REJECTED",
+      "expected_reason": "HeadCapacityTooSmall"
+    },
+    {
+      "type": "invalid_replica_range",
+      "expected_phase": "REJECTED",
+      "expected_reason": "InvalidWorkerReplicaRange"
+    },
+    {
+      "type": "worker_limit",
+      "expected_phase": "REJECTED",
+      "expected_reason": "WorkerReplicaLimitExceeded"
+    },
+    {
+      "type": "queue_bypass",
+      "expected_phase": "REJECTED",
+      "expected_reason": "RequiredQueueMissing"
+    },
+    {
+      "type": "raycronjob_gate_off",
+      "expected_phase": "REJECTED",
+      "expected_reason": "AlphaFeatureGateDisabled"
+    },
+    {
+      "type": "serve_without_readiness",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ServeReadinessGateRequired"
+    },
+    {
+      "type": "head_loss_without_gcs_ft",
+      "expected_phase": "FAILED",
+      "expected_reason": "ClusterStateLost"
+    },
+    {
+      "type": "node_pool_cannot_scale",
+      "expected_phase": "DEGRADED",
+      "expected_reason": "WorkerPodsPending"
+    },
+    {
+      "type": "insufficient_gpu_capacity",
+      "expected_phase": "DEGRADED",
+      "expected_reason": "UnsatisfiedLogicalGPUDemand"
+    },
+    {
+      "type": "upgrade_capacity_shortage",
+      "expected_phase": "BLOCKED",
+      "expected_reason": "PendingClusterInsufficientCapacity"
+    },
+    {
+      "type": "job_submission_timeout",
+      "expected_phase": "FAILED",
+      "expected_reason": "PreRunningDeadlineExceeded"
+    },
+    {
+      "type": "serve_initializing_timeout",
+      "expected_phase": "FAILED",
+      "expected_reason": "InitializingTimeout"
+    },
+    {
+      "type": "live_cluster_missing",
+      "expected_phase": "SKIPPED",
+      "expected_reason": "NoKubernetesContextProvided"
+    }
+  ]
+}

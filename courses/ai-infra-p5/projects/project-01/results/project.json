@@ -1,0 +1,65 @@
+{
+  "status": "passed",
+  "project_id": "project-01",
+  "components": [
+    {
+      "lesson": "lesson-04",
+      "status": "passed",
+      "metrics": {
+        "sources": 2,
+        "allowed": 1,
+        "rejected": 1
+      },
+      "fixture_sha256": "044b51906d447f8d6726259515ff8e53cd96baade858c2fd941f57bc6781cc5e"
+    },
+    {
+      "lesson": "lesson-05",
+      "status": "passed",
+      "metrics": {
+        "objects": 2,
+        "parsed": 1,
+        "rejected": 1
+      },
+      "fixture_sha256": "5838b094f6871135349b8dbfcffc9f99cbd4aee0794fb099d4d0868cdbac5c8f"
+    },
+    {
+      "lesson": "lesson-08",
+      "status": "passed",
+      "metrics": {
+        "records": 3,
+        "changed": 2,
+        "unsafe_controls": 1
+      },
+      "fixture_sha256": "b8cbfa240f8dab0597a1714c791be0ba8fd17ba3ab38ecc13773cab67264a100"
+    },
+    {
+      "lesson": "lesson-09",
+      "status": "passed",
+      "metrics": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 1,
+        "tn": 2,
+        "precision": 1.0,
+        "recall": 0.5
+      },
+      "fixture_sha256": "4b7f07b5ec29ac9ebef61c29c5ae0fb494f048fe163b0d831535b084c8fb68c8"
+    },
+    {
+      "lesson": "lesson-11",
+      "status": "passed",
+      "metrics": {
+        "documents": 3,
+        "candidate_pairs": [
+          {
+            "left": "doc-a",
+            "right": "doc-b",
+            "jaccard": 0.4444
+          }
+        ]
+      },
+      "fixture_sha256": "3ff89d4caec8f8bdea81c96c579999679aeaa90fbbed43aef0254eccb65cc1a7"
+    }
+  ],
+  "proof_boundary": "composed_mechanism_simulation_only"
+}

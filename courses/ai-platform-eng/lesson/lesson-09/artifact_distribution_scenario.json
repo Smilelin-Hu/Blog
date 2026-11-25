@@ -1,0 +1,185 @@
+{
+  "artifact_types": [
+    {
+      "name": "training-dataset",
+      "access": "read-many-streaming",
+      "mutability": "versioned",
+      "recommended_store": "object"
+    },
+    {
+      "name": "checkpoint",
+      "access": "periodic-write-and-restore",
+      "mutability": "append-version",
+      "recommended_store": "object"
+    },
+    {
+      "name": "model-weights",
+      "access": "immutable-read-many",
+      "mutability": "digest-pinned",
+      "recommended_store": "object-plus-local-cache"
+    },
+    {
+      "name": "container-image",
+      "access": "layered-read-many",
+      "mutability": "digest-pinned",
+      "recommended_store": "oci-registry"
+    },
+    {
+      "name": "pipeline-artifact",
+      "access": "small-object-and-metadata",
+      "mutability": "run-versioned",
+      "recommended_store": "object"
+    }
+  ],
+  "storage_products": {
+    "ceph-rbd": {
+      "semantics": "block",
+      "access_modes": [
+        "RWO"
+      ],
+      "durable": true
+    },
+    "cephfs": {
+      "semantics": "file",
+      "access_modes": [
+        "RWX"
+      ],
+      "durable": true
+    },
+    "s3-object": {
+      "semantics": "object",
+      "access_modes": [
+        "api"
+      ],
+      "durable": true
+    },
+    "local-nvme": {
+      "semantics": "local",
+      "access_modes": [
+        "node-local"
+      ],
+      "durable": false
+    },
+    "memory": {
+      "semantics": "memory",
+      "access_modes": [
+        "pod-local"
+      ],
+      "durable": false
+    }
+  },
+  "distribution": {
+    "artifact_size_gib": 120,
+    "nodes": 4,
+    "origin_bandwidth_gbps": 20,
+    "peer_bandwidth_gbps": 40,
+    "local_read_bandwidth_gbps": 25,
+    "strategies": [
+      {
+        "name": "remote-cold",
+        "expected_origin_egress_gib": 480,
+        "expected_startup_seconds": 192.0
+      },
+      {
+        "name": "warm-node-cache",
+        "expected_origin_egress_gib": 0,
+        "expected_startup_seconds": 38.4
+      },
+      {
+        "name": "prewarmed-cache",
+        "expected_origin_egress_gib": 480,
+        "expected_startup_seconds": 38.4
+      },
+      {
+        "name": "p2p",
+        "expected_origin_egress_gib": 120,
+        "expected_startup_seconds": 72.0
+      }
+    ]
+  },
+  "model_versions": {
+    "v1": {
+      "reference": "registry.example/model@sha256:v1",
+      "digest": "sha256:v1",
+      "content": "model-version-one"
+    },
+    "v2": {
+      "reference": "registry.example/model@sha256:v2",
+      "digest": "sha256:v2",
+      "content": "model-version-two"
+    },
+    "production_tag": "v2"
+  },
+  "faults": [
+    {
+      "name": "pvc-topology-unsatisfied",
+      "type": "pvc_pending",
+      "expected_phase": "Pending",
+      "expected_reason": "NoCompatibleStorageTopology"
+    },
+    {
+      "name": "volume-secret-missing",
+      "type": "mount_secret",
+      "expected_phase": "MountBlocked",
+      "expected_reason": "StorageCredentialUnavailable"
+    },
+    {
+      "name": "rwo-multi-attach",
+      "type": "multi_attach",
+      "access_mode": "RWO",
+      "nodes": 2,
+      "expected_phase": "MountBlocked",
+      "expected_reason": "ReadWriteOnceMultiAttach"
+    },
+    {
+      "name": "multipart-not-completed",
+      "type": "multipart_incomplete",
+      "expected_phase": "NotPublished",
+      "expected_reason": "MultipartUploadIncomplete"
+    },
+    {
+      "name": "checkpoint-pointer-before-manifest",
+      "type": "checkpoint_order",
+      "expected_phase": "RestoreBlocked",
+      "expected_reason": "CheckpointManifestUnavailable"
+    },
+    {
+      "name": "mutable-tag-stale-cache",
+      "type": "mutable_tag",
+      "cached_version": "v1",
+      "resolved_version": "v2",
+      "expected_phase": "Stale",
+      "expected_reason": "MutableReferenceChanged"
+    },
+    {
+      "name": "cache-digest-corrupted",
+      "type": "digest_mismatch",
+      "expected_phase": "Quarantined",
+      "expected_reason": "DigestVerificationFailed"
+    },
+    {
+      "name": "node-cache-disk-pressure",
+      "type": "cache_pressure",
+      "capacity_gib": 200,
+      "pinned_gib": 160,
+      "requested_gib": 80,
+      "expected_phase": "PrewarmBlocked",
+      "expected_reason": "InsufficientEvictableCapacity"
+    },
+    {
+      "name": "origin-cold-start-storm",
+      "type": "origin_storm",
+      "requests": 8,
+      "safe_concurrency": 4,
+      "expected_phase": "Throttled",
+      "expected_reason": "OriginConcurrencyExceeded"
+    },
+    {
+      "name": "snapshot-not-crash-consistent",
+      "type": "snapshot_consistency",
+      "application_quiesced": false,
+      "expected_phase": "SnapshotCreatedUnsafe",
+      "expected_reason": "ApplicationConsistencyNotGuaranteed"
+    }
+  ]
+}

@@ -1,0 +1,191 @@
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import random
+import time
+from dataclasses import dataclass
+
+import torch
+from torch import nn
+
+
+PAD_ID = 0
+BOS_ID = 1
+EOS_ID = 2
+VOCAB_SIZE = 512
+
+
+def build_samples(count: int, seed: int) -> list[list[int]]:
+    rng = random.Random(seed)
+    samples = []
+    for _ in range(count):
+        length = min(120, max(8, int(rng.paretovariate(2.0) * 12)))
+        body = [rng.randint(3, VOCAB_SIZE - 1) for _ in range(length)]
+        samples.append([BOS_ID] + body + [EOS_ID])
+    return samples
+
+
+def padded_batches(samples: list[list[int]], batch_size: int):
+    for start in range(0, len(samples), batch_size):
+        group = samples[start:start + batch_size]
+        max_len = max(len(row) for row in group)
+        input_ids = []
+        loss_mask = []
+        for row in group:
+            pad = max_len - len(row)
+            input_ids.append(row + [PAD_ID] * pad)
+            loss_mask.append([1] * len(row) + [0] * pad)
+        yield torch.tensor(input_ids), torch.tensor(loss_mask)
+
+
+def packed_batches(samples: list[list[int]], pack_length: int, batch_size: int):
+    packs = []
+    masks = []
+    current = []
+    current_mask = []
+
+    for row in samples:
+        if len(row) > pack_length:
+            row = row[:pack_length - 1] + [EOS_ID]
+        if current and len(current) + len(row) > pack_length:
+            pad = pack_length - len(current)
+            packs.append(current + [PAD_ID] * pad)
+            masks.append(current_mask + [0] * pad)
+            current = []
+            current_mask = []
+        current.extend(row)
+        current_mask.extend([1] * len(row))
+
+    if current:
+        pad = pack_length - len(current)
+        packs.append(current + [PAD_ID] * pad)
+        masks.append(current_mask + [0] * pad)
+
+    for start in range(0, len(packs), batch_size):
+        yield (
+            torch.tensor(packs[start:start + batch_size]),
+            torch.tensor(masks[start:start + batch_size]),
+        )
+
+
+class TinyCausalLM(nn.Module):
+    def __init__(self, hidden_size: int = 256) -> None:
+        super().__init__()
+        self.embedding = nn.Embedding(VOCAB_SIZE, hidden_size)
+        self.rnn = nn.GRU(hidden_size, hidden_size, batch_first=True)
+        self.output = nn.Linear(hidden_size, VOCAB_SIZE)
+
+    def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
+        hidden = self.embedding(input_ids)
+        hidden, _ = self.rnn(hidden)
+        return self.output(hidden)
+
+
+@dataclass
+class Result:
+    mode: str
+    steps: int
+    wall_seconds: float
+    raw_tokens: int
+    effective_tokens: int
+    effective_ratio: float
+    effective_tokens_per_second: float
+    peak_memory_mib: float
+    first_loss: float
+    final_loss: float
+
+
+def train_mode(mode: str, samples: list[list[int]], steps: int) -> Result:
+    device = torch.device("cuda")
+    torch.manual_seed(7)
+    model = TinyCausalLM().to(device)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
+    scaler = torch.amp.GradScaler("cuda")
+
+    if mode == "padding":
+        factory = lambda: padded_batches(samples, batch_size=32)
+    else:
+        factory = lambda: packed_batches(samples, pack_length=128, batch_size=32)
+
+    torch.cuda.reset_peak_memory_stats(device)
+    raw_tokens = 0
+    effective_tokens = 0
+    losses = []
+    completed = 0
+    started = time.perf_counter()
+
+    while completed < steps:
+        for input_ids, loss_mask in factory():
+            if completed >= steps:
+                break
+            input_ids = input_ids.to(device, non_blocking=True)
+            loss_mask = loss_mask.to(device, non_blocking=True)
+            targets = input_ids[:, 1:].contiguous()
+            mask = loss_mask[:, 1:].contiguous().float()
+
+            optimizer.zero_grad(set_to_none=True)
+            with torch.autocast(device_type="cuda", dtype=torch.float16):
+                logits = model(input_ids[:, :-1])
+                token_loss = nn.functional.cross_entropy(
+                    logits.reshape(-1, VOCAB_SIZE),
+                    targets.reshape(-1),
+                    reduction="none",
+                ).view_as(targets)
+                loss = (token_loss * mask).sum() / mask.sum().clamp_min(1)
+
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+
+            losses.append(float(loss.detach().cpu()))
+            raw_tokens += int(input_ids.numel())
+            effective_tokens += int(mask.sum().item())
+            completed += 1
+
+    torch.cuda.synchronize()
+    wall_seconds = time.perf_counter() - started
+    peak_memory = torch.cuda.max_memory_allocated(device) / 1024**2
+
+    return Result(
+        mode=mode,
+        steps=completed,
+        wall_seconds=wall_seconds,
+        raw_tokens=raw_tokens,
+        effective_tokens=effective_tokens,
+        effective_ratio=effective_tokens / max(raw_tokens, 1),
+        effective_tokens_per_second=effective_tokens / wall_seconds,
+        peak_memory_mib=peak_memory,
+        first_loss=losses[0],
+        final_loss=losses[-1],
+    )
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--steps", type=int, default=100)
+    parser.add_argument("--samples", type=int, default=4096)
+    args = parser.parse_args()
+
+    if not torch.cuda.is_available():
+        print(json.dumps({
+            "status": "skipped",
+            "reason": "CUDA GPU is not available",
+        }))
+        return
+
+    samples = build_samples(args.samples, seed=20260821)
+    results = [
+        train_mode("padding", samples, args.steps),
+        train_mode("packing", samples, args.steps),
+    ]
+    print(json.dumps({
+        "status": "succeeded",
+        "device": torch.cuda.get_device_name(0),
+        "results": [result.__dict__ for result in results],
+    }, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

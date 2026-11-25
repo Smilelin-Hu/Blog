@@ -1,0 +1,112 @@
+from __future__ import annotations
+
+import json
+import os
+
+try:
+    import torch
+    import torch.distributed as dist
+    from torch import nn
+except Exception as exc:
+    print(json.dumps({"status": "skipped", "reason": f"torch unavailable: {exc}"}))
+    raise SystemExit(0)
+
+
+def skip(reason: str) -> None:
+    print(json.dumps({"status": "skipped", "reason": reason}))
+    raise SystemExit(0)
+
+
+class TinyLM(nn.Module):
+    def __init__(self, vocab: int, hidden: int, heads: int) -> None:
+        super().__init__()
+        self.embed = nn.Embedding(vocab, hidden)
+        self.attn = nn.MultiheadAttention(hidden, heads, batch_first=True)
+        self.norm = nn.LayerNorm(hidden)
+        self.out = nn.Linear(hidden, vocab, bias=False)
+
+    def forward(self, tokens, mask, key_padding_mask=None):
+        x = self.embed(tokens)
+        y, _ = self.attn(
+            x, x, x,
+            attn_mask=mask,
+            key_padding_mask=key_padding_mask,
+            need_weights=False,
+        )
+        return self.out(self.norm(x + y))
+
+
+def block_causal_mask(lengths: list[int], device) -> torch.Tensor:
+    total = sum(lengths)
+    allowed = torch.zeros((total, total), dtype=torch.bool, device=device)
+    start = 0
+    for length in lengths:
+        block = torch.tril(torch.ones((length, length), dtype=torch.bool, device=device))
+        allowed[start:start + length, start:start + length] = block
+        start += length
+    return ~allowed  # MultiheadAttention中True表示禁止
+
+
+def main() -> None:
+    if not torch.cuda.is_available():
+        skip("CUDA unavailable")
+    if torch.cuda.device_count() < 1:
+        skip(f"requires at least one CUDA device, found {torch.cuda.device_count()}")
+    if int(os.environ.get("WORLD_SIZE", "1")) < 1:
+        skip("launch with one or more torchrun ranks")
+    dist.init_process_group("nccl")
+    rank = dist.get_rank()
+    local_rank = int(os.environ["LOCAL_RANK"])
+    torch.cuda.set_device(local_rank)
+    device = torch.device("cuda", local_rank)
+    torch.manual_seed(20260822)
+    lengths_by_rank = [[31, 17, 9], [28, 21, 7]][rank]
+    vocab, hidden = 2048, 256
+    model = TinyLM(vocab, hidden, heads=4).to(device)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
+    try:
+        total = sum(lengths_by_rank)
+        tokens = torch.randint(0, vocab, (1, total + 1), device=device)
+        inputs, labels = tokens[:, :-1], tokens[:, 1:]
+        mask = block_causal_mask(lengths_by_rank, device)
+        loss_mask = torch.ones(total, dtype=torch.bool, device=device)
+        offset = 0
+        for length in lengths_by_rank:
+            loss_mask[offset + length - 1] = False
+            offset += length
+        logits = model(inputs, mask)
+        per_token = nn.functional.cross_entropy(
+            logits.reshape(-1, vocab), labels.reshape(-1), reduction="none"
+        )
+        loss = per_token[loss_mask].mean()
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        optimizer.step()
+        local = torch.tensor([
+            int(loss_mask.sum().item()),
+            total,
+            torch.cuda.max_memory_allocated(device),
+        ], dtype=torch.long, device=device)
+        dist.all_reduce(local, op=dist.ReduceOp.SUM)
+        if rank == 0:
+            print(json.dumps({
+                "status": "passed",
+                "world_size": 2,
+                "effective_loss_tokens": int(local[0]),
+                "packed_tokens": int(local[1]),
+                "sum_peak_allocated_bytes": int(local[2]),
+                "claim_boundary": "small dense-mask mechanism validation only",
+            }))
+    except torch.cuda.OutOfMemoryError as exc:
+        if rank == 0:
+            print(json.dumps({
+                "status": "skipped",
+                "reason": f"CUDA OOM: {exc}",
+                "suggestion": "reduce hidden or lengths; use packed kernels for long context",
+            }))
+    finally:
+        dist.destroy_process_group()
+
+
+if __name__ == "__main__":
+    main()

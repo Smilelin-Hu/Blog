@@ -274,4 +274,4 @@ research_subagent = {
 
 ## 写在最后
 
-下一篇[异步子 Agent](7-异步子Agent)解决同步委派的两个瓶颈：主 Agent 被阻塞、任务无法中途追加或取消。
+下一篇[异步子 Agent](/source/agent/deepagents/7-异步子Agent)解决同步委派的两个瓶颈：主 Agent 被阻塞、任务无法中途追加或取消。

@@ -1,0 +1,36 @@
+import json
+import math
+from statistics import mean, pstdev
+
+groups = {
+    "task-a": [1.0, 0.0, 0.5, 1.0],
+    "task-b": [0.0, 0.0, 0.0, 0.0],
+}
+old_logprob = [-1.20, -0.75, -2.10, -1.45]
+new_logprob = [-1.15, -0.90, -1.95, -1.80]
+
+def normalize(values, eps=1e-6):
+    scale = pstdev(values)
+    if scale < eps:
+        return [0.0 for _ in values]
+    center = mean(values)
+    return [(x - center) / (scale + eps) for x in values]
+
+def clipped_objective(old_lp, new_lp, advantages, clip=0.2):
+    rows = []
+    for before, after, advantage in zip(old_lp, new_lp, advantages):
+        ratio = math.exp(after - before)
+        clipped = min(max(ratio, 1 - clip), 1 + clip)
+        objective = min(ratio * advantage, clipped * advantage)
+        rows.append({"ratio": ratio, "advantage": advantage, "objective": objective, "clipped": ratio != clipped})
+    return rows
+
+advantages = normalize(groups["task-a"])
+report = {
+    "task_a_advantages": advantages,
+    "task_b_advantages": normalize(groups["task-b"]),
+    "tokens": clipped_objective(old_logprob, new_logprob, advantages),
+}
+assert abs(sum(advantages)) < 1e-5
+assert report["task_b_advantages"] == [0.0] * 4
+print(json.dumps(report, indent=2))

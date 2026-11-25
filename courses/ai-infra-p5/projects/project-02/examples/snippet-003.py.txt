@@ -1,0 +1,22 @@
+import json
+import os
+import socket
+
+checks = {
+    "object_store_endpoint": bool(os.environ.get("OBJECT_STORE_ENDPOINT")),
+    "database_dsn": bool(os.environ.get("LINEAGE_DATABASE_DSN")),
+    "event_endpoint": bool(os.environ.get("LINEAGE_EVENT_ENDPOINT")),
+}
+for key, port in [("database_reachable", 5432), ("object_store_reachable", 9000)]:
+    host = os.environ.get(key.upper().replace("_REACHABLE", "_HOST"))
+    if not host:
+        checks[key] = False
+        continue
+    try:
+        with socket.create_connection((host, port), timeout=1):
+            checks[key] = True
+    except OSError:
+        checks[key] = False
+
+status = "ready" if all(checks.values()) else "skipped"
+print(json.dumps({"status": status, "reason": None if status == "ready" else "external_backends_unavailable", "checks": checks}))

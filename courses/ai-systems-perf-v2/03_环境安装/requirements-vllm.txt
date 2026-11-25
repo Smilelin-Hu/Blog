@@ -1,0 +1,2 @@
+# vLLM需要与GPU、驱动、CUDA和PyTorch形成兼容组合；正式使用时记录精确版本。
+vllm>=0.8

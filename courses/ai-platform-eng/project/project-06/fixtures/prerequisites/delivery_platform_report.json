@@ -1,0 +1,193 @@
+{
+  "status": "PASS",
+  "releases": [
+    {
+      "release_id": "recommendation-2026-08-22.1",
+      "status": "PROMOTED",
+      "reason": "AllReleaseGatesPassed",
+      "lead_time_seconds": 1280,
+      "rollback_seconds": 0,
+      "stages": [
+        {
+          "weight": 5,
+          "status": "PROMOTED",
+          "reason": "CanaryStageHealthy"
+        },
+        {
+          "weight": 25,
+          "status": "PROMOTED",
+          "reason": "CanaryStageHealthy"
+        },
+        {
+          "weight": 100,
+          "status": "PROMOTED",
+          "reason": "CanaryStageHealthy"
+        }
+      ]
+    },
+    {
+      "release_id": "vision-2026-08-22.2",
+      "status": "ROLLED_BACK",
+      "reason": "CanarySLOViolated",
+      "lead_time_seconds": 1420,
+      "rollback_seconds": 48,
+      "stages": [
+        {
+          "weight": 5,
+          "status": "PROMOTED",
+          "reason": "CanaryStageHealthy"
+        },
+        {
+          "weight": 25,
+          "status": "ROLLED_BACK",
+          "reason": "CanarySLOViolated"
+        }
+      ]
+    }
+  ],
+  "metrics": {
+    "maximum_lead_time_seconds": 1420,
+    "change_failure_rate": 0.5,
+    "maximum_automatic_rollback_seconds": 48,
+    "supply_chain_evidence_coverage": 1.0,
+    "promotion_rate": 0.5
+  },
+  "checks": {
+    "lead_time": true,
+    "failure_rate": true,
+    "rollback": true,
+    "evidence": true
+  },
+  "faults": [
+    {
+      "type": "mutable_model",
+      "phase": "REJECTED",
+      "reason": "ImmutableModelVersionRequired",
+      "status": "PASS"
+    },
+    {
+      "type": "mutable_image",
+      "phase": "REJECTED",
+      "reason": "ImageDigestRequired",
+      "status": "PASS"
+    },
+    {
+      "type": "unsigned_model",
+      "phase": "REJECTED",
+      "reason": "RequiredEvidenceMissing:model_signature",
+      "status": "PASS"
+    },
+    {
+      "type": "unsigned_image",
+      "phase": "REJECTED",
+      "reason": "RequiredEvidenceMissing:image_signature",
+      "status": "PASS"
+    },
+    {
+      "type": "sbom_missing",
+      "phase": "REJECTED",
+      "reason": "RequiredEvidenceMissing:sbom",
+      "status": "PASS"
+    },
+    {
+      "type": "provenance_missing",
+      "phase": "REJECTED",
+      "reason": "RequiredEvidenceMissing:provenance",
+      "status": "PASS"
+    },
+    {
+      "type": "evaluation_missing",
+      "phase": "REJECTED",
+      "reason": "RequiredEvidenceMissing:evaluation",
+      "status": "PASS"
+    },
+    {
+      "type": "evaluation_failed",
+      "phase": "REJECTED",
+      "reason": "ModelEvaluationGateFailed",
+      "status": "PASS"
+    },
+    {
+      "type": "model_subject_mismatch",
+      "phase": "REJECTED",
+      "reason": "ModelEvidenceSubjectMismatch",
+      "status": "PASS"
+    },
+    {
+      "type": "image_subject_mismatch",
+      "phase": "REJECTED",
+      "reason": "ImageEvidenceSubjectMismatch",
+      "status": "PASS"
+    },
+    {
+      "type": "untrusted_signer",
+      "phase": "REJECTED",
+      "reason": "SignerIdentityNotAllowed",
+      "status": "PASS"
+    },
+    {
+      "type": "untrusted_builder",
+      "phase": "REJECTED",
+      "reason": "BuilderIdentityNotAllowed",
+      "status": "PASS"
+    },
+    {
+      "type": "production_approval_missing",
+      "phase": "REJECTED",
+      "reason": "ProductionApprovalMissing",
+      "status": "PASS"
+    },
+    {
+      "type": "direct_production_write",
+      "phase": "REJECTED",
+      "reason": "GitOpsPromotionRequired",
+      "status": "PASS"
+    },
+    {
+      "type": "canary_sample_insufficient",
+      "phase": "PAUSED",
+      "reason": "CanarySampleInsufficient",
+      "status": "PASS"
+    },
+    {
+      "type": "canary_error_degraded",
+      "phase": "ROLLED_BACK",
+      "reason": "CanarySLOViolated",
+      "status": "PASS"
+    },
+    {
+      "type": "canary_latency_degraded",
+      "phase": "ROLLED_BACK",
+      "reason": "CanarySLOViolated",
+      "status": "PASS"
+    },
+    {
+      "type": "metric_provider_unavailable",
+      "phase": "INCONCLUSIVE",
+      "reason": "CanaryMetricEvidenceUnavailable",
+      "status": "PASS"
+    },
+    {
+      "type": "rollback_slo_missed",
+      "phase": "SLO_VIOLATED",
+      "reason": "AutomaticRollbackTooSlow",
+      "status": "PASS"
+    },
+    {
+      "type": "registry_alias_race",
+      "phase": "REJECTED",
+      "reason": "RegistryAliasCompareAndSwapConflict",
+      "status": "PASS"
+    },
+    {
+      "type": "live_cluster_missing",
+      "phase": "SKIPPED",
+      "reason": "NoKubernetesContextProvided",
+      "status": "PASS"
+    }
+  ],
+  "live": {
+    "status": "SKIPPED",
+    "reason": "NoKubernetesContextProvided"
+  }
+}

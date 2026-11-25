@@ -1,0 +1,183 @@
+{
+  "cluster_version": "1.36",
+  "legacy_resource": "accelerator.training.invalid/gpu",
+  "device_class": {
+    "name": "gpu.training.invalid",
+    "driver": "gpu.training.invalid",
+    "selectors": []
+  },
+  "nodes": [
+    {
+      "name": "gpu-node-a",
+      "numa_nodes": 2,
+      "devices": [
+        {
+          "id": "a100-0",
+          "product": "A100-80GB",
+          "memory_gib": 80,
+          "compute_capability": 8.0,
+          "numa": 0,
+          "health": "Healthy",
+          "cdi_name": "gpu.training.invalid/device=a100-0"
+        },
+        {
+          "id": "a100-1",
+          "product": "A100-80GB",
+          "memory_gib": 80,
+          "compute_capability": 8.0,
+          "numa": 1,
+          "health": "Healthy",
+          "cdi_name": "gpu.training.invalid/device=a100-1"
+        }
+      ]
+    },
+    {
+      "name": "gpu-node-b",
+      "numa_nodes": 2,
+      "devices": [
+        {
+          "id": "l40s-0",
+          "product": "L40S",
+          "memory_gib": 48,
+          "compute_capability": 8.9,
+          "numa": 0,
+          "health": "Healthy",
+          "cdi_name": "gpu.training.invalid/device=l40s-0"
+        },
+        {
+          "id": "l40s-1",
+          "product": "L40S",
+          "memory_gib": 48,
+          "compute_capability": 8.9,
+          "numa": 0,
+          "health": "Unhealthy",
+          "cdi_name": "gpu.training.invalid/device=l40s-1"
+        }
+      ]
+    },
+    {
+      "name": "gpu-node-c",
+      "numa_nodes": 2,
+      "devices": [
+        {
+          "id": "h100-0",
+          "product": "H100-80GB",
+          "memory_gib": 80,
+          "compute_capability": 9.0,
+          "numa": 0,
+          "health": "Healthy",
+          "cdi_name": "gpu.training.invalid/device=h100-0"
+        }
+      ]
+    }
+  ],
+  "requests": [
+    {
+      "name": "legacy-two-gpus",
+      "mode": "device-plugin",
+      "count": 2,
+      "preferred_numa": 0,
+      "expected_phase": "Allocated",
+      "expected_node": "gpu-node-a"
+    },
+    {
+      "name": "dra-high-memory",
+      "mode": "dra",
+      "claim_type": "ResourceClaim",
+      "count": 1,
+      "selectors": {
+        "memory_gib_min": 80,
+        "compute_capability_min": 8.0
+      },
+      "node_constraint": "gpu-node-a",
+      "expected_phase": "Allocated",
+      "expected_node": "gpu-node-a"
+    },
+    {
+      "name": "dra-prioritized-fallback",
+      "mode": "dra",
+      "claim_type": "ResourceClaimTemplate",
+      "first_available": [
+        {
+          "name": "h200",
+          "count": 1,
+          "selectors": {
+            "product": "H200-141GB"
+          }
+        },
+        {
+          "name": "h100",
+          "count": 1,
+          "selectors": {
+            "product": "H100-80GB"
+          }
+        },
+        {
+          "name": "a100",
+          "count": 1,
+          "selectors": {
+            "product": "A100-80GB"
+          }
+        }
+      ],
+      "expected_phase": "Allocated",
+      "expected_node": "gpu-node-c",
+      "expected_subrequest": "h100"
+    }
+  ],
+  "faults": [
+    {
+      "name": "plugin-unregistered",
+      "type": "plugin_unregistered",
+      "expected_phase": "RegistrationBlocked",
+      "expected_reason": "PluginSocketUnavailable"
+    },
+    {
+      "name": "legacy-capacity-exhausted",
+      "type": "legacy_capacity_exhausted",
+      "count": 3,
+      "expected_phase": "Pending",
+      "expected_reason": "InsufficientExtendedResource"
+    },
+    {
+      "name": "dra-no-matching-device",
+      "type": "dra_no_match",
+      "selectors": {
+        "memory_gib_min": 120
+      },
+      "expected_phase": "ClaimPending",
+      "expected_reason": "NoMatchingDevice"
+    },
+    {
+      "name": "dra-node-binding-conflict",
+      "type": "dra_node_conflict",
+      "selectors": {
+        "product": "H100-80GB"
+      },
+      "node_constraint": "gpu-node-a",
+      "expected_phase": "ClaimPending",
+      "expected_reason": "NodeConstraintConflict"
+    },
+    {
+      "name": "stale-cdi-spec",
+      "type": "stale_cdi",
+      "device_id": "a100-0",
+      "expected_phase": "ContainerCreateBlocked",
+      "expected_reason": "CDIDeviceUnresolvable"
+    },
+    {
+      "name": "allocated-device-unhealthy",
+      "type": "allocated_device_unhealthy",
+      "device_id": "a100-0",
+      "expected_phase": "RunningDegraded",
+      "expected_reason": "AllocatedDeviceUnhealthy"
+    },
+    {
+      "name": "claim-released",
+      "type": "claim_release",
+      "device_id": "h100-0",
+      "expected_phase": "Released",
+      "expected_reason": "ClaimLifecycleCompleted"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Git 协作：版本控制与多人开发
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_mll07nf0-b9713c4841e17ce9.jpg
+![Git 版本控制与协作开发](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_mll07nf0-b9713c4841e17ce9.jpg)
 
 <p>图 1：Git 版本控制与协作开发</p>
 
@@ -113,7 +113,7 @@ clone 后需要自己安装依赖（`pnpm install`）——这也是 `node_modul
 
 默认只有仓库创建者能 push，需要在 Settings → Collaborators 邀请朋友。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227003017220.png
+![GitHub 仓库页面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227003017220.png)
 
 <p>图 2：GitHub 仓库页面</p>
 
@@ -188,17 +188,17 @@ flowchart LR
 
 PR 还有三个价值：**知识共享**（Review 时读了代码，谁都能维护）、**可追溯**（三个月后翻讨论就知道当时为什么这么写）、**暂停回顾**（diff 视图从全局审视几天的修改）。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227003046255.png
+![合并 PR 后的分支状态](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227003046255.png)
 
 <p>图 3：合并 PR 后的分支状态</p>
 
 流程：创建 PR（填标题与描述）→ 朋友看 Files changed（绿色新增、红色删除）→ 行内评论 → 修改再推送（PR 自动更新）→ Review 通过 → Merge pull request → 删除分支。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227003217565.png
+![PR 的创建页面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227003217565.png)
 
 <p>图 4：PR 的创建页面</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227003224983.png
+![PR 的 Files changed 视图](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227003224983.png)
 
 <p>图 5：PR 的 Files changed 视图</p>
 
@@ -261,4 +261,4 @@ pull 最新代码 → 创建功能分支 → 小步开发、频繁 commit
 
 ## 写在最后
 
-下一篇[Serverless 部署与 CI/CD](12-Serverless部署与CI-CD)把 GitHub 上的代码变成公网可访问的站点：EdgeOne/Vercel 部署、自动化流水线与运维成本。
+下一篇[Serverless 部署与 CI/CD](/source/vibecoding/vibe-advanced/12-Serverless部署与CI-CD)把 GitHub 上的代码变成公网可访问的站点：EdgeOne/Vercel 部署、自动化流水线与运维成本。

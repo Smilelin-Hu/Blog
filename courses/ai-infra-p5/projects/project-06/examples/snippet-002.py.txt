@@ -1,0 +1,54 @@
+import json
+from dataclasses import dataclass
+
+@dataclass
+class Experience:
+    experience_id: str
+    behavior_version: int
+    created_at: int
+    state: str = "sealed"
+    winner_attempt: str | None = None
+
+class ControlPlane:
+    def __init__(self):
+        self.items = {}
+        self.commits = set()
+
+    def seal(self, item, attempt_id):
+        current = self.items.setdefault(item.experience_id, item)
+        if current.winner_attempt is None:
+            current.winner_attempt = attempt_id
+            return "accepted_attempt"
+        return "duplicate_attempt" if current.winner_attempt != attempt_id else "idempotent"
+
+    def consume(self, experience_id, current_version, now, max_lag=1, ttl=20):
+        item = self.items[experience_id]
+        if current_version - item.behavior_version > max_lag:
+            return "reject_policy_lag"
+        if now - item.created_at > ttl:
+            return "reject_wall_clock_age"
+        item.state = "accepted"
+        return "accepted"
+
+    def commit(self, commit_id, experience_ids):
+        if commit_id in self.commits:
+            return "idempotent"
+        if any(self.items[x].state != "accepted" for x in experience_ids):
+            return "invalid_state"
+        self.commits.add(commit_id)
+        for item in experience_ids:
+            self.items[item].state = "committed"
+        return "committed"
+
+plane = ControlPlane()
+item = Experience("exp-1", behavior_version=3, created_at=100)
+assert plane.seal(item, "attempt-a") == "accepted_attempt"
+assert plane.seal(item, "attempt-b") == "duplicate_attempt"
+assert plane.consume("exp-1", current_version=4, now=110) == "accepted"
+assert plane.commit("step-8", ["exp-1"]) == "committed"
+assert plane.commit("step-8", ["exp-1"]) == "idempotent"
+
+old = Experience("exp-old", behavior_version=1, created_at=70)
+plane.seal(old, "attempt-c")
+assert plane.consume("exp-old", current_version=4, now=110) == "reject_policy_lag"
+print(json.dumps({"states": {key: value.state for key, value in plane.items.items()}, "commits": sorted(plane.commits)}, indent=2))

@@ -1,0 +1,77 @@
+{
+  "schema_version": 2,
+  "status": "passed",
+  "source": "fixture",
+  "lab_id": "lesson-00-cuda-baseline",
+  "title": "CUDA Baseline：矩阵计算、显存与同步计时",
+  "run_id": "a70e5193a2cfe5ff",
+  "started_at": "2026-11-16T09:17:33Z",
+  "environment": {
+    "python": "3.11.5",
+    "platform": "macOS-27.2-arm64-arm-64bit"
+  },
+  "arguments": {
+    "check_only": false,
+    "fixture": true,
+    "output": "results/report.json",
+    "seed": 7,
+    "base_url": [],
+    "evidence_url": [],
+    "model": "auto",
+    "models": "",
+    "prompt": "请解释 KV Cache，并给出一个工程注意事项。",
+    "requests": 8,
+    "concurrency": 2,
+    "max_new_tokens": 64,
+    "sizes": "512,1024,2048",
+    "repeats": 5
+  },
+  "contract": {
+    "lab_id": "lesson-00-cuda-baseline",
+    "title": "CUDA Baseline：矩阵计算、显存与同步计时",
+    "goal": "建立后续实验可复用的设备、计时与显存证据基线。",
+    "real_evidence": [
+      "CUDA event boundary",
+      "request-level timing",
+      "allocator snapshot"
+    ],
+    "required_inputs": [
+      "CUDA GPU",
+      "PyTorch"
+    ],
+    "outputs": [
+      "shape sweep",
+      "latency summary",
+      "memory snapshot"
+    ],
+    "acceptance": [
+      "all shapes execute on CUDA",
+      "samples are synchronized",
+      "no CPU fallback"
+    ]
+  },
+  "result": {
+    "plan": [
+      {
+        "size": 512,
+        "multiply_adds": 268435456,
+        "bytes_per_matrix_fp16": 524288
+      },
+      {
+        "size": 1024,
+        "multiply_adds": 2147483648,
+        "bytes_per_matrix_fp16": 2097152
+      },
+      {
+        "size": 2048,
+        "multiply_adds": 17179869184,
+        "bytes_per_matrix_fp16": 8388608
+      }
+    ],
+    "assertions": {
+      "monotonic_work": true
+    }
+  },
+  "finished_at": "2026-11-16T09:17:33Z",
+  "wall_seconds": 0.015628
+}

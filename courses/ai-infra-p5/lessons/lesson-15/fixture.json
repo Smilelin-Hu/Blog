@@ -1,0 +1,29 @@
+{
+  "expect_stable": false,
+  "proxy_runs": [
+    {
+      "seed": 1,
+      "scores": {
+        "mix-a": 0.61,
+        "mix-b": 0.6,
+        "mix-c": 0.57
+      }
+    },
+    {
+      "seed": 2,
+      "scores": {
+        "mix-a": 0.59,
+        "mix-b": 0.62,
+        "mix-c": 0.56
+      }
+    },
+    {
+      "seed": 3,
+      "scores": {
+        "mix-a": 0.6,
+        "mix-b": 0.61,
+        "mix-c": 0.58
+      }
+    }
+  ]
+}

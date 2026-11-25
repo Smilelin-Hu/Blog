@@ -1,0 +1,20 @@
+{
+  "max_update_distance": 2,
+  "experiences": [
+    {
+      "id": "e1",
+      "generate_policy": 20,
+      "consume_policy": 20
+    },
+    {
+      "id": "e2",
+      "generate_policy": 20,
+      "consume_policy": 22
+    },
+    {
+      "id": "e3",
+      "generate_policy": 18,
+      "consume_policy": 23
+    }
+  ]
+}

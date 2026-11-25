@@ -1,0 +1,51 @@
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+
+
+def visible_gpus() -> list[dict[str, object]]:
+    if shutil.which("nvidia-smi") is None:
+        return []
+    command = [
+        "nvidia-smi",
+        "--query-gpu=index,name,memory.total",
+        "--format=csv,noheader,nounits",
+    ]
+    run = subprocess.run(command, capture_output=True, text=True, check=False)
+    if run.returncode != 0:
+        return []
+    rows = []
+    for line in run.stdout.strip().splitlines():
+        index, name, memory = [part.strip() for part in line.split(",", 2)]
+        rows.append({"index": int(index), "name": name, "memory_mib": int(memory)})
+    return rows
+
+
+def main() -> None:
+    inventory = visible_gpus()
+    result: dict[str, object] = {
+        "experiment": "lesson-26-rlvr-rollout",
+        "status": "ready",
+        "inventory": inventory,
+        "required": {"gpu_count": 1, "minimum_memory_mib": 0},
+    }
+    if len(inventory) < 1:
+        result.update(status="skipped", reason="requires_at_least_one_visible_nvidia_gpu")
+    elif not os.environ.get("MODEL_ID") or not os.environ.get("TASK_MANIFEST"):
+        result.update(status="skipped", reason="MODEL_ID_or_TASK_MANIFEST_missing")
+    else:
+        result["command"] = [
+            "torchrun", "--standalone", "--nproc_per_node=1", "rollout_rlvr.py",
+            "--model", os.environ["MODEL_ID"],
+            "--tasks", os.environ["TASK_MANIFEST"],
+            "--candidates", os.environ.get("CANDIDATES", "8"),
+            "--max-new-tokens", os.environ.get("MAX_NEW_TOKENS", "512"),
+        ]
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

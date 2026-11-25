@@ -1,0 +1,236 @@
+{
+  "policy": {
+    "maximum_gpu_count": 64,
+    "allowed_queues": [
+      "gpu-training",
+      "gpu-serving"
+    ]
+  },
+  "thresholds": {
+    "maximum_first_success_seconds": 300,
+    "minimum_self_service_completion_rate": 1.0,
+    "minimum_cross_cluster_dispatch_success_rate": 1.0,
+    "maximum_platform_request_seconds": 300,
+    "minimum_audit_coverage_rate": 1.0
+  },
+  "prerequisites": [
+    {
+      "id": "project-01",
+      "report": "project/project-06/fixtures/prerequisites/gpu_cluster_baseline_report.json"
+    },
+    {
+      "id": "project-02",
+      "report": "project/project-06/fixtures/prerequisites/batch_platform_report.json"
+    },
+    {
+      "id": "project-03",
+      "report": "project/project-06/fixtures/prerequisites/training_platform_report.json"
+    },
+    {
+      "id": "project-04",
+      "report": "project/project-06/fixtures/prerequisites/delivery_platform_report.json"
+    },
+    {
+      "id": "project-05",
+      "report": "project/project-06/fixtures/prerequisites/operations_console_report.json"
+    }
+  ],
+  "clusters": [
+    {
+      "name": "gpu-east-a",
+      "ready": true,
+      "residency": "cn-east",
+      "gpu_types": [
+        "H100_80GB",
+        "A100_80GB"
+      ],
+      "free_gpus": 48,
+      "queues": [
+        "gpu-training",
+        "gpu-serving"
+      ],
+      "gpu_hour_price": 5.2
+    },
+    {
+      "name": "gpu-west-b",
+      "ready": true,
+      "residency": "cn-west",
+      "gpu_types": [
+        "A100_80GB"
+      ],
+      "free_gpus": 32,
+      "queues": [
+        "gpu-training",
+        "gpu-serving"
+      ],
+      "gpu_hour_price": 3.1
+    },
+    {
+      "name": "gpu-east-c",
+      "ready": false,
+      "residency": "cn-east",
+      "gpu_types": [
+        "H100_80GB"
+      ],
+      "free_gpus": 64,
+      "queues": [
+        "gpu-training"
+      ],
+      "gpu_hour_price": 4.9
+    }
+  ],
+  "requests": [
+    {
+      "request_id": "portal-train-001",
+      "request_type": "training",
+      "tenant": "team-a",
+      "project": "foundation",
+      "owner": "alice",
+      "template_revision": "sha256:train-template-v8",
+      "artifact_digest": "sha256:dataset-v12",
+      "queue": "gpu-training",
+      "target_environment": "production",
+      "approval": "change-3001",
+      "cluster_admin_requested": false,
+      "policy_checked": true,
+      "quota_checked": true,
+      "gpu_count": 32,
+      "gpu_type": "H100_80GB",
+      "residency": "cn-east",
+      "submitted_at_seconds": 0,
+      "processing_seconds": 205
+    },
+    {
+      "request_id": "portal-serve-002",
+      "request_type": "deployment",
+      "tenant": "team-b",
+      "project": "vision",
+      "owner": "bob",
+      "template_revision": "sha256:serve-template-v5",
+      "artifact_digest": "sha256:model-v19",
+      "queue": "gpu-serving",
+      "target_environment": "production",
+      "approval": "change-3002",
+      "cluster_admin_requested": false,
+      "policy_checked": true,
+      "quota_checked": true,
+      "gpu_count": 8,
+      "gpu_type": "A100_80GB",
+      "residency": "cn-west",
+      "submitted_at_seconds": 20,
+      "processing_seconds": 160
+    }
+  ],
+  "faults": [
+    {
+      "type": "template_mutable",
+      "expected_phase": "REJECTED",
+      "expected_reason": "TemplateRevisionMustBeImmutable"
+    },
+    {
+      "type": "artifact_mutable",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ArtifactDigestRequired"
+    },
+    {
+      "type": "cluster_admin",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ClusterAdminAccessForbidden"
+    },
+    {
+      "type": "policy_bypass",
+      "expected_phase": "REJECTED",
+      "expected_reason": "PolicyCheckRequiredBeforeDispatch"
+    },
+    {
+      "type": "quota_bypass",
+      "expected_phase": "REJECTED",
+      "expected_reason": "QuotaCheckRequiredBeforeDispatch"
+    },
+    {
+      "type": "gpu_limit",
+      "expected_phase": "REJECTED",
+      "expected_reason": "GPURequestLimitExceeded"
+    },
+    {
+      "type": "queue_unknown",
+      "expected_phase": "REJECTED",
+      "expected_reason": "QueueNotAllowed"
+    },
+    {
+      "type": "production_approval_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ProductionApprovalMissing"
+    },
+    {
+      "type": "residency_mismatch",
+      "expected_phase": "PENDING",
+      "expected_reason": "NoEligibleWorkerCluster"
+    },
+    {
+      "type": "gpu_type_unavailable",
+      "expected_phase": "PENDING",
+      "expected_reason": "NoEligibleWorkerCluster"
+    },
+    {
+      "type": "capacity_shortage",
+      "expected_phase": "PENDING",
+      "expected_reason": "NoEligibleWorkerCluster"
+    },
+    {
+      "type": "worker_not_ready",
+      "expected_phase": "PENDING",
+      "expected_reason": "NoEligibleWorkerCluster"
+    },
+    {
+      "type": "manager_executes_workload",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ManagerClusterExecutionForbidden"
+    },
+    {
+      "type": "direct_worker_credential",
+      "expected_phase": "REJECTED",
+      "expected_reason": "DirectWorkerCredentialForbidden"
+    },
+    {
+      "type": "status_assumed",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "WorkerStatusEvidenceMissing"
+    },
+    {
+      "type": "cost_identity_missing",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "CostIdentityMissing"
+    },
+    {
+      "type": "audit_identity_missing",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "AuditIdentityMissing"
+    },
+    {
+      "type": "prerequisite_missing",
+      "expected_phase": "BLOCKED",
+      "expected_reason": "PrerequisiteReportMissing"
+    },
+    {
+      "type": "prerequisite_failed",
+      "expected_phase": "BLOCKED",
+      "expected_reason": "PrerequisiteDidNotPass"
+    },
+    {
+      "type": "duplicate_request",
+      "expected_phase": "BLOCKED",
+      "expected_reason": "RequestLeaseAlreadyOwned"
+    },
+    {
+      "type": "portal_timeout",
+      "expected_phase": "SLO_VIOLATED",
+      "expected_reason": "PlatformRequestTooSlow"
+    },
+    {
+      "type": "live_clusters_missing",
+      "expected_phase": "SKIPPED",
+      "expected_reason": "NoKubernetesContextsProvided"
+    }
+  ]
+}

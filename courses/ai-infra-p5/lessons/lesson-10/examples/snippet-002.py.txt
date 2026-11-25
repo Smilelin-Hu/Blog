@@ -1,0 +1,117 @@
+from __future__ import annotations
+
+import json
+import os
+import random
+import sys
+
+import torch
+import torch.distributed as dist
+from torch import nn
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.utils.data import DataLoader, Dataset, DistributedSampler
+
+
+SAMPLES = [
+    ("逐步解释并验证一个科学概念。", 1, 0, 0.55),
+    ("完整代码示例包含测试与错误处理。", 1, 1, 0.70),
+    ("金融报告讨论现金流和风险。", 1, 2, 0.65),
+    ("点击优惠点击优惠点击优惠", 0, 2, 0.10),
+    ("!!!!! ........ !!!!!", 0, 0, 0.05),
+    ("def f(x): return x*x", 1, 1, 0.35),
+    ("教程说明前提、推导与练习。", 1, 0, 0.60),
+    ("价格价格价格立即购买", 0, 2, 0.15),
+] * 64
+
+
+class TextSet(Dataset):
+    def __init__(self, samples, width=128):
+        self.samples, self.width = samples, width
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        text, quality, domain, difficulty = self.samples[idx]
+        raw = list(text.encode("utf-8")[: self.width])
+        ids = torch.zeros(self.width, dtype=torch.long)
+        ids[: len(raw)] = torch.tensor(raw, dtype=torch.long)
+        mask = torch.zeros(self.width, dtype=torch.float32)
+        mask[: len(raw)] = 1
+        return ids, mask, torch.tensor(quality), torch.tensor(domain), torch.tensor(difficulty)
+
+
+class MultiTask(nn.Module):
+    def __init__(self, dim=128):
+        super().__init__()
+        self.emb = nn.Embedding(256, dim)
+        self.body = nn.Sequential(nn.Linear(dim, dim), nn.GELU(), nn.LayerNorm(dim))
+        self.quality = nn.Linear(dim, 2)
+        self.domain = nn.Linear(dim, 3)
+        self.difficulty = nn.Linear(dim, 1)
+
+    def forward(self, ids, mask):
+        x = self.emb(ids)
+        pooled = (x * mask[..., None]).sum(1) / mask.sum(1, keepdim=True).clamp_min(1)
+        h = self.body(pooled)
+        return self.quality(h), self.domain(h), self.difficulty(h).squeeze(-1)
+
+
+def emit(payload):
+    print(json.dumps(payload, ensure_ascii=False))
+
+
+def main():
+    if not torch.cuda.is_available() or torch.cuda.device_count() < 1:
+        emit({"status": "skipped", "reason": "requires at least one visible CUDA GPU"})
+        return
+    if "RANK" not in os.environ:
+        emit({"status": "skipped", "reason": "launch with torchrun and one or more processes"})
+        return
+    dist.init_process_group("nccl")
+    rank, world = dist.get_rank(), dist.get_world_size()
+    if world < 1:
+        if rank == 0:
+            emit({"status": "skipped", "reason": f"expected world_size>=1, got {world}"})
+        dist.destroy_process_group()
+        return
+    torch.cuda.set_device(rank)
+    device = torch.device("cuda", rank)
+    random.seed(17)
+    torch.manual_seed(17)
+    dataset = TextSet(SAMPLES)
+    sampler = DistributedSampler(dataset, num_replicas=world, rank=rank, shuffle=True, seed=17)
+    loader = DataLoader(dataset, batch_size=32, sampler=sampler, num_workers=0)
+    model = DDP(MultiTask().to(device), device_ids=[rank])
+    opt = torch.optim.AdamW(model.parameters(), lr=2e-3)
+    ce, mse = nn.CrossEntropyLoss(), nn.MSELoss()
+    history = []
+    for epoch in range(4):
+        sampler.set_epoch(epoch)
+        total = torch.zeros(1, device=device)
+        for ids, mask, q, domain, difficulty in loader:
+            ids, mask = ids.to(device), mask.to(device)
+            q, domain, difficulty = q.to(device), domain.to(device), difficulty.to(device)
+            qlog, dlog, dpred = model(ids, mask)
+            loss = ce(qlog, q) + ce(dlog, domain) + 0.5 * mse(dpred, difficulty)
+            opt.zero_grad(set_to_none=True)
+            loss.backward()
+            opt.step()
+            total += loss.detach()
+        dist.all_reduce(total, op=dist.ReduceOp.SUM)
+        if rank == 0:
+            history.append(float(total.item() / (world * len(loader))))
+    if rank == 0:
+        emit({"status": "passed", "world_size": world,
+              "device": torch.cuda.get_device_name(0), "loss": history,
+              "peak_allocated_bytes": torch.cuda.max_memory_allocated(0),
+              "claim": "mechanism validation only; not a production classifier"})
+    dist.destroy_process_group()
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as exc:
+        emit({"status": "failed", "error": repr(exc)})
+        sys.exit(1)

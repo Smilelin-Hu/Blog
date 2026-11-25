@@ -1,0 +1,10 @@
+01_大模型数据与后训练基础设施全景/
+├── README.md
+├── mechanism/
+│   ├── data/raw_sources.jsonl
+│   ├── build_lineage.py
+│   ├── inspect_impact.py
+│   └── test_lineage.py
+└── gpu/
+    ├── check_gpu.py
+    └── gpu_data_efficiency.py

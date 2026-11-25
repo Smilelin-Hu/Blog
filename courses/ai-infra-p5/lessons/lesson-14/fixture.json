@@ -1,0 +1,10 @@
+{
+  "weights": {
+    "web": 0.5,
+    "code": 0.3,
+    "math": 0.2
+  },
+  "seed": 13,
+  "draws": 5000,
+  "tolerance": 0.03
+}

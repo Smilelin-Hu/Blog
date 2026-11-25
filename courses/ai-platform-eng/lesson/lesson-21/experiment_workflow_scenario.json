@@ -1,0 +1,253 @@
+{
+  "baseline": {
+    "verified_on": "2026-08-27",
+    "kfp_backend": "2.17.0",
+    "kfp_sdk": "2.17.0",
+    "katib": "v0.19.0",
+    "katib_api": "kubeflow.org/v1beta1",
+    "trial_worker": "trainer.kubeflow.org/v1alpha1 TrainJob"
+  },
+  "platform_policy": {
+    "allowed_pipeline_roots": [
+      "s3://ml-platform/team-a/",
+      "gs://ml-platform-team-a/",
+      "seaweedfs://team-a/"
+    ],
+    "require_image_digest": true,
+    "required_queue": "team-a-localqueue",
+    "max_parallel_fanout": 8,
+    "max_parallel_trials": 2,
+    "katib_gpu_budget": 4,
+    "max_search_space_cardinality": 1000
+  },
+  "pipeline": {
+    "name": "candidate-training-workflow",
+    "run_id": "run-001",
+    "pipeline_root": "s3://ml-platform/team-a/pipelines/",
+    "inputs": {
+      "data_version": "dataset@sha256:1111",
+      "evaluation_policy": "eval-policy@sha256:2222"
+    },
+    "interfaces": {
+      "pipeline.data_version": "String",
+      "data.dataset": "Dataset",
+      "train.dataset": "Dataset",
+      "train.model": "Model",
+      "evaluate.model": "Model",
+      "evaluate.metrics": "Metrics",
+      "register.metrics": "Metrics"
+    },
+    "edges": [
+      {
+        "from": "data.dataset",
+        "to": "train.dataset"
+      },
+      {
+        "from": "train.model",
+        "to": "evaluate.model"
+      },
+      {
+        "from": "evaluate.metrics",
+        "to": "register.metrics"
+      }
+    ],
+    "tasks": [
+      {
+        "name": "data-check",
+        "component_digest": "sha256:component-data-check",
+        "image": "registry.training.invalid/ai/data-check@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "queue": "team-a-localqueue",
+        "cache": true,
+        "side_effect": false,
+        "hidden_dependencies": [],
+        "inputs": {
+          "data_version": "data_version"
+        },
+        "output_name": "dataset",
+        "output_type": "Dataset",
+        "environment_contract": {
+          "schema_policy": "v3"
+        },
+        "after": [],
+        "fanout": 1
+      },
+      {
+        "name": "train",
+        "component_digest": "sha256:component-trainjob",
+        "image": "registry.training.invalid/ai/trainjob-launcher@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "queue": "team-a-localqueue",
+        "cache": true,
+        "side_effect": false,
+        "hidden_dependencies": [],
+        "inputs": {
+          "dataset": "dataset"
+        },
+        "output_name": "model",
+        "output_type": "Model",
+        "environment_contract": {
+          "runtime": "torch-distributed-v4",
+          "code": "git:abc123"
+        },
+        "after": [
+          "data-check"
+        ],
+        "fanout": 1
+      },
+      {
+        "name": "evaluate",
+        "component_digest": "sha256:component-evaluate",
+        "image": "registry.training.invalid/ai/evaluate@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "queue": "team-a-localqueue",
+        "cache": true,
+        "side_effect": false,
+        "hidden_dependencies": [],
+        "inputs": {
+          "model": "model",
+          "evaluation_policy": "evaluation_policy"
+        },
+        "output_name": "metrics",
+        "output_type": "Metrics",
+        "environment_contract": {
+          "judge": "eval-suite-v5"
+        },
+        "after": [
+          "train"
+        ],
+        "fanout": 1
+      },
+      {
+        "name": "register-candidate",
+        "component_digest": "sha256:component-register",
+        "image": "registry.training.invalid/ai/register@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "queue": "team-a-localqueue",
+        "cache": false,
+        "side_effect": true,
+        "hidden_dependencies": [],
+        "inputs": {
+          "metrics": "metrics"
+        },
+        "output_name": "registration",
+        "output_type": "Artifact",
+        "environment_contract": {
+          "registry": "model-registry-v1"
+        },
+        "after": [
+          "evaluate"
+        ],
+        "fanout": 1
+      }
+    ]
+  },
+  "katib_experiment": {
+    "name": "bounded-trainjob-search",
+    "parameters": [
+      "learningRate",
+      "depth"
+    ],
+    "trial_template_parameters": [
+      "learningRate",
+      "depth"
+    ],
+    "worker_kind": "TrainJob",
+    "max_trial_count": 6,
+    "parallel_trial_count": 2,
+    "max_failed_trial_count": 2,
+    "gpu_per_trial": 2,
+    "search_space_cardinality": 12,
+    "candidate_learning_rates": [
+      0.005,
+      0.02,
+      0.05
+    ],
+    "candidate_depths": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "early_stopping": true,
+    "timestamped_metrics": true
+  },
+  "faults": [
+    {
+      "type": "mutable_image",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ImageDigestRequired"
+    },
+    {
+      "type": "pipeline_root_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "PipelineRootRequired"
+    },
+    {
+      "type": "type_mismatch",
+      "expected_phase": "REJECTED",
+      "expected_reason": "PipelineTypeMismatch"
+    },
+    {
+      "type": "hidden_dependency",
+      "expected_phase": "REJECTED",
+      "expected_reason": "HiddenDependencyNotInCacheKey"
+    },
+    {
+      "type": "side_effect_cached",
+      "expected_phase": "REJECTED",
+      "expected_reason": "SideEffectTaskCachingForbidden"
+    },
+    {
+      "type": "fanout_unbounded",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ParallelFanoutLimitExceeded"
+    },
+    {
+      "type": "queue_bypass",
+      "expected_phase": "REJECTED",
+      "expected_reason": "RequiredQueueMissing"
+    },
+    {
+      "type": "unknown_dependency",
+      "expected_phase": "REJECTED",
+      "expected_reason": "UnknownTaskDependency"
+    },
+    {
+      "type": "katib_no_trial_limit",
+      "expected_phase": "REJECTED",
+      "expected_reason": "MaxTrialCountRequired"
+    },
+    {
+      "type": "katib_parallel_limit",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ParallelTrialLimitExceeded"
+    },
+    {
+      "type": "katib_gpu_budget",
+      "expected_phase": "REJECTED",
+      "expected_reason": "KatibGPUBudgetExceeded"
+    },
+    {
+      "type": "katib_search_space",
+      "expected_phase": "REJECTED",
+      "expected_reason": "SearchSpaceTooLarge"
+    },
+    {
+      "type": "trial_parameter_missing",
+      "expected_phase": "REJECTED",
+      "expected_reason": "TrialTemplateParameterMissing"
+    },
+    {
+      "type": "early_stop_no_timestamp",
+      "expected_phase": "REJECTED",
+      "expected_reason": "TimestampedMetricRequiredForEarlyStopping"
+    },
+    {
+      "type": "unapproved_worker_kind",
+      "expected_phase": "REJECTED",
+      "expected_reason": "ApprovedTrainJobTemplateRequired"
+    },
+    {
+      "type": "live_backend_missing",
+      "expected_phase": "SKIPPED",
+      "expected_reason": "NoKFPOrKubernetesContextProvided"
+    }
+  ]
+}

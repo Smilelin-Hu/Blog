@@ -1,0 +1,90 @@
+from __future__ import annotations
+
+import argparse
+import heapq
+import json
+import random
+from dataclasses import dataclass, field
+
+
+@dataclass(order=True)
+class Event:
+    time: float
+    kind: str = field(compare=False)
+    version: int = field(compare=False, default=0)
+    tokens: int = field(compare=False, default=0)
+    complete: bool = field(compare=False, default=True)
+
+
+def simulate(
+    mode: str,
+    duration: int,
+    seed: int,
+    rollout_workers: int,
+    trainer_update_seconds: float,
+    token_rate: float,
+    max_lag: int,
+    partial_limit: int,
+) -> dict[str, float]:
+    rng = random.Random(seed)
+    events: list[Event] = []
+    version = 0
+    accepted = dropped = generated = partial = 0
+    lag_sum = 0.0
+    for worker in range(rollout_workers):
+        length = max(64, int(rng.lognormvariate(6.5, 0.7)))
+        used = min(length, partial_limit) if mode == "partial" else length
+        heapq.heappush(events, Event(used / token_rate, "rollout", version, used, used == length))
+    next_update = trainer_update_seconds
+    now = 0.0
+    while events and now <= duration:
+        event = heapq.heappop(events)
+        now = event.time
+        while next_update <= now:
+            version += 1
+            next_update += trainer_update_seconds
+        if event.kind != "rollout":
+            continue
+        generated += 1
+        lag = version - event.version
+        lag_sum += lag
+        if event.complete is False:
+            partial += 1
+        allowed = lag == 0 if mode == "sync" else lag <= max_lag
+        if mode == "open_async":
+            allowed = True
+        if allowed:
+            accepted += 1
+        else:
+            dropped += 1
+        length = max(64, int(rng.lognormvariate(6.5, 0.7)))
+        used = min(length, partial_limit) if mode == "partial" else length
+        heapq.heappush(
+            events,
+            Event(now + used / token_rate, "rollout", version, used, used == length),
+        )
+    denom = max(1, generated)
+    return {
+        "mode": mode,
+        "generated": generated,
+        "accepted": accepted,
+        "dropped": dropped,
+        "mean_version_lag": round(lag_sum / denom, 4),
+        "partial_fraction": round(partial / denom, 4),
+        "accepted_per_second": round(accepted / duration, 4),
+    }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--duration", type=int, default=3600)
+    parser.add_argument("--seed", type=int, default=7)
+    args = parser.parse_args()
+    rows = []
+    for mode in ["sync", "bounded_async", "open_async", "partial"]:
+        rows.append(simulate(mode, args.duration, args.seed, 8, 45.0, 80.0, 2, 512))
+    print(json.dumps({"config": vars(args), "results": rows}, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

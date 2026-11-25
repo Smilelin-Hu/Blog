@@ -1,6 +1,6 @@
 # UI 与 UX：从好看到好用
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_mlkzwvbv-cfdf61ece2ce1cbf.jpg
+![界面（UI）与交互（UX）](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_mlkzwvbv-cfdf61ece2ce1cbf.jpg)
 
 <p>图 1：界面（UI）与交互（UX）</p>
 
@@ -48,21 +48,21 @@ shadcn/ui 是基于 Tailwind 的高质量组件库，但和 Ant Design 这类传
 
 Google 的 AI 应用开发平台，用 Gemini 生成完整 Web 应用（含 UI）。可以理解成在线版 Claude Code：打开浏览器就能用，不需要本地环境。适合快速搭 AI 应用原型、需要集成 Gemini、想一站式从设计到部署、以及免费用户。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222173132952.png
+![Google AI Studio 入口](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222173132952.png)
 
 <p>图 2：Google AI Studio 入口</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222173412942.png
+![Google AI Studio 的创建与生成界面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222173412942.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222173528903.png
+![Google AI Studio 的创建与生成界面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222173528903.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222173540818.png
+![Google AI Studio 的创建与生成界面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222173540818.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222173829118.png
+![Google AI Studio 的创建与生成界面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222173829118.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222173907920.png
+![Google AI Studio 的创建与生成界面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222173907920.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222173934821.png
+![Google AI Studio 的创建与生成界面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222173934821.png)
 
 <p>图 3-8：Google AI Studio 的创建与生成界面</p>
 
@@ -70,11 +70,11 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202602
 
 从文字描述或草图生成完整 UI 设计稿。适合从零设计页面布局、需要**设计稿而不是代码**（设计稿是能看不能跑的图，代码是能直接运行的程序）、快速验证视觉想法，免费。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222173221042.png
+![Google Stitch 入口](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222173221042.png)
 
 <p>图 9：Google Stitch 入口</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227000703458.png
+![Stitch 生成的设计稿](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260227000703458.png)
 
 <p>图 10：Stitch 生成的设计稿</p>
 
@@ -82,21 +82,21 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202602
 
 Vercel 出品，用自然语言直接生成 React + Tailwind + shadcn/ui 代码。适合快速生成单个组件或页面原型、需要 shadcn 风格、想要可直接复制进项目的代码。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222173330046.png
+![v0.app 首页](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222173330046.png)
 
 <p>图 11：v0.app 首页</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222174541135.png
+![v0 的生成结果与迭代过程](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222174541135.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222174730883.jpg
+![v0 的生成结果与迭代过程](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222174730883.jpg)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222174800532.png
+![v0 的生成结果与迭代过程](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222174800532.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222174901391.png
+![v0 的生成结果与迭代过程](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222174901391.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222174926727.png
+![v0 的生成结果与迭代过程](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222174926727.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222174958816.png
+![v0 的生成结果与迭代过程](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222174958816.png)
 
 <p>图 12-17：v0 的生成结果与迭代过程</p>
 
@@ -106,25 +106,25 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202602
 
 与 Claude Code 配合时，可以通过 MCP 连接 Figma，直接说「根据 Figma 设计稿实现这个页面」，AI 会读取颜色、间距、字体并生成匹配的代码。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222180858852.png
+![Figma 工作区](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222180858852.png)
 
 <p>图 18：Figma 工作区</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222181216119.png
+![通过 MCP 连接 Figma](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222181216119.png)
 
 <p>图 19：通过 MCP 连接 Figma</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222180953413.png
+![Figma 中的设计稿与协作界面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222180953413.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222181002982.png
+![Figma 中的设计稿与协作界面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222181002982.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222181024025.jpg
+![Figma 中的设计稿与协作界面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222181024025.jpg)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222181106163.png
+![Figma 中的设计稿与协作界面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222181106163.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222180950077.png
+![Figma 中的设计稿与协作界面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222180950077.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222181145149.png
+![Figma 中的设计稿与协作界面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222181145149.png)
 
 <p>图 20-25：Figma 中的设计稿与协作界面</p>
 
@@ -132,21 +132,21 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202602
 
 不只做 UI，能生成包含前后端的完整应用，适合快速验证产品想法；相比 Google AI Studio 更侧重生成可部署的成品，而不只是原型。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222183416399.png
+![Lovable 首页](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222183416399.png)
 
 <p>图 26：Lovable 首页</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222183506857.png
+![Lovable 的应用生成与预览](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222183506857.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222183546410.png
+![Lovable 的应用生成与预览](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222183546410.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222183557356.png
+![Lovable 的应用生成与预览](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222183557356.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222183609472.png
+![Lovable 的应用生成与预览](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222183609472.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222183617930.png
+![Lovable 的应用生成与预览](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222183617930.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222183631655.png
+![Lovable 的应用生成与预览](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222183631655.png)
 
 <p>图 27-32：Lovable 的应用生成与预览</p>
 
@@ -162,21 +162,21 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202602
 
 告诉 AI「项目使用 shadcn/ui」，它就会优先使用这些组件。生态扩展里 **Magic UI** 提供动画与特效组件，**Aceternity** 提供高级 UI 特效。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222210620318.png
+![shadcn/ui 官网](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222210620318.png)
 
 <p>图 33：shadcn/ui 官网</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222210651904.png
+![shadcn 组件源码直接进入项目](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222210651904.png)
 
 <p>图 34：shadcn 组件源码直接进入项目</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222210713180.png
+![在 AI 对话中指定 shadcn/ui](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222210713180.png)
 
 <p>图 35：在 AI 对话中指定 shadcn/ui</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222210923284.png
+![Magic UI 与 Aceternity 的特效组件](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222210923284.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222210905692.png
+![Magic UI 与 Aceternity 的特效组件](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222210905692.png)
 
 <p>图 36-37：Magic UI 与 Aceternity 的特效组件</p>
 
@@ -193,21 +193,21 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202602
 | Radix UI | 无样式底层组件库，只管行为与无障碍，shadcn 的底层 | 完全定制 |
 | HeroUI（原 NextUI） | 基于 Tailwind，开箱即用、内置动画 | 现代感、快速开发 |
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222211429267.png
+![八种主流组件库的界面风格](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222211429267.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222212101447.png
+![八种主流组件库的界面风格](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222212101447.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222212117578.png
+![八种主流组件库的界面风格](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222212117578.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222212134560.png
+![八种主流组件库的界面风格](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222212134560.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222222521284.png
+![八种主流组件库的界面风格](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222222521284.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222211543203.png
+![八种主流组件库的界面风格](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222211543203.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222211603616.png
+![八种主流组件库的界面风格](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222211603616.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222212148692.png
+![八种主流组件库的界面风格](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222212148692.png)
 
 <p>图 38-45：八种主流组件库的界面风格</p>
 
@@ -227,25 +227,25 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202602
 | 页面切换 | 用 AnimatePresence 做过渡 |
 | 滚动触发 | 用 `whileInView` 在元素进入视口时触发 |
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222213320488.jpg
+![Motion 动画示例](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222213320488.jpg)
 
 <p>图 46：Motion 动画示例</p>
 
 **GSAP** 是 Web 动画领域的老牌王者，性能极强。支持时间线（Timeline，像剪辑视频的时间轴，编排动画先后与间隔）、插件丰富（ScrollTrigger、Draggable、MorphSVG），不限于 React。适合营销落地页的炫酷滚动、复杂 SVG 路径动画、精确时间线序列、性能要求极高的场景。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222213406770.png
+![GSAP 官网](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222213406770.png)
 
 <p>图 47：GSAP 官网</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222213514935.jpg
+![GSAP 滚动与时间线效果](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222213514935.jpg)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222213459756.png
+![GSAP 滚动与时间线效果](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222213459756.png)
 
 <p>图 48-49：GSAP 滚动与时间线效果</p>
 
 **Three.js** 是网页 3D 的主流选择，配合 `@react-three/fiber` 可以用 React 组件方式写 3D 场景。适合 3D 产品展示、粒子背景、交互式 3D、3D 数据可视化。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222213553727.jpg
+![Three.js 3D 场景](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222213553727.jpg)
 
 <p>图 50：Three.js 3D 场景</p>
 
@@ -277,23 +277,23 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202602
 | Mobbin | 真实 App/网站截图库 | 搜索具体功能（onboarding、pricing）看成熟产品怎么做 |
 | Land-book | 落地页灵感 | 做产品首页或营销页时参考 |
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222213812614.png
+![Awwwards 获奖作品](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222213812614.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222213829480.png
+![Awwwards 获奖作品](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222213829480.png)
 
 <p>图 51-52：Awwwards 获奖作品</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222213914501.png
+![Dribbble 作品流](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222213914501.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222213927522.png
+![Dribbble 作品流](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222213927522.png)
 
 <p>图 53-54：Dribbble 作品流</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222213947631.png
+![Mobbin 的真实应用截图](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222213947631.png)
 
 <p>图 55：Mobbin 的真实应用截图</p>
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222214021688.png
+![Land-book 的落地页集合](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260222214021688.png)
 
 <p>图 56：Land-book 的落地页集合</p>
 
@@ -307,13 +307,13 @@ https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-202602
 
 **配色工具**：Realtime Colors（实时预览配色在网页上的效果）、Coolors（随机生成和谐配色）、Happy Hues（完整配色方案 + 预览）、Tailwind 调色板（内置颜色系统）。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260226235525847.png
+![配色工具的界面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260226235525847.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260226235543860.png
+![配色工具的界面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260226235543860.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260226235612718.png
+![配色工具的界面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260226235612718.png)
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260226235631335.png
+![配色工具的界面](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260226235631335.png)
 
 <p>图 57-60：配色工具的界面</p>
 
@@ -440,4 +440,4 @@ B 端追求「好用」，C 端追求「好看」：C 端可以有炫酷动画�
 
 ## 写在最后
 
-下一篇[数据持久化与数据库](6-数据持久化与数据库)让应用「记住」数据：从本地存储到数据库的演进、表结构与增删改查，以及数据库设计的基本方法。
+下一篇[数据持久化与数据库](/source/vibecoding/vibe-advanced/6-数据持久化与数据库)让应用「记住」数据：从本地存储到数据库的演进、表结构与增删改查，以及数据库设计的基本方法。

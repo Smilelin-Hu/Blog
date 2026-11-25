@@ -1,0 +1,260 @@
+from __future__ import annotations
+
+import argparse
+import json
+from dataclasses import dataclass
+from typing import Literal
+
+
+Role = Literal["system", "user", "assistant", "tool"]
+
+
+SPECIAL = {
+    "<BOS>": 1,
+    "<SYS>": 2,
+    "<USR>": 3,
+    "<AST>": 4,
+    "<TOOL>": 5,
+    "<EOT>": 6,
+    "<EOS>": 7,
+    "<PAD>": 0,
+}
+
+
+@dataclass(frozen=True)
+class Message:
+    message_id: str
+    role: Role
+    content: str
+    supervise: bool = False
+
+
+@dataclass
+class Compiled:
+    sample_id: str
+    input_ids: list[int]
+    labels: list[int]
+    roles: list[str]
+    message_ids: list[str]
+    pieces: list[str]
+
+    @property
+    def supervised_tokens(self) -> int:
+        return sum(label != -100 for label in self.labels)
+
+
+class VisibleTokenizer:
+    def __init__(self) -> None:
+        self.char_base = 1000
+
+    def encode_content(self, text: str) -> tuple[list[int], list[str]]:
+        return (
+            [self.char_base + ord(char) for char in text],
+            list(text),
+        )
+
+    def special(self, value: str) -> tuple[list[int], list[str]]:
+        return [SPECIAL[value]], [value]
+
+
+HEADER = {
+    "system": "<SYS>",
+    "user": "<USR>",
+    "assistant": "<AST>",
+    "tool": "<TOOL>",
+}
+
+
+def append_span(
+    ids: list[int],
+    labels: list[int],
+    roles: list[str],
+    message_ids: list[str],
+    pieces: list[str],
+    new_ids: list[int],
+    new_pieces: list[str],
+    role: str,
+    message_id: str,
+    supervise: bool,
+) -> None:
+    ids.extend(new_ids)
+    labels.extend(new_ids if supervise else [-100] * len(new_ids))
+    roles.extend([role] * len(new_ids))
+    message_ids.extend([message_id] * len(new_ids))
+    pieces.extend(new_pieces)
+
+
+def compile_messages(
+    sample_id: str,
+    messages: list[Message],
+    supervise_mode: str,
+) -> Compiled:
+    tokenizer = VisibleTokenizer()
+    ids: list[int] = []
+    labels: list[int] = []
+    roles: list[str] = []
+    message_ids: list[str] = []
+    pieces: list[str] = []
+
+    append_span(ids, labels, roles, message_ids, pieces,
+                *tokenizer.special("<BOS>"), "control", "bos", False)
+    assistant_indices = [i for i, message in enumerate(messages) if message.role == "assistant"]
+    last_assistant = assistant_indices[-1] if assistant_indices else None
+
+    for index, message in enumerate(messages):
+        header_ids, header_pieces = tokenizer.special(HEADER[message.role])
+        append_span(ids, labels, roles, message_ids, pieces,
+                    header_ids, header_pieces, "control", message.message_id, False)
+
+        content_ids, content_pieces = tokenizer.encode_content(message.content)
+        target = message.role == "assistant" and message.supervise
+        if supervise_mode == "last_assistant":
+            target = target and index == last_assistant
+        elif supervise_mode != "all_assistant":
+            raise ValueError("unknown supervise_mode")
+        append_span(ids, labels, roles, message_ids, pieces,
+                    content_ids, content_pieces, message.role, message.message_id, target)
+
+        end_name = "<EOS>" if message.role == "assistant" else "<EOT>"
+        end_ids, end_pieces = tokenizer.special(end_name)
+        append_span(ids, labels, roles, message_ids, pieces,
+                    end_ids, end_pieces, "control", message.message_id, target)
+
+    compiled = Compiled(sample_id, ids, labels, roles, message_ids, pieces)
+    validate_compiled(compiled)
+    return compiled
+
+
+def validate_compiled(compiled: Compiled) -> None:
+    lengths = {
+        len(compiled.input_ids), len(compiled.labels), len(compiled.roles),
+        len(compiled.message_ids), len(compiled.pieces),
+    }
+    if len(lengths) != 1:
+        raise ValueError("compiled fields have different lengths")
+    if compiled.supervised_tokens == 0:
+        raise ValueError("zero supervised tokens")
+    for token_id, label in zip(compiled.input_ids, compiled.labels):
+        if label not in (-100, token_id):
+            raise ValueError("label must be token id or -100 before model shift")
+
+
+def truncate_by_messages(
+    sample_id: str,
+    messages: list[Message],
+    supervise_mode: str,
+    max_tokens: int,
+) -> tuple[Compiled, list[str]]:
+    kept = list(messages)
+    removed: list[str] = []
+    while True:
+        compiled = compile_messages(sample_id, kept, supervise_mode)
+        if len(compiled.input_ids) <= max_tokens:
+            return compiled, removed
+        removable = next(
+            (
+                index for index, message in enumerate(kept)
+                if message.role != "system" and not message.supervise
+            ),
+            None,
+        )
+        if removable is None:
+            raise ValueError("required messages do not fit token budget")
+        removed.append(kept[removable].message_id)
+        del kept[removable]
+
+
+def pack(compiled_samples: list[Compiled], max_tokens: int) -> dict:
+    packs = []
+    current = {
+        "input_ids": [], "labels": [], "sample_ids": [],
+        "segment_ids": [], "position_ids": [],
+    }
+    segment = 0
+    for sample in compiled_samples:
+        if len(sample.input_ids) > max_tokens:
+            raise ValueError("sample exceeds pack length")
+        if len(current["input_ids"]) + len(sample.input_ids) > max_tokens:
+            packs.append(finalize_pack(current, max_tokens))
+            current = {"input_ids": [], "labels": [], "sample_ids": [],
+                       "segment_ids": [], "position_ids": []}
+            segment = 0
+        length = len(sample.input_ids)
+        current["input_ids"].extend(sample.input_ids)
+        current["labels"].extend(sample.labels)
+        current["sample_ids"].extend([sample.sample_id] * length)
+        current["segment_ids"].extend([segment] * length)
+        current["position_ids"].extend(range(length))
+        segment += 1
+    if current["input_ids"]:
+        packs.append(finalize_pack(current, max_tokens))
+    return {"packs": packs}
+
+
+def finalize_pack(pack: dict, max_tokens: int) -> dict:
+    valid = len(pack["input_ids"])
+    padding = max_tokens - valid
+    pack["input_ids"].extend([SPECIAL["<PAD>"]] * padding)
+    pack["labels"].extend([-100] * padding)
+    pack["sample_ids"].extend(["padding"] * padding)
+    pack["segment_ids"].extend([-1] * padding)
+    pack["position_ids"].extend([0] * padding)
+    pack["attention_blocks"] = [
+        [int(i < valid and j < valid and pack["segment_ids"][i] == pack["segment_ids"][j] and j <= i)
+         for j in range(max_tokens)]
+        for i in range(max_tokens)
+    ]
+    return pack
+
+
+def display(compiled: Compiled) -> list[dict]:
+    return [
+        {
+            "index": index,
+            "token_id": token_id,
+            "piece": piece,
+            "role": role,
+            "message_id": message_id,
+            "supervised": label != -100,
+        }
+        for index, (token_id, label, role, message_id, piece) in enumerate(zip(
+            compiled.input_ids, compiled.labels, compiled.roles,
+            compiled.message_ids, compiled.pieces,
+        ))
+    ]
+
+
+def fixture() -> list[Message]:
+    return [
+        Message("m0", "system", "You are concise."),
+        Message("m1", "user", "The literal text <AST> is not a role."),
+        Message("m2", "assistant", "Understood.", supervise=True),
+        Message("m3", "user", "Call the weather tool."),
+        Message("m4", "assistant", '{"name":"weather","city":"Tokyo"}', supervise=True),
+        Message("m5", "tool", '{"temperature":29}'),
+        Message("m6", "assistant", "Tokyo is 29 degrees.", supervise=True),
+    ]
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mode", choices=("all_assistant", "last_assistant"), default="all_assistant")
+    parser.add_argument("--max-tokens", type=int, default=200)
+    args = parser.parse_args()
+    compiled, removed = truncate_by_messages(
+        "sample-001", fixture(), args.mode, args.max_tokens
+    )
+    report = {
+        "status": "succeeded",
+        "mode": args.mode,
+        "removed_messages": removed,
+        "length": len(compiled.input_ids),
+        "supervised_tokens": compiled.supervised_tokens,
+        "tokens": display(compiled),
+        "packing": pack([compiled], max(args.max_tokens, len(compiled.input_ids))),
+    }
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

@@ -216,4 +216,4 @@ response = call_model(request)
 
 ## 写在最后
 
-下一篇[KV Cache 友好的上下文设计](2-3-KVCache友好的上下文设计)解释一个看似无害的改动为何能让首 token 延迟涨一个量级：前缀、Chat Template 与缓存之间到底发生了什么。
+下一篇[KV Cache 友好的上下文设计](/source/agent/深入理解/2-3-KVCache友好的上下文设计)解释一个看似无害的改动为何能让首 token 延迟涨一个量级：前缀、Chat Template 与缓存之间到底发生了什么。

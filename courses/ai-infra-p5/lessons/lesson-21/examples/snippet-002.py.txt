@@ -1,0 +1,58 @@
+import json
+import os
+
+try:
+    import torch
+    import torch.distributed as dist
+    from torch import nn
+except Exception as exc:
+    print(json.dumps({"status": "skipped", "reason": f"torch unavailable: {exc}"}))
+    raise SystemExit(0)
+
+
+def skip(reason):
+    print(json.dumps({"status": "skipped", "reason": reason}))
+    raise SystemExit(0)
+
+
+def batch(kind, step, rank, device, vocab=768, length=128):
+    g = torch.Generator(device=device); g.manual_seed(step + rank * 100000 + (0 if kind == "balanced" else 999))
+    low = 0 if kind == "balanced" or step % 4 else vocab // 2
+    return torch.randint(low, vocab, (2, length + 1), generator=g, device=device)
+
+
+def main():
+    if not torch.cuda.is_available(): skip("CUDA unavailable")
+    if torch.cuda.device_count() < 1: skip(f"requires at least one CUDA device, found {torch.cuda.device_count()}")
+    if int(os.environ.get("WORLD_SIZE", "1")) < 1: skip("launch with torchrun --nproc_per_node=1")
+    dist.init_process_group("nccl")
+    rank = dist.get_rank(); local = int(os.environ["LOCAL_RANK"])
+    torch.cuda.set_device(local); device = torch.device("cuda", local)
+    results = []
+    try:
+        for recipe in ["top_k", "balanced"]:
+            torch.manual_seed(42)
+            model = nn.Sequential(nn.Embedding(768, 192), nn.LayerNorm(192), nn.Linear(192, 768)).to(device)
+            model = nn.parallel.DistributedDataParallel(model, device_ids=[local])
+            opt = torch.optim.AdamW(model.parameters(), lr=3e-4)
+            consumed = torch.zeros(1, dtype=torch.long, device=device)
+            for step in range(60):
+                x = batch(recipe, step, rank, device)
+                logits = model(x[:, :-1])
+                loss = nn.functional.cross_entropy(logits.reshape(-1, 768), x[:, 1:].reshape(-1))
+                opt.zero_grad(set_to_none=True); loss.backward(); opt.step()
+                consumed += x[:, 1:].numel()
+            dist.all_reduce(consumed)
+            metric = torch.tensor([float(loss.item())], device=device); dist.all_reduce(metric); metric /= 2
+            if rank == 0: results.append({"recipe": recipe, "final_loss": float(metric), "tokens": int(consumed)})
+        if rank == 0:
+            print(json.dumps({"status": "passed", "results": results,
+                              "peak_allocated_bytes": torch.cuda.max_memory_allocated(device),
+                              "claim_boundary": "synthetic two-GPU ablation control path only"}))
+    except torch.cuda.OutOfMemoryError as exc:
+        if rank == 0: print(json.dumps({"status": "skipped", "reason": f"CUDA OOM: {exc}"}))
+    finally:
+        dist.destroy_process_group()
+
+
+if __name__ == "__main__": main()

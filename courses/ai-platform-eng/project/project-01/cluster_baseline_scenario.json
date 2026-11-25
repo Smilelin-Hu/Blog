@@ -1,0 +1,109 @@
+{
+  "version_matrix": {
+    "os_image": "validated-os-2026q3",
+    "kernel": "validated-kernel-2026q3",
+    "container_runtime": "validated-runtime-2026q3",
+    "gpu_driver": "validated-gpu-driver-2026q3",
+    "gpu_operator": "validated-gpu-operator-2026q3",
+    "nic_driver": "validated-nic-driver-2026q3",
+    "network_operator": "validated-network-operator-2026q3",
+    "csi_driver": "validated-csi-2026q3"
+  },
+  "requirements": {
+    "minimum_ready_rate": 1.0,
+    "minimum_device_accuracy": 1.0,
+    "maximum_health_detection_seconds": 60,
+    "maximum_cached_artifact_ready_seconds": 120,
+    "required_network_profile": "roce-gdr-dual-rail",
+    "required_storage_profile": "artifact-digest-cache"
+  },
+  "nodes": [
+    {
+      "name": "gpu-ready-a",
+      "gpu_expected": 8,
+      "gpu_allocatable": 8,
+      "gpu_stack": "Ready",
+      "device_health": "Healthy",
+      "sharing_mode": "whole",
+      "network_profile": "roce-gdr-dual-rail",
+      "storage_profile": "artifact-digest-cache",
+      "artifact_digest_verified": true,
+      "health_detection_seconds": 24,
+      "cached_artifact_ready_seconds": 38.4,
+      "version_profile": "validated-2026q3"
+    },
+    {
+      "name": "gpu-ready-b",
+      "gpu_expected": 8,
+      "gpu_allocatable": 8,
+      "gpu_stack": "Ready",
+      "device_health": "Healthy",
+      "sharing_mode": "mig",
+      "network_profile": "roce-gdr-dual-rail",
+      "storage_profile": "artifact-digest-cache",
+      "artifact_digest_verified": true,
+      "health_detection_seconds": 31,
+      "cached_artifact_ready_seconds": 42.0,
+      "version_profile": "validated-2026q3"
+    }
+  ],
+  "prerequisite_reports": [
+    "project/project-01/fixtures/prerequisites/workload_lifecycle_report.json",
+    "project/project-01/fixtures/prerequisites/gpu_node_readiness_report.json",
+    "project/project-01/fixtures/prerequisites/device_allocation_report.json",
+    "project/project-01/fixtures/prerequisites/gpu_sharing_report.json",
+    "project/project-01/fixtures/prerequisites/network_topology_report.json",
+    "project/project-01/fixtures/prerequisites/artifact_distribution_report.json"
+  ],
+  "faults": [
+    {
+      "name": "gpu-driver-profile-drift",
+      "type": "version_drift",
+      "expected_phase": "Quarantined",
+      "expected_reason": "VersionProfileDrift"
+    },
+    {
+      "name": "device-count-mismatch",
+      "type": "device_mismatch",
+      "expected_phase": "Quarantined",
+      "expected_reason": "GPUAllocatableMismatch"
+    },
+    {
+      "name": "allocated-device-unhealthy",
+      "type": "device_unhealthy",
+      "expected_phase": "Draining",
+      "expected_reason": "AllocatedDeviceHealthLost"
+    },
+    {
+      "name": "mig-geometry-drift",
+      "type": "sharing_drift",
+      "expected_phase": "Quarantined",
+      "expected_reason": "GPUSharingProfileDrift"
+    },
+    {
+      "name": "required-network-rail-down",
+      "type": "network_degraded",
+      "expected_phase": "ProfileRemoved",
+      "expected_reason": "RequiredNetworkProfileUnavailable"
+    },
+    {
+      "name": "storage-profile-unavailable",
+      "type": "storage_degraded",
+      "expected_phase": "AdmissionBlocked",
+      "expected_reason": "RequiredStorageProfileUnavailable"
+    },
+    {
+      "name": "model-cache-digest-mismatch",
+      "type": "artifact_corrupt",
+      "expected_phase": "ArtifactQuarantined",
+      "expected_reason": "ArtifactDigestVerificationFailed"
+    },
+    {
+      "name": "health-detection-slo-missed",
+      "type": "detection_slow",
+      "observed_seconds": 95,
+      "expected_phase": "SLOViolated",
+      "expected_reason": "HealthDetectionTooSlow"
+    }
+  ]
+}

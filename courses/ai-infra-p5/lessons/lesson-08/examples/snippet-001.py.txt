@@ -1,0 +1,250 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+import unicodedata
+from dataclasses import asdict, dataclass, field
+from typing import Any
+
+
+RECIPE_ID = "unicode-boundary-clean-v1"
+
+
+@dataclass
+class Edit:
+    op: str
+    input_start: int
+    input_end: int
+    output_start: int
+    output_end: int
+    reason: str
+
+
+@dataclass
+class LanguageEvidence:
+    label: str
+    score: float
+    evidence: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class UnitResult:
+    unit_id: str
+    unit_type: str
+    status: str
+    original_digest: str
+    cleaned_text: str
+    cleaned_digest: str
+    edits: list[Edit]
+    language: list[LanguageEvidence]
+    diagnostics: list[str]
+
+
+def digest(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def script_counts(text: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for char in text:
+        if not char.isalpha():
+            continue
+        name = unicodedata.name(char, "UNKNOWN")
+        if "CJK UNIFIED" in name or "IDEOGRAPH" in name:
+            script = "Han"
+        elif "HIRAGANA" in name or "KATAKANA" in name:
+            script = "Kana"
+        elif "HANGUL" in name:
+            script = "Hangul"
+        elif "CYRILLIC" in name:
+            script = "Cyrillic"
+        elif "ARABIC" in name:
+            script = "Arabic"
+        elif "HEBREW" in name:
+            script = "Hebrew"
+        elif "LATIN" in name:
+            script = "Latin"
+        else:
+            script = "Other"
+        counts[script] = counts.get(script, 0) + 1
+    return counts
+
+
+def language_evidence(text: str, unit_type: str) -> list[LanguageEvidence]:
+    if unit_type == "code":
+        return [LanguageEvidence("code", 1.0, {"reason": "typed unit"})]
+    counts = script_counts(text)
+    total = sum(counts.values())
+    if total < 4:
+        return [LanguageEvidence("unknown", 1.0, {"reason": "too_short", "scripts": counts})]
+    candidates: list[LanguageEvidence] = []
+    if counts.get("Kana", 0):
+        candidates.append(
+            LanguageEvidence("ja", (counts.get("Kana", 0) + counts.get("Han", 0)) / total, {"scripts": counts})
+        )
+    elif counts.get("Hangul", 0):
+        candidates.append(
+            LanguageEvidence("ko", (counts.get("Hangul", 0) + counts.get("Han", 0)) / total, {"scripts": counts})
+        )
+    elif counts.get("Han", 0):
+        candidates.append(LanguageEvidence("zh", counts["Han"] / total, {"scripts": counts}))
+    for script, label in (("Cyrillic", "und-Cyrl"), ("Arabic", "und-Arab"), ("Hebrew", "und-Hebr")):
+        if counts.get(script, 0):
+            candidates.append(LanguageEvidence(label, counts[script] / total, {"scripts": counts}))
+    if counts.get("Latin", 0):
+        lowered = f" {text.casefold()} "
+        lexicons = {
+            "en": (" the ", " and ", " is ", " data "),
+            "fr": (" le ", " la ", " et ", " des "),
+            "es": (" el ", " la ", " y ", " los "),
+        }
+        hits = {label: sum(lowered.count(word) for word in words) for label, words in lexicons.items()}
+        best = max(hits, key=hits.get)
+        if hits[best] > 0:
+            candidates.append(
+                LanguageEvidence(best, min(0.95, 0.45 + 0.1 * hits[best]), {"scripts": counts, "lexicon_hits": hits})
+            )
+        else:
+            candidates.append(LanguageEvidence("und-Latn", counts["Latin"] / total, {"scripts": counts}))
+    candidates.sort(key=lambda item: (-item.score, item.label))
+    if len([value for value in counts.values() if value / total >= 0.2]) > 1:
+        candidates.insert(0, LanguageEvidence("mixed", 1.0, {"scripts": counts}))
+    return candidates[:4] or [LanguageEvidence("unknown", 1.0, {"scripts": counts})]
+
+
+def normalize_with_edits(text: str, unit_type: str) -> tuple[str, list[Edit], list[str]]:
+    diagnostics: list[str] = []
+    normalized = unicodedata.normalize("NFC", text)
+    if normalized != text:
+        diagnostics.append("unicode.nfc_changed")
+    output: list[str] = []
+    edits: list[Edit] = []
+    input_index = 0
+    output_index = 0
+    while input_index < len(normalized):
+        char = normalized[input_index]
+        start = input_index
+        if char == "\r":
+            if input_index + 1 < len(normalized) and normalized[input_index + 1] == "\n":
+                input_index += 2
+            else:
+                input_index += 1
+            output.append("\n")
+            edits.append(Edit("REPLACE", start, input_index, output_index, output_index + 1, "newline.lf"))
+            output_index += 1
+            continue
+        category = unicodedata.category(char)
+        if category == "Cc" and char not in {"\n", "\t"}:
+            input_index += 1
+            edits.append(Edit("DELETE", start, input_index, output_index, output_index, "control.disallowed"))
+            diagnostics.append("control.disallowed")
+            continue
+        if unit_type != "code" and (char == "\t" or category == "Zs"):
+            run_start = input_index
+            while input_index < len(normalized):
+                current = normalized[input_index]
+                if current != "\t" and unicodedata.category(current) != "Zs":
+                    break
+                input_index += 1
+            replacement = " "
+            if output and output[-1] == " ":
+                replacement = ""
+            output.extend(replacement)
+            edits.append(
+                Edit(
+                    "REPLACE" if replacement else "DELETE",
+                    run_start,
+                    input_index,
+                    output_index,
+                    output_index + len(replacement),
+                    "whitespace.horizontal",
+                )
+            )
+            output_index += len(replacement)
+            continue
+        output.append(char)
+        input_index += 1
+        edits.append(Edit("KEEP", start, input_index, output_index, output_index + 1, "identity"))
+        output_index += 1
+    cleaned = "".join(output)
+    if unit_type != "code":
+        stripped = "\n".join(line.rstrip() for line in cleaned.split("\n")).strip()
+        if stripped != cleaned:
+            diagnostics.append("whitespace.edge_changed")
+        cleaned = stripped
+    return cleaned, edits, sorted(set(diagnostics))
+
+
+def clean_unit(value: dict[str, str]) -> UnitResult:
+    unit_id = value["unit_id"]
+    unit_type = value["unit_type"]
+    text = value["text"]
+    if unit_type in {"nav", "footer", "advertisement"}:
+        return UnitResult(
+            unit_id,
+            unit_type,
+            "excluded_boundary",
+            digest(text),
+            "",
+            digest(""),
+            [Edit("DELETE", 0, len(text), 0, 0, f"boundary.{unit_type}")],
+            language_evidence(text, unit_type),
+            [f"boundary.{unit_type}"],
+        )
+    cleaned, edits, diagnostics = normalize_with_edits(text, unit_type)
+    status = "success" if cleaned else "empty_after_clean"
+    return UnitResult(
+        unit_id,
+        unit_type,
+        status,
+        digest(text),
+        cleaned,
+        digest(cleaned),
+        edits,
+        language_evidence(cleaned, unit_type),
+        diagnostics,
+    )
+
+
+def validate(result: UnitResult, original: str) -> None:
+    if result.status == "excluded_boundary":
+        assert result.cleaned_text == ""
+        return
+    assert all(0 <= edit.input_start <= edit.input_end <= len(unicodedata.normalize("NFC", original)) for edit in result.edits)
+    assert all(0 <= edit.output_start <= edit.output_end for edit in result.edits)
+    cleaned_again, _, _ = normalize_with_edits(result.cleaned_text, result.unit_type)
+    assert cleaned_again == result.cleaned_text
+
+
+def main() -> None:
+    units = [
+        {"unit_id": "u1", "unit_type": "paragraph", "text": "Cafe\u0301\r\n数据\u0000  工程"},
+        {"unit_id": "u2", "unit_type": "paragraph", "text": "The data is clean and useful."},
+        {"unit_id": "u3", "unit_type": "paragraph", "text": "中文と日本語が混在します"},
+        {"unit_id": "u4", "unit_type": "code", "text": "def A():\n\treturn  1"},
+        {"unit_id": "u5", "unit_type": "nav", "text": "Home Products Contact"},
+        {"unit_id": "u6", "unit_type": "paragraph", "text": "短"},
+    ]
+    results = [clean_unit(unit) for unit in units]
+    for result, unit in zip(results, units):
+        validate(result, unit["text"])
+    second = [clean_unit({"unit_id": result.unit_id, "unit_type": result.unit_type, "text": result.cleaned_text}) for result in results if result.status != "excluded_boundary"]
+    first_clean = [result.cleaned_digest for result in results if result.status != "excluded_boundary"]
+    assert first_clean == [result.cleaned_digest for result in second]
+    counts: dict[str, int] = {}
+    for result in results:
+        counts[result.status] = counts.get(result.status, 0) + 1
+        print(json.dumps(asdict(result), ensure_ascii=False, sort_keys=True))
+    report = {
+        "status": "passed",
+        "recipe_id": RECIPE_ID,
+        "inputs": len(units),
+        "status_counts": dict(sorted(counts.items())),
+        "idempotent": True,
+    }
+    print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
+
+
+if __name__ == "__main__":
+    main()

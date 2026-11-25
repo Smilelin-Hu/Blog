@@ -206,4 +206,4 @@ curl -X POST "http://127.0.0.1:8000/predict/ner" -H "Content-Type: application/j
 
 ## 写在最后
 
-本地跑通只是第一步，服务要真正对外可用，还得放到云服务器上并保证持久运行——下一篇[云服务器部署与Docker Compose](2-云服务器部署与Docker)从 ECS 安全组、uv 依赖管理讲到 systemd 与容器化两套部署方案。
+本地跑通只是第一步，服务要真正对外可用，还得放到云服务器上并保证持久运行——下一篇[云服务器部署与Docker Compose](/source/大模型/部署工程篇/2-云服务器部署与Docker)从 ECS 安全组、uv 依赖管理讲到 systemd 与容器化两套部署方案。

@@ -1,0 +1,246 @@
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import random
+import sys
+import time
+from pathlib import Path
+from typing import Dict, List, Tuple
+
+
+def emit(payload: Dict[str, object]) -> None:
+    print(json.dumps(payload, ensure_ascii=False), flush=True)
+
+
+def canonical_json(value: object) -> bytes:
+    return json.dumps(
+        value, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+
+
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+try:
+    import torch
+    import torch.distributed as dist
+    import torch.nn as nn
+    from torch.nn.parallel import DistributedDataParallel as DDP
+except Exception as exc:
+    emit({"status": "skipped", "reason": "pytorch_import_failed", "detail": str(exc)})
+    raise SystemExit(0)
+
+
+class TinyLM(nn.Module):
+    def __init__(self, vocab: int, length: int) -> None:
+        super().__init__()
+        hidden = 192
+        self.token = nn.Embedding(vocab, hidden)
+        self.position = nn.Embedding(length, hidden)
+        layer = nn.TransformerEncoderLayer(
+            hidden, 6, hidden * 4, dropout=0.0, batch_first=True, norm_first=True
+        )
+        self.layers = nn.TransformerEncoder(layer, 4)
+        self.norm = nn.LayerNorm(hidden)
+        self.head = nn.Linear(hidden, vocab, bias=False)
+        self.head.weight = self.token.weight
+
+    def forward(self, ids: torch.Tensor) -> torch.Tensor:
+        length = ids.shape[1]
+        positions = torch.arange(length, device=ids.device).unsqueeze(0)
+        hidden = self.token(ids) + self.position(positions)
+        mask = torch.triu(
+            torch.full((length, length), float("-inf"), device=ids.device),
+            diagonal=1,
+        )
+        return self.head(self.norm(self.layers(hidden, mask=mask, is_causal=True)))
+
+
+def build_commit(root: Path, seed: int, shards: int, rows: int, length: int, vocab: int) -> Path:
+    root.mkdir(parents=True, exist_ok=True)
+    objects = []
+    for shard_index in range(shards):
+        generator = torch.Generator().manual_seed(seed + shard_index)
+        starts = torch.randint(4, vocab, (rows, 1), generator=generator)
+        steps = torch.randint(1, 13, (rows, 1), generator=generator)
+        positions = torch.arange(length + 1).unsqueeze(0)
+        tokens = 4 + ((starts - 4 + positions * steps) % (vocab - 4))
+        path = root / f"part-{shard_index:05d}.pt"
+        torch.save(tokens.to(torch.int32), path)
+        objects.append({
+            "logical_path": path.name,
+            "sha256": file_sha256(path),
+            "size_bytes": path.stat().st_size,
+            "rows": rows,
+        })
+    body = {
+        "schema": "token-shard-v1",
+        "seed": seed,
+        "sequence_length": length,
+        "vocab_size": vocab,
+        "objects": objects,
+    }
+    body["commit_id"] = "commit:" + hashlib.sha256(canonical_json(body)).hexdigest()
+    manifest = root / "manifest.json"
+    manifest.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
+    return manifest
+
+
+def verify_manifest(manifest_path: Path) -> Dict[str, object]:
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    body = {key: value for key, value in manifest.items() if key != "commit_id"}
+    expected_commit = "commit:" + hashlib.sha256(canonical_json(body)).hexdigest()
+    errors = []
+    if manifest.get("commit_id") != expected_commit:
+        errors.append("manifest_commit_mismatch")
+    for item in manifest["objects"]:
+        path = manifest_path.parent / item["logical_path"]
+        if not path.exists():
+            errors.append(f"missing:{item['logical_path']}")
+            continue
+        if path.stat().st_size != item["size_bytes"]:
+            errors.append(f"size:{item['logical_path']}")
+        if file_sha256(path) != item["sha256"]:
+            errors.append(f"sha256:{item['logical_path']}")
+    if errors:
+        raise RuntimeError(",".join(errors))
+    return manifest
+
+
+def distributed_environment() -> Tuple[int, int, int]:
+    if not torch.cuda.is_available():
+        emit({"status": "skipped", "reason": "cuda_unavailable"})
+        raise SystemExit(0)
+    if torch.cuda.device_count() < 1:
+        emit({"status": "skipped", "reason": "requires_two_cuda_gpus", "detected": torch.cuda.device_count()})
+        raise SystemExit(0)
+    if any(name not in os.environ for name in ("RANK", "WORLD_SIZE", "LOCAL_RANK")):
+        emit({"status": "skipped", "reason": "launch_with_torchrun"})
+        raise SystemExit(0)
+    rank = int(os.environ["RANK"])
+    world = int(os.environ["WORLD_SIZE"])
+    local = int(os.environ["LOCAL_RANK"])
+    if world < 1:
+        if rank == 0:
+            emit({"status": "skipped", "reason": "world_size_must_be_positive", "world_size": world})
+        raise SystemExit(0)
+    torch.cuda.set_device(local)
+    dist.init_process_group("nccl")
+    return rank, world, local
+
+
+def load_rows(manifest_path: Path, manifest: Dict[str, object]) -> torch.Tensor:
+    parts: List[torch.Tensor] = []
+    for item in manifest["objects"]:
+        parts.append(torch.load(manifest_path.parent / item["logical_path"], weights_only=True))
+    return torch.cat(parts, dim=0).to(torch.long)
+
+
+def train(args: argparse.Namespace, manifest_path: Path, manifest: Dict[str, object]) -> None:
+    rank, world, local = distributed_environment()
+    device = torch.device("cuda", local)
+    torch.manual_seed(args.seed)
+    data = load_rows(manifest_path, manifest)
+    model = DDP(TinyLM(args.vocab_size, args.sequence_length).to(device), device_ids=[local])
+    optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
+    loss_fn = nn.CrossEntropyLoss()
+    generator = random.Random(args.seed + rank)
+    cursor = rank
+    started = time.perf_counter()
+    recent: List[float] = []
+
+    for step in range(args.steps):
+        indices = []
+        for _ in range(args.batch_size):
+            indices.append((cursor + generator.randrange(len(data))) % len(data))
+            cursor = (cursor + world) % len(data)
+        batch = data[indices].to(device, non_blocking=True)
+        optimizer.zero_grad(set_to_none=True)
+        logits = model(batch[:, :-1])
+        labels = batch[:, 1:]
+        loss = loss_fn(logits.reshape(-1, args.vocab_size), labels.reshape(-1))
+        loss.backward()
+        optimizer.step()
+        recent.append(loss.item())
+        recent = recent[-20:]
+
+    torch.cuda.synchronize(device)
+    elapsed = time.perf_counter() - started
+    cursor_tensor = torch.tensor([cursor], device=device, dtype=torch.long)
+    gathered = [torch.zeros_like(cursor_tensor) for _ in range(world)]
+    dist.all_gather(gathered, cursor_tensor)
+    if rank == 0:
+        checkpoint = {
+            "model": model.module.state_dict(),
+            "optimizer": optimizer.state_dict(),
+            "evidence": {
+                "data_commit_id": manifest["commit_id"],
+                "manifest_sha256": file_sha256(manifest_path),
+                "shards": manifest["objects"],
+                "data_cursors": [int(value.item()) for value in gathered],
+                "global_step": args.steps,
+                "world_size": world,
+            },
+        }
+        torch.save(checkpoint, args.checkpoint)
+        emit({
+            "status": "completed",
+            "data_commit_id": manifest["commit_id"],
+            "checkpoint": str(args.checkpoint),
+            "checkpoint_sha256": file_sha256(args.checkpoint),
+            "final_train_loss": sum(recent) / len(recent),
+            "elapsed_seconds": elapsed,
+            "gpu_0": torch.cuda.get_device_name(0),
+            "gpu_1": torch.cuda.get_device_name(1),
+            "proof_limit": "real DDP manifest locking; not object-store throughput benchmark",
+        })
+    dist.destroy_process_group()
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data-root", type=Path, default=Path("locked_data"))
+    parser.add_argument("--checkpoint", type=Path, default=Path("locked_checkpoint.pt"))
+    parser.add_argument("--prepare", action="store_true")
+    parser.add_argument("--tamper", action="store_true")
+    parser.add_argument("--steps", type=int, default=120)
+    parser.add_argument("--batch-size", type=int, default=16)
+    parser.add_argument("--sequence-length", type=int, default=128)
+    parser.add_argument("--vocab-size", type=int, default=512)
+    parser.add_argument("--seed", type=int, default=20260821)
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    manifest_path = args.data_root / "manifest.json"
+    if args.prepare and int(os.environ.get("RANK", "0")) == 0:
+        build_commit(args.data_root, args.seed, 4, 2048, args.sequence_length, args.vocab_size)
+    if "WORLD_SIZE" in os.environ:
+        while not manifest_path.exists():
+            time.sleep(0.05)
+    if args.tamper and int(os.environ.get("RANK", "0")) == 0:
+        target = args.data_root / "part-00000.pt"
+        with target.open("ab") as handle:
+            handle.write(b"tamper")
+    if "WORLD_SIZE" in os.environ:
+        time.sleep(0.2)
+    try:
+        manifest = verify_manifest(manifest_path)
+    except Exception as exc:
+        if int(os.environ.get("RANK", "0")) == 0:
+            emit({"status": "failed", "reason": "manifest_verification_failed", "detail": str(exc)})
+        raise SystemExit(2)
+    train(args, manifest_path, manifest)
+
+
+if __name__ == "__main__":
+    main()

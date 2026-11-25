@@ -1,6 +1,6 @@
 # SEO 与分析：让网站被找到、被理解
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_mll0919q-682d8eae8561ed41.jpg
+![SEO、分享与数据统计](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_mll0919q-682d8eae8561ed41.jpg)
 
 <p>图 1：SEO、分享与数据统计</p>
 
@@ -36,7 +36,7 @@ OG 是 Facebook 在 2010 年推出的元数据标准：在网页 `<head>` 放几
 
 形式是 `<meta property="og:xxx" content="xxx" />`。Next.js 在 `layout.tsx` 的 `metadata.openGraph` 里配置即可。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260303152540838.png
+![分享卡片的实际效果](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260303152540838.png)
 
 <p>图 2：分享卡片的实际效果</p>
 
@@ -189,7 +189,7 @@ Umami 的哲学是「够用就好」：不告诉你年龄性别兴趣，但告�
 
 > 这里的脚本来自**自己服务器上自托管的 Umami**，属于第一方资源。不要随意粘贴来路不明的第三方统计脚本——若确实要接外部服务，优先固定版本并核对脚本来源，避免供应链风险。
 
-https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260226235803668.png
+![Umami 数据面板](https://raw.githubusercontent.com/swpucwf/MyBolgImage/main/img/vibe_image-20260226235803668.png)
 
 <p>图 3：Umami 数据面板</p>
 
@@ -300,4 +300,4 @@ flowchart TD
 
 ## 写在最后
 
-下一篇[用户反馈与迭代](16-用户反馈与迭代)把「数据」接到「人」：面对真实用户的反馈、优先级排序、理解用户与持续迭代。
+下一篇[用户反馈与迭代](/source/vibecoding/vibe-advanced/16-用户反馈与迭代)把「数据」接到「人」：面对真实用户的反馈、优先级排序、理解用户与持续迭代。

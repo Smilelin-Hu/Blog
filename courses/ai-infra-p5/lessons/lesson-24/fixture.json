@@ -1,0 +1,19 @@
+{
+  "beta": 0.1,
+  "target_margin": 0.02,
+  "length_normalize": true,
+  "pairs": [
+    {
+      "chosen_logp": -18.0,
+      "rejected_logp": -24.0,
+      "chosen_tokens": 80,
+      "rejected_tokens": 75
+    },
+    {
+      "chosen_logp": -11.0,
+      "rejected_logp": -13.0,
+      "chosen_tokens": 40,
+      "rejected_tokens": 35
+    }
+  ]
+}

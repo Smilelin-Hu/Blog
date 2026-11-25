@@ -159,4 +159,4 @@ python openai_compatible_client.py
 
 ## 写在最后
 
-这一篇的重点不是记住某个模型的启动命令，而是把「图像 → processor → 模板 → 生成」这条链路变具体。摸清 `messages` 与 chat template 之后，下一篇[图像问答 Demo](5-图像问答Demo)会把同一套调用嵌进 Gradio 界面，请求体与这里保持一致，界面里才不会出现「脚本对、界面错」。
+这一篇的重点不是记住某个模型的启动命令，而是把「图像 → processor → 模板 → 生成」这条链路变具体。摸清 `messages` 与 chat template 之后，下一篇[图像问答 Demo](/source/大模型/多模态大模型实战/5-图像问答Demo)会把同一套调用嵌进 Gradio 界面，请求体与这里保持一致，界面里才不会出现「脚本对、界面错」。

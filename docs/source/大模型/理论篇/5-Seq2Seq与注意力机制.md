@@ -219,4 +219,4 @@ outputs, (hidden, cell) = self.rnn(rnn_input, (hidden, cell))
 
 ## 写在最后
 
-QKV 范式把 Q/K/V 的来源换成序列自身，就得到自注意力——下一篇[深入解析Transformer](6-深入解析Transformer)拆开那个「完全抛弃循环与卷积」的新网络架构。
+QKV 范式把 Q/K/V 的来源换成序列自身，就得到自注意力——下一篇[深入解析Transformer](/source/大模型/理论篇/6-深入解析Transformer)拆开那个「完全抛弃循环与卷积」的新网络架构。

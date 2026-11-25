@@ -419,4 +419,4 @@ error/interrupted    -> 对应层级的错误或中断提示
 
 ## 写在最后
 
-下一篇[Interpreters 代码编排](16-Interpreters代码编排)把循环与批处理移进代码：QuickJS 内执行 JavaScript，用 PTC 批量调用工具，只把整理后的结果带回对话。
+下一篇[Interpreters 代码编排](/source/agent/deepagents/16-Interpreters代码编排)把循环与批处理移进代码：QuickJS 内执行 JavaScript，用 PTC 批量调用工具，只把整理后的结果带回对话。

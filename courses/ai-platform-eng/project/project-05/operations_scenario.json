@@ -1,0 +1,208 @@
+{
+  "policy": {
+    "maximum_gpu_hours_per_request": 1000,
+    "maximum_fault_blast_radius": 0.25
+  },
+  "thresholds": {
+    "minimum_slo_attainment": 0.995,
+    "maximum_detection_seconds": 120,
+    "maximum_recovery_seconds": 600,
+    "minimum_cost_attribution_rate": 1.0,
+    "minimum_policy_violation_block_rate": 1.0
+  },
+  "prices": {
+    "A100_80GB": 3.2,
+    "H100_80GB": 5.6
+  },
+  "sli_samples": [
+    {
+      "window": "w1",
+      "good": 9980,
+      "total": 10000
+    },
+    {
+      "window": "w2",
+      "good": 9975,
+      "total": 10000
+    }
+  ],
+  "requests": [
+    {
+      "request_id": "req-001",
+      "tenant": "team-a",
+      "authorized_tenant": "team-a",
+      "project": "foundation",
+      "owner": "alice",
+      "cluster_uid": "cluster-a",
+      "namespace_uid": "ns-a",
+      "workload_uid": "job-a",
+      "gpu_type": "H100_80GB",
+      "gpu_hours": 120,
+      "shared_cost": 18,
+      "signed_image": true,
+      "privileged": false,
+      "host_path": false
+    },
+    {
+      "request_id": "req-002",
+      "tenant": "team-b",
+      "authorized_tenant": "team-b",
+      "project": "vision",
+      "owner": "bob",
+      "cluster_uid": "cluster-b",
+      "namespace_uid": "ns-b",
+      "workload_uid": "serve-b",
+      "gpu_type": "A100_80GB",
+      "gpu_hours": 80,
+      "shared_cost": 12,
+      "signed_image": true,
+      "privileged": false,
+      "host_path": false
+    },
+    {
+      "request_id": "req-003",
+      "tenant": "team-c",
+      "authorized_tenant": "team-c",
+      "project": "search",
+      "owner": "chen",
+      "cluster_uid": "cluster-c",
+      "namespace_uid": "ns-c",
+      "workload_uid": "job-c",
+      "gpu_type": "A100_80GB",
+      "gpu_hours": 60,
+      "shared_cost": 9,
+      "signed_image": false,
+      "privileged": false,
+      "host_path": false
+    }
+  ],
+  "incidents": [
+    {
+      "incident_id": "inc-gpu-health",
+      "started_at_seconds": 0,
+      "detected_at_seconds": 44,
+      "recovered_at_seconds": 212,
+      "affected_workloads": 2,
+      "eligible_workloads": 20,
+      "runbook": "runbooks/gpu-health.md",
+      "steady_state_restored": true
+    },
+    {
+      "incident_id": "inc-queue-stall",
+      "started_at_seconds": 0,
+      "detected_at_seconds": 65,
+      "recovered_at_seconds": 385,
+      "affected_workloads": 3,
+      "eligible_workloads": 30,
+      "runbook": "runbooks/queue-stall.md",
+      "steady_state_restored": true
+    }
+  ],
+  "faults": [
+    {
+      "type": "missing_request_id",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "RequiredIdentityMissing:request_id"
+    },
+    {
+      "type": "missing_tenant",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "RequiredIdentityMissing:tenant"
+    },
+    {
+      "type": "missing_project",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "RequiredIdentityMissing:project"
+    },
+    {
+      "type": "cross_tenant",
+      "expected_phase": "REJECTED",
+      "expected_reason": "CrossTenantIdentityMismatch"
+    },
+    {
+      "type": "privileged_workload",
+      "expected_phase": "REJECTED",
+      "expected_reason": "PrivilegedWorkloadForbidden"
+    },
+    {
+      "type": "host_path",
+      "expected_phase": "REJECTED",
+      "expected_reason": "HostPathForbidden"
+    },
+    {
+      "type": "unsigned_image",
+      "expected_phase": "REJECTED",
+      "expected_reason": "VerifiedImageSignatureRequired"
+    },
+    {
+      "type": "budget_exceeded",
+      "expected_phase": "REJECTED",
+      "expected_reason": "GPUHourBudgetExceeded"
+    },
+    {
+      "type": "unknown_gpu_price",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "GPUPriceProfileUnknown"
+    },
+    {
+      "type": "cost_identity_gap",
+      "expected_phase": "UNALLOCATED",
+      "expected_reason": "CostIdentityMissing"
+    },
+    {
+      "type": "sli_samples_insufficient",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "InsufficientSLISamples"
+    },
+    {
+      "type": "telemetry_stale",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "TelemetryStale"
+    },
+    {
+      "type": "burn_single_window",
+      "expected_phase": "PASS",
+      "expected_reason": "DualWindowConditionNotMet"
+    },
+    {
+      "type": "runbook_missing",
+      "expected_phase": "ESCALATE",
+      "expected_reason": "RunbookMissing"
+    },
+    {
+      "type": "blast_radius_exceeded",
+      "expected_phase": "ESCALATE",
+      "expected_reason": "BlastRadiusExceeded"
+    },
+    {
+      "type": "recovery_not_verified",
+      "expected_phase": "ESCALATE",
+      "expected_reason": "RecoveryVerificationFailed"
+    },
+    {
+      "type": "remediation_loop",
+      "expected_phase": "ESCALATE",
+      "expected_reason": "RemediationAttemptBudgetExceeded"
+    },
+    {
+      "type": "audit_lag",
+      "expected_phase": "INCONCLUSIVE",
+      "expected_reason": "AuditDeliveryLagExceeded"
+    },
+    {
+      "type": "metric_cardinality",
+      "expected_phase": "DROPPED",
+      "expected_reason": "MetricCardinalityBudgetExceeded"
+    },
+    {
+      "type": "cost_double_count",
+      "expected_phase": "REJECTED",
+      "expected_reason": "CostReconciliationDeltaNonZero"
+    },
+    {
+      "type": "live_sources_missing",
+      "expected_phase": "SKIPPED",
+      "expected_reason": "NoLiveOperationsSourceProvided"
+    }
+  ]
+}
