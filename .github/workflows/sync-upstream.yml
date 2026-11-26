@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: sync-upstream
@@ -29,10 +30,24 @@ jobs:
       # Do not use the merge-upstream API here: this fork contains its own
       # workflow commit, so the branch can diverge while still merging cleanly.
       - name: Merge upstream changes
+        id: merge
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git remote add upstream https://github.com/swpucwf/Blog.git 2>/dev/null || true
+          before="$(git rev-parse HEAD)"
           git fetch --no-tags upstream master
           git merge --no-edit upstream/master
           git push origin HEAD:master
+          after="$(git rev-parse HEAD)"
+          if [ "$before" != "$after" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Trigger Pages deployment
+        if: steps.merge.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yml --ref master
