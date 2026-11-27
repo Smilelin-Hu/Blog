@@ -11,6 +11,7 @@ import Search from '../components/Search.astro';
 import CopyButton from '../components/CopyButton.astro';
 import { SERIES, seriesNum } from '../utils/notes';
 import { getPath } from '../utils/paths';
+import { siteConfig } from '../config/site';
 
 interface Props {
   title?: string;
@@ -18,8 +19,8 @@ interface Props {
 }
 
 const {
-  title = '笔记课堂 - AI Infra / 系统 / 算法笔记',
-  description = 'AI Infra、GPU 算子优化、大模型、Agent 与工程实践的系统笔记',
+  title = siteConfig.title,
+  description = siteConfig.description,
 } = Astro.props;
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
@@ -33,7 +34,7 @@ const isActive = (path: string) => currentPath === getPath(path) || currentPath.
     <meta charset="UTF-8" />
     <meta name="description" content={description} />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/svg+xml" href={getPath('/favicon.svg')} />
+    <link rel="icon" type="image/svg+xml" href={getPath(siteConfig.brandMark)} />
     <link rel="canonical" href={canonicalURL} />
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
@@ -42,7 +43,7 @@ const isActive = (path: string) => currentPath === getPath(path) || currentPath.
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:locale" content="zh_CN" />
-    <meta property="og:site_name" content="笔记课堂" />
+    <meta property="og:site_name" content={siteConfig.title} />
     <meta name="theme-color" content="#007aff" />
     <script is:inline>
       if (
@@ -66,13 +67,15 @@ const isActive = (path: string) => currentPath === getPath(path) || currentPath.
       <div id="reading-progress" class="h-full w-0 bg-gradient-to-r from-[#007aff] to-[#5ac8fa] transition-[width] duration-150"></div>
     </div>
 
-    <!-- Header：深色毛玻璃风格 -->
+    <!-- Header -->
     <header id="site-header" class="fixed top-0 left-0 right-0 z-50 h-[58px] text-white backdrop-blur-xl border-b border-white/[0.08] transition-all duration-300" style="background: rgba(5,12,30,0.78);">
       <nav class="relative flex items-center justify-between h-full max-w-7xl mx-auto px-6">
-        <a href={getPath('/')} class="flex items-center gap-2.5 cursor-pointer">
-          <span class="w-8 h-8 rounded-xl bg-gradient-to-br from-[#007aff] to-[#5856D6] flex items-center justify-center text-white text-sm font-bold">笔</span>
-          <span class="text-[15px] font-semibold text-white">笔记课堂</span>
-        </a>
+        <span class="flex items-center gap-3">
+          <a href={getPath(siteConfig.homePath)} aria-label={`${siteConfig.name} 首页`} class="cursor-pointer">
+            <img src={getPath(siteConfig.logoOnDark)} alt={siteConfig.name} class="h-7 w-auto" />
+          </a>
+          <a href={getPath(siteConfig.homePath)} class="hidden sm:inline text-[13px] font-medium text-gray-300 border-l border-white/15 pl-3 hover:text-white transition-colors cursor-pointer">{siteConfig.subtitle}</a>
+        </span>
 
         <div class="hidden md:flex items-center gap-1">
           <a href={getPath('/')} class:list={['px-3 py-2 rounded-lg text-[13px] font-medium transition-colors cursor-pointer', currentPath === getPath('/') ? 'text-white bg-white/10' : 'text-gray-300 hover:text-white hover:bg-white/10']}>首页</a>
@@ -109,7 +112,10 @@ const isActive = (path: string) => currentPath === getPath(path) || currentPath.
     <div id="mobile-menu" class="fixed top-0 right-0 bottom-0 z-[80] w-80 max-w-[85vw] bg-white dark:bg-[#111] border-l border-gray-200 dark:border-white/[0.08] translate-x-full transition-transform duration-300 md:hidden overflow-y-auto">
       <div class="flex items-center justify-between p-5 border-b border-gray-100 dark:border-white/[0.06]">
         <span class="flex items-center gap-2">
-          <span class="w-7 h-7 rounded-lg bg-gradient-to-br from-[#007aff] to-[#5856D6] flex items-center justify-center text-white text-xs font-bold">笔</span>
+          <a href={getPath(siteConfig.homePath)} aria-label={`${siteConfig.name} 首页`} class="cursor-pointer">
+            <img src={getPath(siteConfig.logoOnLight)} alt={siteConfig.name} class="h-6 w-auto dark:hidden" />
+            <img src={getPath(siteConfig.logoOnDark)} alt={siteConfig.name} class="h-6 w-auto hidden dark:block" />
+          </a>
           <span class="text-sm font-semibold text-gray-900 dark:text-white">系列目录</span>
         </span>
         <button id="mobile-menu-close" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 cursor-pointer" aria-label="关闭">
@@ -138,12 +144,14 @@ const isActive = (path: string) => currentPath === getPath(path) || currentPath.
     <footer class="border-t border-white/[0.06] py-8 mt-auto" style="background: #071122;">
       <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
         <span class="flex items-center gap-3">
-          <span class="w-6 h-6 rounded-lg bg-gradient-to-br from-[#007aff] to-[#5856D6] flex items-center justify-center text-white text-[10px] font-bold">笔</span>
-          <p class="text-gray-500 text-xs">&copy; 2025-{new Date().getFullYear()} 笔记课堂 · swpucwf</p>
+          <a href={getPath(siteConfig.homePath)} aria-label={`${siteConfig.name} 首页`} class="cursor-pointer">
+            <img src={getPath(siteConfig.logoOnDark)} alt={siteConfig.name} class="h-6 w-auto" />
+          </a>
+          <p class="text-gray-500 text-xs">&copy; 2025-{new Date().getFullYear()} {siteConfig.name}</p>
         </span>
         <p class="text-gray-500 text-xs">Built with Astro · 内容即笔记，工程即纪律</p>
         <div class="flex items-center gap-4">
-          <a href="https://blog.csdn.net/weixin_42917352" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-white transition-colors text-xs cursor-pointer">CSDN</a>
+          <a href={siteConfig.githubUrl} target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-white transition-colors text-xs cursor-pointer">GitHub</a>
         </div>
       </div>
     </footer>
